@@ -30,10 +30,23 @@ const SkeletonWrapper = styled(Box)(({ theme }) => ({
 }));
 
 const StyledSkeleton = styled(Skeleton)(({ theme }) => ({
-  width: 90,
+  width: 100,
   height: 30,
   borderRadius: theme.shape.borderRadius,
   gap: 3
+}));
+
+const SkeletonFieldWrapper = styled("div")({
+  width: "100%",
+  maxWidth: 400,
+  marginTop: 16,
+  marginBottom: 16
+});
+
+const StyledFieldSkeleton = styled(Skeleton)(({ theme }) => ({
+  width: "100%",
+  height: 56, // same as default TextField height
+  borderRadius: theme.shape.borderRadius,
 }));
 
 // Validation schema
@@ -176,9 +189,15 @@ const Login = () => {
               control={control}
               render={({ field }) => (
                 <FormControl component="fieldset" error={!!errors.role}>
-                  <FormLabel component="legend" sx={{ fontWeight: 600, mb: 1 }}>
-                    Select Your Role
-                  </FormLabel>
+                  {loading ? (
+                    <SkeletonWrapper>
+                      <StyledSkeleton variant="rectangular" sx={{ mb: 1 }} />
+                    </SkeletonWrapper>
+                  ) : (
+                    <FormLabel component="legend" sx={{ fontWeight: 600, mb: 1 }}>
+                      Select Your Role
+                    </FormLabel>
+                  )}
                   {loading ? (
                     // Show skeleton placeholders while loading
                     <SkeletonWrapper>
@@ -207,55 +226,54 @@ const Login = () => {
               )}
             />
             {/* Email */}
-            <Controller
-              name="email"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  fullWidth
-                  placeholder="Email"
-                  variant="outlined"
-                  {...field}
-                  error={!!errors.email}
-                  helperText={errors.email?.message}
-                  sx={{ mb: 2 }}
-                />
-              )}
-            />
-
+            {loading ? (
+              <SkeletonFieldWrapper>
+                <StyledFieldSkeleton variant="rectangular" />
+              </SkeletonFieldWrapper>
+            ) : (
+              <Controller
+                name="email"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    fullWidth
+                    placeholder="Email"
+                    variant="outlined"
+                    {...field}
+                    error={!!errors.email}
+                    helperText={errors.email?.message}
+                    sx={{ mb: 2 }}
+                  />
+                )}
+              />
+            )}
             {/* Password */}
-            <Controller
-              name="password"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  fullWidth
-                  type="password"
-                  placeholder="Password"
-                  variant="outlined"
-                  {...field}
-                  error={!!errors.password}
-                  helperText={errors.password?.message}
-                  sx={{ mb: 2 }}
-                />
-              )}
-            />
+            {loading ? (
+              <SkeletonFieldWrapper>
+                <StyledFieldSkeleton variant="rectangular" />
+              </SkeletonFieldWrapper>
+            ) : (
+              <Controller
+                name="password"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    fullWidth
+                    type="password"
+                    placeholder="Password"
+                    variant="outlined"
+                    {...field}
+                    error={!!errors.password}
+                    helperText={errors.password?.message}
+                    sx={{ mb: 2 }}
+                  />
+                )}
+              />
+            )}
 
-            {/* Submit Button */}
-            {/* <Button
-              fullWidth
-              type="submit"
-              variant="contained"
-              disableElevation
-              sx={{
-                backgroundColor: "#EF2A1E",
-                "&:hover": { backgroundColor: "#c6221a" },
-                fontWeight: 600,
-              }}
-              endIcon={<ArrowForwardIcon />}
-            >
-              Login
-            </Button> */}
+
+
+
             <Box sx={{ display: "flex", justifyContent: "flex-start", }}>
               <Button
                 disableElevation
