@@ -45,13 +45,13 @@ const schema = yup.object().shape({
 
 const Login = () => {
   const navigate = useNavigate();
- 
+
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loginLoading, setLoginLoading] = useState(false);
 
   useEffect(() => {
-    
+
     const fetchRoles = async () => {
       try {
         const res = await api.get('common/data?param=Roles')
@@ -85,20 +85,18 @@ const Login = () => {
     },
   });
 
-  
-
   const onSubmit = async (data) => {
-     
-      const formData = new FormData();
 
-      formData.append("email", data.email)
-      formData.append("password", data.password)
-      formData.append("choose_the_role",data.role)
+    const formData = new FormData();
+
+    formData.append("email", data.email)
+    formData.append("password", data.password)
+    formData.append("choose_the_role", data.role)
 
     try {
       setLoginLoading(true);
       const res = await api.post('login', formData);
-    
+
       const { access_token, role } = res.data.data;
 
       localStorage.setItem("token", access_token);
@@ -110,10 +108,10 @@ const Login = () => {
     } catch (error) {
       const errMsg = error.response?.data?.message || "Login failed!";
       toast.error(errMsg);
-    }finally {
+    } finally {
       setLoginLoading(false);
     }
-    
+
   };
 
   return (
@@ -261,17 +259,30 @@ const Login = () => {
             <Box sx={{ display: "flex", justifyContent: "flex-start", }}>
               <Button
                 disableElevation
-                sx={button}
+                sx={{
+                  ...button,
+                  backgroundColor: "#EF2A1E",
+                  color: "#fff",
+                  "&:hover": {
+                    backgroundColor: "#EF2A1E",
+                  },
+                  "&.Mui-disabled": {
+                    backgroundColor: "#EF2A1E",
+                    color: "#fff",
+                    opacity: 0.7, // optional to show it's disabled
+                  },
+                }}
                 onClick={handleSubmit(onSubmit)}
-                 disabled={loginLoading}
+                disabled={loginLoading || loading}
               >
-                 {loginLoading ? "Checking..." : "Login"}
-                <Box
-                  sx={icon}
-                >
-                  <ArrowForwardIcon sx={{ fontSize: 20, color: '#EF2A1E' }} />
-                </Box>
+                {loginLoading ? "Logging in..." : "Login"}
+                {!(loginLoading || loading) && (
+                  <Box sx={icon}>
+                    <ArrowForwardIcon sx={{ fontSize: 20, color: "#EF2A1E" }} />
+                  </Box>
+                )}
               </Button>
+
             </Box>
           </Box>
         </Grid>
