@@ -1,0 +1,125 @@
+// pages/TuitionDashboard.jsx
+import React from "react";
+import { Box, Container, Grid, Typography } from "@mui/material";
+import TuitionCard from "./StudentPannel/TuitionCard";
+
+// Sample Data (replace with API or dynamic content if needed)
+const courses = [
+  {
+    image: "/assets/images/studend-img.png",
+    title: "Year 3 11+ Tuition",
+    description:
+      "Lays the foundation for the Year 4 course. 1 hour and 45 minutes of tuition including core literacy and numeracy skills.",
+    progress: 80,
+  },
+  {
+     image: "/assets/images/studend-img.png",
+    title: "Year 3 11+ Tuition",
+    description:
+      "Lays the foundation for the Year 4 course. 1 hour and 45 minutes of tuition including core literacy and numeracy skills.",
+    progress: 60,
+  },
+  {
+     image: "/assets/images/studend-img.png",
+    title: "Year 3 11+ Tuition",
+    description:
+      "Lays the foundation for the Year 4 course. 1 hour and 45 minutes of tuition including core literacy and numeracy skills.",
+    progress: 45,
+  },
+  {
+    image: "/assets/images/studend-img.png",
+    title: "Year 3 11+ Tuition",
+    description:
+      "Lays the foundation for the Year 4 course. 1 hour and 45 minutes of tuition including core literacy and numeracy skills.",
+    progress: 90,
+  },
+  {
+    image: "/assets/images/studend-img.png",
+    title: "Year 3 11+ Tuition",
+    description:
+      "Lays the foundation for the Year 4 course. 1 hour and 45 minutes of tuition including core literacy and numeracy skills.",
+    progress: 20,
+  },
+  {
+    image: "/assets/images/studend-img.png",
+    title: "Year 3 11+ Tuition",
+    description:
+      "Lays the foundation for the Year 4 course. 1 hour and 45 minutes of tuition including core literacy and numeracy skills.",
+    progress: 100,
+  },
+  {
+    image: "/assets/images/studend-img.png",
+    title: "Year 3 11+ Tuition",
+    description:
+      "Lays the foundation for the Year 4 course. 1 hour and 45 minutes of tuition including core literacy and numeracy skills.",
+    progress: 80,
+  },
+  {
+     image: "/assets/images/studend-img.png",
+    title: "Year 3 11+ Tuition",
+    description:
+      "Lays the foundation for the Year 4 course. 1 hour and 45 minutes of tuition including core literacy and numeracy skills.",
+    progress: 60,
+  },
+  {
+     image: "/assets/images/studend-img.png",
+    title: "Year 3 11+ Tuition",
+    description:
+      "Lays the foundation for the Year 4 course. 1 hour and 45 minutes of tuition including core literacy and numeracy skills.",
+    progress: 45,
+  },
+  {
+    image: "/assets/images/studend-img.png",
+    title: "Year 3 11+ Tuition",
+    description:
+      "Lays the foundation for the Year 4 course. 1 hour and 45 minutes of tuition including core literacy and numeracy skills.",
+    progress: 90,
+  },
+  {
+    image: "/assets/images/studend-img.png",
+    title: "Year 3 11+ Tuition",
+    description:
+      "Lays the foundation for the Year 4 course. 1 hour and 45 minutes of tuition including core literacy and numeracy skills.",
+    progress: 20,
+  },
+  {
+    image: "/assets/images/studend-img.png",
+    title: "Year 3 11+ Tuition",
+    description:
+      "Lays the foundation for the Year 4 course. 1 hour and 45 minutes of tuition including core literacy and numeracy skills.",
+    progress: 100,
+  },
+];
+
+const StudentPannel = () => {
+  return (
+   <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Typography
+        variant="h5"
+        fontWeight="bold"
+        textAlign={{ xs: "center", md: "left" }}
+        gutterBottom
+      >
+        Welcome back, Student
+      </Typography>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        mb={3}
+        textAlign={{ xs: "center", md: "left" }}
+      >
+        Track your progress and continue your learning journey.
+      </Typography>
+
+      <Grid container spacing={3}>
+        {courses.map((course, idx) => (
+          <Grid item xs={12} sm={6} md={4} lg={3} key={idx}>
+            <TuitionCard {...course} />
+          </Grid>
+        ))}
+      </Grid>
+    </Container>
+  );
+};
+
+export default StudentPannel;
