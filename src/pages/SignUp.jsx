@@ -1,4 +1,4 @@
-import React from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Grid,
@@ -10,15 +10,45 @@ import {
   FormControl,
   FormControlLabel,
   FormLabel,
+  Skeleton
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import axios from "axios";
+import api from "../api";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { button, icon } from "./style";
+import { styled } from '@mui/material/styles';
+
+const SkeletonWrapper = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  gap: theme.spacing(3),
+  flexWrap: 'nowrap',
+  alignItems: 'center',
+}));
+
+const StyledSkeleton = styled(Skeleton)(({ theme }) => ({
+  width: 100,
+  height: 30,
+  borderRadius: theme.shape.borderRadius,
+  gap: 3
+}));
+
+const SkeletonFieldWrapper = styled("div")({
+  width: "100%",
+  maxWidth: 6000,
+  marginTop: 3,
+  marginBottom: 3
+});
+
+const StyledFieldSkeleton = styled(Skeleton)(({ theme }) => ({
+  width: "100%",
+  height: 56, // same as default TextField height
+  borderRadius: theme.shape.borderRadius,
+}));
 
 // Yup validation schema
 const schema = yup.object().shape({
@@ -29,16 +59,40 @@ const schema = yup.object().shape({
   password: yup.string().min(8, "Password must be at least 8 characters").required("Password is required"),
 });
 
-// Map roles to backend expected values
-const roleMap = {
-  parent: "3",
-  tutor: "4",
-};
+
 
 export default function SignUp() {
+  const navigate = useNavigate();
+  const [roles, setRoles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [signUpLoading, setSignUpLoading] = useState(false);
+
+  useEffect(() => {
+
+    const fetchRoles = async () => {
+      try {
+        const res = await api.get('common/data?param=Roles')
+
+        const filteredRoles = (res.data.data || []).filter(role => role.name !== 'Student');
+        setRoles(filteredRoles);
+        if (filteredRoles.length > 0) {
+          reset({ role: filteredRoles[0].id });
+        }
+
+      } catch (err) {
+        toast.error("Failed to fetch roles")
+      }
+      finally {
+        setLoading(false);
+      }
+    };
+    fetchRoles();
+  }, []);
+
   const {
     control,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm({
     resolver: yupResolver(schema),
@@ -53,104 +107,133 @@ export default function SignUp() {
 
   const onSubmit = async (data) => {
     try {
-      const payload = new URLSearchParams();
-      payload.append("email", data.email);
-      payload.append("password", data.password);
-      payload.append("first_name", data.firstName);
-      payload.append("last_name", data.lastName);
-      payload.append("choose_the_role", roleMap[data.role]);
+      setSignUpLoading(true);
+      const formData = new FormData();
 
-      const res = await axios.post(`${process.env.REACT_APP_BACKEND_APP_URL}register`, payload, {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      });
+      formData.append("email", data.email);
+      formData.append("password", data.password);
+      formData.append("first_name", data.firstName);
+      formData.append("last_name", data.lastName);
+      formData.append("choose_the_role", data.role);
 
+      await api.post('register', formData);
       toast.success("Signup successful!", { position: "top-right" });
-      console.log("Success:", res.data);
+      setTimeout(() => navigate('/login'), 1500);
     } catch (error) {
       const errMsg = error.response?.data?.message || "Signup failed! Please try again.";
       toast.error(errMsg, { position: "top-right" });
       console.error("Signup error:", error.response?.data || error.message);
     }
+    finally {
+      setSignUpLoading(false);
+    }
+
   };
 
   return (
     <>
       <Box sx={{ height: "100vh", bgcolor: "#f9f9f9" }}>
-        <form onSubmit={handleSubmit(onSubmit)}>
-         <Grid container sx={{ height: "100vh" }}>
-            {/* Left */}
-            <Grid
-              item
-              xs={12}
-              md={6}
-              sx={{
-                backgroundImage: `url("/assets/images/signup-bg.png")`,
-                backgroundSize: "cover",
-                backgroundRepeat: "no-repeat",
-                backgroundPosition: "center",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                p: 4,
-                py: 9,
-              }}
-            >
-              <img
-                src="/assets/images/hero-right-img.png"
-                alt="Character"
-                style={{ width: "80%", maxWidth: "300px" }}
-              />
-            </Grid>
 
-            {/* Right */}
-            <Grid
-              item
-              xs={12}
-              md={6}
-              sx={{
-                backgroundColor: "#fff",
-                py: 6,
-                px: { xs: 4, md: 6 },
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-              }}
-            >
-              {/* Logo */}
-              <Box sx={{ mb: 4 }}>
-                <img src="/assets/images/logo.svg" alt="Logo" />
+        <Grid container sx={{ height: "100vh" }}>
+          {/* Left */}
+          <Grid
+            item
+            xs={12}
+            md={6}
+            sx={{
+              backgroundImage: `url("/assets/images/signup-bg.png")`,
+              backgroundSize: "cover",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "center",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              p: 4,
+              py: 9,
+            }}
+          >
+            <img
+              src="/assets/images/hero-right-img.png"
+              alt="Character"
+              style={{ width: "80%", maxWidth: "300px" }}
+            />
+          </Grid>
+
+          {/* Right */}
+          <Grid
+            item
+            xs={12}
+            md={6}
+            sx={{
+              backgroundColor: "#fff",
+              py: 6,
+              px: { xs: 4, md: 6 },
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+            }}
+          >
+            {/* Logo */}
+            <Box sx={{ mb: 4 }}>
+              <img src="/assets/images/logo.svg" alt="Logo" />
+            </Box>
+
+            {/* Title */}
+            <Typography variant="h5" sx={{ mb: 3, fontWeight: 700 }}>
+              <Box component="span" sx={{ color: "#D6232A" }}>
+                Getting Started
               </Box>
+            </Typography>
 
-              {/* Title */}
-              <Typography variant="h5" sx={{ mb: 3, fontWeight: 700 }}>
-                <Box component="span" sx={{ color: "#D6232A" }}>
-                  Getting Started
-                </Box>
-              </Typography>
-
-              {/* Form Fields */}
-              <Box sx={{ display: "grid", gap: 2 }}>
-                <Controller
-                  name="role"
-                  control={control}
-                  render={({ field }) => (
-                    <FormControl component="fieldset" error={!!errors.role}>
+            {/* Form Fields */}
+            <Box sx={{ display: "grid", gap: 2 }}>
+              <Controller
+                name="role"
+                control={control}
+                render={({ field }) => (
+                  <FormControl component="fieldset" error={!!errors.role}>
+                    {loading ? (
+                      <SkeletonWrapper>
+                        <StyledSkeleton variant="rectangular" sx={{ mb: 1 }} />
+                      </SkeletonWrapper>
+                    ) : (
                       <FormLabel component="legend" sx={{ fontWeight: 600, mb: 1 }}>
                         Select Your Role
                       </FormLabel>
+                    )}
+                    {loading ? (
+                      // Show skeleton placeholders while loading
+                      <SkeletonWrapper>
+                        {[...Array(2)].map((_, idx) => (
+                          <StyledSkeleton key={idx} variant="rectangular" />
+                        ))}
+                      </SkeletonWrapper>
+                    ) : (
                       <RadioGroup row {...field}>
-                        <FormControlLabel value="parent" control={<Radio />} label="I am a Parent" />
-                        <FormControlLabel value="tutor" control={<Radio />} label="I am a Tutor" />
+                        {roles.map((role) => (
+                          <FormControlLabel
+                            key={role.id}
+                            value={role.id}
+                            control={<Radio />}
+                            label={`I am ${role.name}`}
+                          />
+                        ))}
                       </RadioGroup>
-                      {errors.role && (
-                        <Typography variant="caption" color="error">
-                          {errors.role.message}
-                        </Typography>
-                      )}
-                    </FormControl>
-                  )}
-                />
+                    )}
+                    {errors.role && (
+                      <Typography variant="caption" color="error">
+                        {errors.role.message}
+                      </Typography>
+                    )}
+                  </FormControl>
+                )}
+              />
 
+              {loading ? (
+                <SkeletonFieldWrapper>
+                  <StyledFieldSkeleton variant="rectangular" />
+                </SkeletonFieldWrapper>
+              ) : (
                 <Controller
                   name="firstName"
                   control={control}
@@ -165,7 +248,11 @@ export default function SignUp() {
                     />
                   )}
                 />
+              )}
 
+              {loading ? (<SkeletonFieldWrapper>
+                <StyledFieldSkeleton variant="rectangular" />
+              </SkeletonFieldWrapper>) : (
                 <Controller
                   name="lastName"
                   control={control}
@@ -180,7 +267,11 @@ export default function SignUp() {
                     />
                   )}
                 />
+              )}
 
+              {loading ? (<SkeletonFieldWrapper>
+                <StyledFieldSkeleton variant="rectangular" />
+              </SkeletonFieldWrapper>) : (
                 <Controller
                   name="email"
                   control={control}
@@ -195,7 +286,11 @@ export default function SignUp() {
                     />
                   )}
                 />
+              )}
 
+              {loading ? (<SkeletonFieldWrapper>
+                <StyledFieldSkeleton variant="rectangular" />
+              </SkeletonFieldWrapper>) : (
                 <Controller
                   name="password"
                   control={control}
@@ -211,19 +306,41 @@ export default function SignUp() {
                     />
                   )}
                 />
+              )}
 
-                <Box sx={{ display: "flex", justifyContent: "flex-start" }}>
-                  <Button type="submit" disableElevation sx={button}>
-                    Sign Up
+              <Box sx={{ display: "flex", justifyContent: "flex-start", }}>
+                <Button
+                  disableElevation
+                  sx={{
+                    ...button,
+                    backgroundColor: "#EF2A1E",
+                    color: "#fff",
+                    "&:hover": {
+                      backgroundColor: "#EF2A1E",
+                    },
+                    "&.Mui-disabled": {
+                      backgroundColor: "#EF2A1E",
+                      color: "#fff",
+                      opacity: 0.7, // optional to show it's disabled
+                    },
+                  }}
+                  onClick={handleSubmit(onSubmit)}
+                  disabled={signUpLoading || loading}
+                >
+                  {signUpLoading ? "Signing up..." : "Sign Up"}
+                  {!(signUpLoading || loading) && (
                     <Box sx={icon}>
                       <ArrowForwardIcon sx={{ fontSize: 20, color: "#EF2A1E" }} />
                     </Box>
-                  </Button>
-                </Box>
+                  )}
+                </Button>
+
               </Box>
-            </Grid>
+
+            </Box>
           </Grid>
-        </form>
+        </Grid>
+
       </Box>
 
       {/* Toast Message Container */}

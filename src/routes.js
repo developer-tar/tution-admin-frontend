@@ -15,6 +15,8 @@ import TestList from "./pages/Course/TestList";
 import CourseReport from "./pages/Course/CourseReport";
 import Layout from "./pages/Layout";
 import AdminLayout from "./pages/AdminLayout";
+import StudentLayout from "./pages/StudentLayout";
+import ParentLayout from "./pages/ParentLayout";
 import StudentPannel from "./pages/StudentPannel";
 import TuitionDetailsPage from "./pages/TuitionDetailsPage";
 import VideoLessonsPage from "./pages/VideoLessonsPage";
@@ -32,7 +34,15 @@ const RequireAdmin = ({ children }) => {
   const role = localStorage.getItem("role");
   return token && role === "Admin" ? children : <Navigate to="/admin-login" />;
 };
+//Parent Auth Check
+const RequireRole = ({ children, allowedRoles }) => {
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
 
+  if (!token) return <Navigate to="/login" />;
+
+  return allowedRoles.includes(role) ? children : <Navigate to="/login" />;
+};
 const AppRoutes = () => {
   return (
     <Routes>
@@ -72,15 +82,51 @@ const AppRoutes = () => {
         }
       >
         <Route index element={<Dashboard />} />
-          <Route path="student-pannel" element={<StudentPannel />} />
+        <Route path="student-pannel" element={<StudentPannel />} />
         <Route path="tuition-details" element={<TuitionDetailsPage />} />
-         <Route path="videos" element={<VideoLessonsPage />} />
-           <Route path="my-course-video-page" element={<MyCourseVideoPage />} />
+        <Route path="videos" element={<VideoLessonsPage />} />
+        <Route path="my-course-video-page" element={<MyCourseVideoPage />} />
         {/* You can add more general user routes here if needed */}
       </Route>
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/admin-login" />} />
+
+      <Route
+        path="/student"
+        element={
+          <RequireRole allowedRoles={["Student"]}>
+            <StudentLayout />
+          </RequireRole>
+        }
+      >
+        <Route index element={<StudentPannel />} />
+        <Route path="videos" element={<VideoLessonsPage />} />
+        <Route path="my-course-video-page" element={<MyCourseVideoPage />} />
+      </Route>
+
+      <Route
+        path="/parent"
+        element={
+          <RequireRole allowedRoles={["Parent"]}>
+            <ParentLayout />
+          </RequireRole>
+        }
+      >
+        <Route index element={<TuitionDetailsPage />} />
+      </Route>
+
+      <Route
+        path="/tutor"
+        element={
+          <RequireRole allowedRoles={["Tutor"]}>
+            <Layout />
+          </RequireRole>
+        }
+      >
+        <Route index element={<Dashboard />} />
+      </Route>
+
     </Routes>
   );
 };
