@@ -10,7 +10,6 @@ import {
   FormControl,
   FormControlLabel,
   FormLabel,
-  Skeleton
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
@@ -48,6 +47,22 @@ export default function SignUp() {
   const [loading, setLoading] = useState(true);
   const [signUpLoading, setSignUpLoading] = useState(false);
 
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      role: "",
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+    },
+  });
+
   useEffect(() => {
 
     const fetchRoles = async () => {
@@ -68,23 +83,9 @@ export default function SignUp() {
       }
     };
     fetchRoles();
-  }, []);
+  }, [reset]);
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      role: "",
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-    },
-  });
+
 
   const onSubmit = async (data) => {
     try {
@@ -174,7 +175,7 @@ export default function SignUp() {
                 render={({ field }) => (
                   <FormControl component="fieldset" error={!!errors.role}>
                     {loading ? (
-                     <CommonLoader width={100} height={30} />
+                      <CommonLoader width={100} height={30} />
                     ) : (
                       <FormLabel component="legend" sx={{ fontWeight: 600, mb: 1 }}>
                         Select Your Role
@@ -183,7 +184,7 @@ export default function SignUp() {
                     {loading ? (
                       <SkeletonWrapper>
                         {[...Array(2)].map(() => (
-                          <CommonLoader height={30}/>
+                          <CommonLoader height={30} />
                         ))}
                       </SkeletonWrapper>
                     ) : (
@@ -208,7 +209,7 @@ export default function SignUp() {
               />
 
               {loading ? (
-                  <CommonLoader height={40}/>
+                <CommonLoader height={40} />
               ) : (
                 <Controller
                   name="firstName"
@@ -227,7 +228,7 @@ export default function SignUp() {
               )}
 
               {loading ? (
-                <CommonLoader height={40}/>
+                <CommonLoader height={40} />
               ) : (
                 <Controller
                   name="lastName"
@@ -246,7 +247,7 @@ export default function SignUp() {
               )}
 
               {loading ? (
-                <CommonLoader height={40}/>
+                <CommonLoader height={40} />
               ) : (
                 <Controller
                   name="email"
@@ -265,7 +266,7 @@ export default function SignUp() {
               )}
 
               {loading ? (
-                <CommonLoader height={40}/>
+                <CommonLoader height={40} />
               ) : (
                 <Controller
                   name="password"

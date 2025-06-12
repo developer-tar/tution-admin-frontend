@@ -9,7 +9,6 @@ import {
   Grid,
   Radio,
   RadioGroup,
-  Skeleton,
   TextField,
   Typography,
 } from "@mui/material";
@@ -46,6 +45,20 @@ const Login = () => {
   const [loading, setLoading] = useState(true);
   const [loginLoading, setLoginLoading] = useState(false);
 
+ const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      email: "",
+      password: "",
+      role: ""
+    },
+  });
+  
   useEffect(() => {
 
     const fetchRoles = async () => {
@@ -65,21 +78,9 @@ const Login = () => {
       }
     };
     fetchRoles();
-  }, []);
+  }, [reset]);
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-    reset,
-  } = useForm({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      email: "",
-      password: "",
-      role: ""
-    },
-  });
+ 
 
   const onSubmit = async (data) => {
 
