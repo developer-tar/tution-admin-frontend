@@ -15,10 +15,10 @@ import CourseAssignmentList from "./pages/Course/CourseAssignmentList";
 import TopicSubtopicList from "./pages/Course/TopicList";
 import TestList from "./pages/Course/TestList";
 import CourseReport from "./pages/Course/CourseReport";
-import Layout from "./pages/Layout";
-import AdminLayout from "./pages/AdminLayout";
-import StudentLayout from "./pages/StudentLayout";
-import ParentLayout from "./pages/ParentLayout";
+import Layout from "./pages/Layout/Layout";
+import AdminLayout from "./pages/Layout/AdminLayout";
+import StudentLayout from "./pages/Layout/StudentLayout";
+import ParentLayout from "./pages/Layout/ParentLayout";
 import StudentPannel from "./pages/StudentPannel";
 import TuitionDetailsPage from "./pages/TuitionDetailsPage";
 import VideoLessonsPage from "./pages/VideoLessonsPage";
@@ -151,6 +151,7 @@ const AppRoutes = () => {
       }>
         <Route index element={<TuitionDetailsPage />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="my-course-video-page" element={<MyCourseVideoPage />} />
       </Route>
 
       {/* TUTOR ROUTES */}
