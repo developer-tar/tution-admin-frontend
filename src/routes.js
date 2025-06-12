@@ -53,10 +53,28 @@ const RequireRole = ({ children, allowedRoles }) => {
 };
 
 // Guest Route - blocks access if already logged in
-const GuestRoute = ({ children, redirectTo = "/" }) => {
+const GuestRoute = ({ children }) => {
   const token = localStorage.getItem("token");
-  return token ? <Navigate to={redirectTo} /> : children;
+  const role = localStorage.getItem("role")?.toLowerCase();
+
+  if (token) {
+    switch (role) {
+      case "student":
+        return <Navigate to="/student" />;
+      case "parent":
+        return <Navigate to="/parent" />;
+      case "tutor":
+        return <Navigate to="/tutor" />;
+      case "admin":
+        return <Navigate to="/admin/dashboard" />;
+      default:
+        return <Navigate to="/" />;
+    }
+  }
+
+  return children;
 };
+
 
 // Redirect users to their main dashboard
 const RedirectByRole = () => {
