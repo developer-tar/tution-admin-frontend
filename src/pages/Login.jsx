@@ -22,6 +22,8 @@ import "react-toastify/dist/ReactToastify.css";
 import * as yup from "yup";
 import api from "../api";
 import { button, icon } from "./style";
+import CommonLoader from "../components/CommonLoader";
+
 const SkeletonWrapper = styled(Box)(({ theme }) => ({
   display: 'flex',
   gap: theme.spacing(3),
@@ -29,25 +31,6 @@ const SkeletonWrapper = styled(Box)(({ theme }) => ({
   alignItems: 'center',
 }));
 
-const StyledSkeleton = styled(Skeleton)(({ theme }) => ({
-  width: 100,
-  height: 30,
-  borderRadius: theme.shape.borderRadius,
-  gap: 3
-}));
-
-const SkeletonFieldWrapper = styled("div")({
-  width: "100%",
-  maxWidth: 400,
-  marginTop: 16,
-  marginBottom: 16
-});
-
-const StyledFieldSkeleton = styled(Skeleton)(({ theme }) => ({
-  width: "100%",
-  height: 56, // same as default TextField height
-  borderRadius: theme.shape.borderRadius,
-}));
 
 // Validation schema
 const schema = yup.object().shape({
@@ -190,19 +173,16 @@ const Login = () => {
               render={({ field }) => (
                 <FormControl component="fieldset" error={!!errors.role}>
                   {loading ? (
-                    <SkeletonWrapper>
-                      <StyledSkeleton variant="rectangular" sx={{ mb: 1 }} />
-                    </SkeletonWrapper>
+                    <CommonLoader width={100} height={30} />
                   ) : (
                     <FormLabel component="legend" sx={{ fontWeight: 600, mb: 1 }}>
                       Select Your Role
                     </FormLabel>
                   )}
                   {loading ? (
-                    // Show skeleton placeholders while loading
                     <SkeletonWrapper>
-                      {[...Array(3)].map((_, idx) => (
-                        <StyledSkeleton key={idx} variant="rectangular" />
+                      {[...Array(3)].map(() => (
+                        <CommonLoader height={30} width={100}/>
                       ))}
                     </SkeletonWrapper>
                   ) : (
@@ -227,9 +207,7 @@ const Login = () => {
             />
             {/* Email */}
             {loading ? (
-              <SkeletonFieldWrapper>
-                <StyledFieldSkeleton variant="rectangular" />
-              </SkeletonFieldWrapper>
+              <CommonLoader height={40} />
             ) : (
               <Controller
                 name="email"
@@ -249,9 +227,7 @@ const Login = () => {
             )}
             {/* Password */}
             {loading ? (
-              <SkeletonFieldWrapper>
-                <StyledFieldSkeleton variant="rectangular" />
-              </SkeletonFieldWrapper>
+              <CommonLoader height={40} />
             ) : (
               <Controller
                 name="password"
@@ -270,9 +246,6 @@ const Login = () => {
                 )}
               />
             )}
-
-
-
 
             <Box sx={{ display: "flex", justifyContent: "flex-start", }}>
               <Button

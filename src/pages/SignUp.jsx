@@ -22,32 +22,13 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { button, icon } from "./style";
 import { styled } from '@mui/material/styles';
+import CommonLoader from "../components/CommonLoader";
 
 const SkeletonWrapper = styled(Box)(({ theme }) => ({
   display: 'flex',
   gap: theme.spacing(3),
   flexWrap: 'nowrap',
   alignItems: 'center',
-}));
-
-const StyledSkeleton = styled(Skeleton)(({ theme }) => ({
-  width: 100,
-  height: 30,
-  borderRadius: theme.shape.borderRadius,
-  gap: 3
-}));
-
-const SkeletonFieldWrapper = styled("div")({
-  width: "100%",
-  maxWidth: 6000,
-  marginTop: 3,
-  marginBottom: 3
-});
-
-const StyledFieldSkeleton = styled(Skeleton)(({ theme }) => ({
-  width: "100%",
-  height: 56, // same as default TextField height
-  borderRadius: theme.shape.borderRadius,
 }));
 
 // Yup validation schema
@@ -193,19 +174,16 @@ export default function SignUp() {
                 render={({ field }) => (
                   <FormControl component="fieldset" error={!!errors.role}>
                     {loading ? (
-                      <SkeletonWrapper>
-                        <StyledSkeleton variant="rectangular" sx={{ mb: 1 }} />
-                      </SkeletonWrapper>
+                     <CommonLoader width={100} height={30} />
                     ) : (
                       <FormLabel component="legend" sx={{ fontWeight: 600, mb: 1 }}>
                         Select Your Role
                       </FormLabel>
                     )}
                     {loading ? (
-                      // Show skeleton placeholders while loading
                       <SkeletonWrapper>
-                        {[...Array(2)].map((_, idx) => (
-                          <StyledSkeleton key={idx} variant="rectangular" />
+                        {[...Array(2)].map(() => (
+                          <CommonLoader height={30}/>
                         ))}
                       </SkeletonWrapper>
                     ) : (
@@ -230,9 +208,7 @@ export default function SignUp() {
               />
 
               {loading ? (
-                <SkeletonFieldWrapper>
-                  <StyledFieldSkeleton variant="rectangular" />
-                </SkeletonFieldWrapper>
+                  <CommonLoader height={40}/>
               ) : (
                 <Controller
                   name="firstName"
@@ -250,9 +226,9 @@ export default function SignUp() {
                 />
               )}
 
-              {loading ? (<SkeletonFieldWrapper>
-                <StyledFieldSkeleton variant="rectangular" />
-              </SkeletonFieldWrapper>) : (
+              {loading ? (
+                <CommonLoader height={40}/>
+              ) : (
                 <Controller
                   name="lastName"
                   control={control}
@@ -269,9 +245,9 @@ export default function SignUp() {
                 />
               )}
 
-              {loading ? (<SkeletonFieldWrapper>
-                <StyledFieldSkeleton variant="rectangular" />
-              </SkeletonFieldWrapper>) : (
+              {loading ? (
+                <CommonLoader height={40}/>
+              ) : (
                 <Controller
                   name="email"
                   control={control}
@@ -288,9 +264,9 @@ export default function SignUp() {
                 />
               )}
 
-              {loading ? (<SkeletonFieldWrapper>
-                <StyledFieldSkeleton variant="rectangular" />
-              </SkeletonFieldWrapper>) : (
+              {loading ? (
+                <CommonLoader height={40}/>
+              ) : (
                 <Controller
                   name="password"
                   control={control}

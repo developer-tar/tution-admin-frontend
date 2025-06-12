@@ -23,7 +23,7 @@ import StudentPannel from "./pages/StudentPannel";
 import TuitionDetailsPage from "./pages/TuitionDetailsPage";
 import VideoLessonsPage from "./pages/VideoLessonsPage";
 import MyCourseVideoPage from "./pages/MyCourseVideoPage";
-
+import NewStudentPage from "./pages/Parent/NewStudent";
 
 // ============ AUTH GUARDS ============
 
@@ -144,14 +144,14 @@ const AppRoutes = () => {
       </Route>
 
       {/* PARENT ROUTES */}
-      <Route path="/parent" element={
+      <Route path="/parent/" element={
         <RequireRole allowedRoles={["parent"]}>
           <ParentLayout />
         </RequireRole>
       }>
         <Route index element={<TuitionDetailsPage />} />
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="my-course-video-page" element={<MyCourseVideoPage />} />
+        <Route path="new-student" element={<NewStudentPage />} />
       </Route>
 
       {/* TUTOR ROUTES */}
