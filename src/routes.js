@@ -23,7 +23,7 @@ import StudentPannel from "./pages/StudentPannel";
 import TuitionDetailsPage from "./pages/TuitionDetailsPage";
 import VideoLessonsPage from "./pages/VideoLessonsPage";
 import MyCourseVideoPage from "./pages/MyCourseVideoPage";
-import NewStudentPage from "./pages/Parent/NewStudent";
+import NewStudentPage from "./pages/Parent/AddStudentForm";
 
 // ============ AUTH GUARDS ============
 
