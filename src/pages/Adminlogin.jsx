@@ -49,8 +49,8 @@ const AdminLogin = () => {
 
       const { access_token, role } = res.data.data;
 
-      localStorage.setItem("token", access_token);
-      localStorage.setItem("role", role);
+      localStorage.setItem("admin-token", access_token);
+      localStorage.setItem("admin-role", role);
 
       toast.success("Admin login successful!");
       navigate("/admin/dashboard");
