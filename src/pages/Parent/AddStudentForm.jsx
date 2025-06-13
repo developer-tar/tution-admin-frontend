@@ -1,12 +1,10 @@
-import  { useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Grid,
   Typography,
 } from "@mui/material";
 import { useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -27,32 +25,6 @@ const dropdownParams = [
   "TargetSchools",
 ];
 
-const schema = yup.object().shape({
-  first_name: yup.string().required("First name is required"),
-  last_name: yup.string().required("Last name is required"),
-  email: yup.string().required().email("Invalid email"),
-  password: yup.string().required().min(8).max(10),
-  password_confirmation: yup
-    .string()
-    .oneOf([yup.ref("password")], "Passwords must match")
-    .required(),
-  year_id: yup.number().required(),
-  month_id: yup.number().required(),
-  day_id: yup.number().required(),
-  region_id: yup.number().required(),
-  gender_id: yup.number().required(),
-  target_school_id: yup.number().required(),
-  display_name: yup.string().required().max(100),
-  show_answer_after_n_attempts: yup
-    .number()
-    .nullable()
-    .min(1)
-    .max(4)
-    .typeError("Must be number between 1 and 4"),
-  allow_view_examiner_report_for_mocks: yup.boolean().nullable(),
-  can_change_password: yup.boolean().nullable(),
-  bio: yup.string().nullable(),
-});
 
 const AddStudentForm = () => {
   const [loading, setLoading] = useState(false);
@@ -63,10 +35,10 @@ const AddStudentForm = () => {
   const {
     control,
     handleSubmit,
+    setError,
     formState: { errors },
     reset,
   } = useForm({
-    resolver: yupResolver(schema),
     defaultValues: {
       first_name: "",
       last_name: "",
@@ -87,6 +59,7 @@ const AddStudentForm = () => {
     },
   });
 
+
   const onSubmit = async (data) => {
     setLoading(true);
     try {
@@ -94,8 +67,18 @@ const AddStudentForm = () => {
       toast.success("Student created successfully!");
       reset();
     } catch (err) {
-      const message = err.response?.data?.message || "Something went wrong";
-      toast.error(message);
+      const backendErrors = err.response?.data?.errors;
+      if (backendErrors) {
+        Object.entries(backendErrors).forEach(([field, messages]) => {
+          setError(field, {
+            type: "server",
+            message: messages[0],
+          });
+        });
+      } else {
+        const message = err.response?.data?.message || "Something went wrong";
+        toast.error(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -237,9 +220,9 @@ const AddStudentForm = () => {
             loading={dropdownLoading}
           />
 
-          <SubmitButton 
-          loading={loading} 
-          label="Add Student" 
+          <SubmitButton
+            loading={loading}
+            label="Add Student"
           />
 
         </Grid>
