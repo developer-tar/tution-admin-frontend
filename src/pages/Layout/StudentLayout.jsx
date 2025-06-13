@@ -1,41 +1,68 @@
+import { ExpandLess, ExpandMore } from "@mui/icons-material";
 import {
+    AppBar,
     Box,
+    Collapse,
+    CssBaseline,
     Drawer,
     List,
-    ListItem,
+    ListItemButton,
     ListItemText,
     Toolbar,
-    AppBar,
     Typography,
-    CssBaseline,
 } from "@mui/material";
-import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 const drawerWidth = 240;
 
-const StudentLayout = () => {
+const ParentLayout = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const prefix = '/student/';
+    const [openMenus, setOpenMenus] = useState({});
+
+    const handleToggle = (label) => {
+        setOpenMenus((prev) => ({
+            ...prev,
+            [label]: !prev[label],
+        }));
+    };
+    const prefix = '/student/'
 
     const menuItems = [
-
-        { label: "Courses", path: `${prefix}course` },
-        { label: "Assignments", path: `${prefix}course-assignment` },
-        { label: "Content", path: `${prefix}course-content` },
-        { label: "Tests", path: `${prefix}course-test` },
-        { label: "Course List", path: `${prefix}course-list` },
-        { label: "Assignments List", path: `${prefix}assignment-list` },
-        { label: "Topic List", path: `${prefix}topicsubtopic-list` },
-        { label: "Test List", path: `${prefix}test-list` },
-        { label: "Reports", path: `${prefix}course-report` },
+        {
+            label: "Students",
+            children: [
+                { label: "My Student", path: `${prefix}course` },
+                { label: "New Student", path: `${prefix}new-student` },
+                { label: "Change Student Password", path: `${prefix}course-report` },
+            ],
+        },
+        {
+            label: "Progress",
+            children: [
+                { label: "Manage Assignments", path: `${prefix}course-assignment` },
+                { label: "Assignments List", path: `${prefix}assignment-list` },
+            ],
+        },
+        {
+            label: "Videes",
+            children: [
+                { label: "Manage Content", path: `${prefix}course-content` },
+                { label: "Topic List", path: `${prefix}topicsubtopic-list` },
+            ],
+        },
+        {
+            label: "Announcements",
+            path: `${prefix}course-test`,
+        },
     ];
 
     return (
         <Box sx={{ display: "flex" }}>
             <CssBaseline />
 
-            {/* Top App Bar with Gradient */}
+            {/* Top App Bar */}
             <AppBar
                 position="fixed"
                 sx={{
@@ -46,7 +73,7 @@ const StudentLayout = () => {
             >
                 <Toolbar>
                     <Typography variant="h6" noWrap sx={{ color: "#fff", fontWeight: "bold" }}>
-                        Admin Panel
+                        Parent Panel
                     </Typography>
                 </Toolbar>
             </AppBar>
@@ -66,14 +93,37 @@ const StudentLayout = () => {
             >
                 <List>
                     {menuItems.map((item) => (
-                        <ListItem
-                            button
-                            key={item.label}
-                            onClick={() => navigate(item.path)}
-                            selected={location.pathname === item.path}
-                        >
-                            <ListItemText primary={item.label} />
-                        </ListItem>
+                        <Box key={item.label}>
+                            {item.children ? (
+                                <>
+                                    <ListItemButton onClick={() => handleToggle(item.label)}>
+                                        <ListItemText primary={item.label} />
+                                        {openMenus[item.label] ? <ExpandLess /> : <ExpandMore />}
+                                    </ListItemButton>
+                                    <Collapse in={openMenus[item.label]} timeout="auto" unmountOnExit>
+                                        <List component="div" disablePadding>
+                                            {item.children.map((child) => (
+                                                <ListItemButton
+                                                    key={child.label}
+                                                    sx={{ pl: 4 }}
+                                                    selected={location.pathname === child.path}
+                                                    onClick={() => navigate(child.path)}
+                                                >
+                                                    <ListItemText primary={child.label} />
+                                                </ListItemButton>
+                                            ))}
+                                        </List>
+                                    </Collapse>
+                                </>
+                            ) : (
+                                <ListItemButton
+                                    selected={location.pathname === item.path}
+                                    onClick={() => navigate(item.path)}
+                                >
+                                    <ListItemText primary={item.label} />
+                                </ListItemButton>
+                            )}
+                        </Box>
                     ))}
                 </List>
             </Drawer>
@@ -95,4 +145,4 @@ const StudentLayout = () => {
     );
 };
 
-export default StudentLayout;
+export default ParentLayout;
