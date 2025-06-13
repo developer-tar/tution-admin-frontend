@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Typography, CircularProgress, Paper, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Chip, Divider, Grid, MenuItem,
-  FormControl, InputLabel, Select, Button
+  Box, Typography, Paper, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, Chip, Divider, Grid,
+  MenuItem, FormControl, InputLabel, Select, Button, Skeleton
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../../api';
 
 const TestList = () => {
+  const navigate = useNavigate();
+
   const [filters, setFilters] = useState({
     academic_course_id: '',
     subject_id: '',
@@ -27,28 +30,23 @@ const TestList = () => {
   const [tests, setTests] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch Academic Courses
   useEffect(() => {
+    fetchTests(false);
     api.get('admin/ca_records')
       .then(res => {
         const courses = (res.data.data || []).map(item => ({ id: item.id, name: item.name }));
-        console.log('✅ Academic Courses:', courses);
         setDropdownData(prev => ({ ...prev, academicCourses: courses }));
       })
       .catch(() => toast.error('Failed to fetch academic courses'));
   }, []);
 
-  // Fetch Subjects & Assignments when Academic Course changes
   useEffect(() => {
     const { academic_course_id } = filters;
     if (!academic_course_id) return;
 
-    console.log('📥 Fetching Subjects & Assignments for:', academic_course_id);
     api.get(`admin/ca_based_weeks_subjects/${academic_course_id}`)
       .then(res => {
-        console.log('✅ Subjects & Assignments Response:', res.data.data);
         const { subjects = [], assignments = [] } = res.data.data || {};
-
         setDropdownData(prev => ({
           ...prev,
           subjects,
@@ -65,21 +63,15 @@ const TestList = () => {
           course_subtopic_id: '',
         }));
       })
-      .catch(err => {
-        console.error('❌ Failed to fetch subjects/assignments:', err);
-        toast.error('Failed to fetch subjects & assignments');
-      });
+      .catch(() => toast.error('Failed to fetch subjects & assignments'));
   }, [filters.academic_course_id]);
 
-  // Fetch Topics
   useEffect(() => {
     const { subject_id, assignment_id } = filters;
     if (!subject_id || !assignment_id) return;
 
-    console.log('📥 Fetching Topics for:', { subject_id, assignment_id });
     api.get(`admin/fetch/course/topic/${subject_id}/${assignment_id}`)
       .then(res => {
-        console.log('✅ Topics Response:', res.data.data);
         setDropdownData(prev => ({
           ...prev,
           topics: res.data.data || [],
@@ -92,21 +84,15 @@ const TestList = () => {
           course_subtopic_id: '',
         }));
       })
-      .catch(err => {
-        console.error('❌ Failed to fetch topics:', err);
-        toast.error('Failed to fetch topics');
-      });
+      .catch(() => toast.error('Failed to fetch topics'));
   }, [filters.subject_id, filters.assignment_id]);
 
-  // Fetch Subtopics
   useEffect(() => {
     const { course_topic_id } = filters;
     if (!course_topic_id) return;
 
-    console.log('📥 Fetching Subtopics for topic:', course_topic_id);
     api.get(`admin/fetch/course/subtopic/${course_topic_id}`)
       .then(res => {
-        console.log('✅ Subtopics Response:', res.data.data);
         setDropdownData(prev => ({
           ...prev,
           subtopics: res.data.data || [],
@@ -114,26 +100,21 @@ const TestList = () => {
 
         setFilters(prev => ({ ...prev, course_subtopic_id: '' }));
       })
-      .catch(err => {
-        console.error('❌ Failed to fetch subtopics:', err);
-        toast.error('Failed to fetch subtopics');
-      });
+      .catch(() => toast.error('Failed to fetch subtopics'));
   }, [filters.course_topic_id]);
 
   const handleChange = (key) => (event) => {
     setFilters(prev => ({ ...prev, [key]: String(event.target.value) }));
   };
 
-  const fetchTests = async () => {
-    console.log('📤 Fetching Tests with Filters:', filters);
+  const fetchTests = async (applyFilters = true) => {
     setLoading(true);
     try {
-      const res = await api.get('admin/assign/test', { params: filters });
+      const params = applyFilters ? filters : {};
+      const res = await api.get('admin/assign/test', { params });
       const responseData = res.data.data?.data;
-      console.log('✅ Test Fetch Result:', responseData);
       setTests(Array.isArray(responseData) ? responseData : []);
     } catch (err) {
-      console.error('❌ Failed to fetch tests:', err);
       toast.error('Failed to fetch test data');
       setTests([]);
     } finally {
@@ -143,13 +124,22 @@ const TestList = () => {
 
   return (
     <Box sx={{ mt: 3 }}>
-      <Typography variant="h5" fontWeight={600} gutterBottom>
-        📚 Test List
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5" fontWeight={600}>📚 Test List</Typography>
+        <Button
+          onClick={() => navigate('/admin/course-test')}
+          sx={{
+            background: 'linear-gradient(90deg, #3B2A9F 0%, #D62926 100%)',
+            color: '#fff', fontWeight: 600, px: 3, py: 1, borderRadius: 2, textTransform: 'none',
+            '&:hover': { opacity: 0.9 }
+          }}
+        >
+          + Add Test
+        </Button>
+      </Box>
 
       {/* Filters */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        {/* Academic Course */}
         <Grid item xs={12} sm={6} md={4}>
           <FormControl fullWidth size="small">
             <InputLabel>Academic Course</InputLabel>
@@ -173,7 +163,6 @@ const TestList = () => {
           </FormControl>
         </Grid>
 
-        {/* Other Dropdowns */}
         {[
           { key: 'subject_id', label: 'Subject', options: dropdownData.subjects },
           { key: 'assignment_id', label: 'Assignment', options: dropdownData.assignments },
@@ -183,11 +172,7 @@ const TestList = () => {
           <Grid item xs={12} sm={6} md={4} key={key}>
             <FormControl fullWidth size="small">
               <InputLabel>{label}</InputLabel>
-              <Select
-                value={filters[key]}
-                label={label}
-                onChange={handleChange(key)}
-              >
+              <Select value={filters[key]} label={label} onChange={handleChange(key)}>
                 <MenuItem value="">All</MenuItem>
                 {options.map((opt) => (
                   <MenuItem key={opt.id || opt._id} value={String(opt.id || opt._id)}>
@@ -199,15 +184,57 @@ const TestList = () => {
           </Grid>
         ))}
 
-        {/* Apply Button */}
-        <Grid item xs={12} sm={6} md={2}>
-          <Button fullWidth variant="contained" onClick={fetchTests}>Apply Filters</Button>
+        <Grid item xs={12} sm={12} md={4} sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Button
+            onClick={() => fetchTests(true)}
+            sx={{
+              background: 'linear-gradient(90deg, #3B2A9F 0%, #D62926 100%)',
+              color: '#fff',
+              fontWeight: 600,
+              px: 3,
+              py: 1,
+              borderRadius: 2,
+              textTransform: 'none',
+              '&:hover': { opacity: 0.9 }
+            }}
+            fullWidth
+          >
+            🔍 Apply Filters
+          </Button>
+
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setFilters({
+                academic_course_id: '',
+                subject_id: '',
+                assignment_id: '',
+                course_topic_id: '',
+                course_subtopic_id: '',
+              });
+              fetchTests(false);
+            }}
+            sx={{ borderRadius: 2, px: 3, py: 1, textTransform: 'none' }}
+            fullWidth
+          >
+            Reset
+          </Button>
         </Grid>
       </Grid>
 
-      {/* Test Table */}
+      {/* Test Table or Skeleton */}
       {loading ? (
-        <CircularProgress />
+        <Grid container spacing={3}>
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Grid item xs={12} key={i}>
+              <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 3 }}>
+                <Skeleton variant="text" width="40%" height={30} sx={{ mb: 1 }} />
+                <Skeleton variant="text" width="80%" height={20} sx={{ mb: 2 }} />
+                <Skeleton variant="rectangular" width="100%" height={120} />
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
       ) : tests.length === 0 ? (
         <Typography variant="body2" color="text.secondary">No tests found for the selected criteria.</Typography>
       ) : (

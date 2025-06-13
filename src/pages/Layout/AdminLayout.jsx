@@ -4,13 +4,21 @@ import {
   Drawer,
   List,
   ListItem,
+  ListItemButton,
   ListItemText,
+  ListItemIcon,
   Toolbar,
   AppBar,
   Typography,
   CssBaseline,
+  Divider,
 } from "@mui/material";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import SchoolIcon from '@mui/icons-material/School';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import TopicIcon from '@mui/icons-material/Topic';
+import QuizIcon from '@mui/icons-material/Quiz';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
 const drawerWidth = 240;
 
@@ -19,23 +27,18 @@ const AdminLayout = () => {
   const location = useLocation();
 
   const menuItems = [
-    // { label: "Dashboard", path: "/admin/dashboard" },
-    { label: "Courses", path: "/admin/course" },
-    { label: "Assignments", path: "/admin/course-assignment" },
-    { label: "Content", path: "/admin/course-content" },
-    { label: "Tests", path: "/admin/course-test" },
-    { label: "Course List", path: "/admin/course-list" },
-    { label: "Assignments List", path: "/admin/assignment-list" },
-    { label: "Topic List", path: "/admin/topicsubtopic-list" },
-    { label: "Test List", path: "/admin/test-list" },
-    { label: "Reports", path: "/admin/course-report" },
+    { label: "Course", path: "/admin/course-list", icon: <SchoolIcon /> },
+    { label: "Assignments", path: "/admin/assignment-list", icon: <AssignmentIcon /> },
+    { label: "Topic", path: "/admin/topicsubtopic-list", icon: <TopicIcon /> },
+    { label: "Test", path: "/admin/test-list", icon: <QuizIcon /> },
+    { label: "Reports", path: "/admin/course-report", icon: <BarChartIcon /> },
   ];
 
   return (
     <Box sx={{ display: "flex" }}>
       <CssBaseline />
 
-      {/* Top App Bar with Gradient */}
+      {/* AppBar */}
       <AppBar
         position="fixed"
         sx={{
@@ -44,9 +47,9 @@ const AdminLayout = () => {
           boxShadow: "none",
         }}
       >
-        <Toolbar>
+        <Toolbar sx={{ pl: 3 }}>
           <Typography variant="h6" noWrap sx={{ color: "#fff", fontWeight: "bold" }}>
-            Admin Panel
+            📘 Admin Panel
           </Typography>
         </Toolbar>
       </AppBar>
@@ -60,19 +63,37 @@ const AdminLayout = () => {
           [`& .MuiDrawer-paper`]: {
             width: drawerWidth,
             boxSizing: "border-box",
-            mt: 8,
+            backgroundColor: "#fff", // Light background
+            color: "#333", // Dark text
+            pt: 8,
+            borderRight: "1px solid #e0e0e0",
           },
         }}
       >
         <List>
           {menuItems.map((item) => (
-            <ListItem
-              button
-              key={item.label}
-              onClick={() => navigate(item.path)}
-              selected={location.pathname === item.path}
-            >
-              <ListItemText primary={item.label} />
+            <ListItem key={item.label} disablePadding>
+              <ListItemButton
+                selected={location.pathname === item.path}
+                onClick={() => navigate(item.path)}
+                sx={{
+                  '&.Mui-selected': {
+                    backgroundColor: "#f0f0ff",
+                    color: "#3B2A9F",
+                    '& .MuiListItemIcon-root': {
+                      color: "#3B2A9F",
+                    },
+                  },
+                  '&:hover': {
+                    backgroundColor: "#f5f5f5",
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ color: "#555" }}>
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText primary={item.label} />
+              </ListItemButton>
             </ListItem>
           ))}
         </List>

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
-  CircularProgress,
+  Skeleton,
   Table,
   TableHead,
   TableRow,
@@ -16,33 +16,44 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  Grid
+  Grid,
+  Button
 } from '@mui/material';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api';
 
+const gradientButtonStyle = {
+  background: 'linear-gradient(90deg, #3B2A9F 0%, #D62926 100%)',
+  color: '#fff',
+  fontWeight: 600,
+  paddingX: 2,
+  paddingY: 0.5,
+  borderRadius: 2,
+  textTransform: 'none',
+  '&:hover': {
+    opacity: 0.9
+  }
+};
+
 const CourseAssignmentList = () => {
+  const navigate = useNavigate();
+
   const [courses, setCourses] = useState([]);
-  const [filters, setFilters] = useState({
-    acdemic_course_id: '',
-    assigned_weeks: ''
-  });
+  const [filters, setFilters] = useState({ acdemic_course_id: '', assigned_weeks: '' });
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage] = useState(10);
 
-  // Fetch academic courses
+  // Fetch academic courses on mount
   useEffect(() => {
     api.get('admin/ca_records')
-      .then(res => {
-        setCourses(res.data.data || []);
-        toast.success('Academic courses loaded');
-      })
+      .then(res => setCourses(res.data?.data || []))
       .catch(() => toast.error('Failed to load academic courses'));
   }, []);
 
-  // Fetch assignments based on filters
+  // Fetch filtered assignments
   useEffect(() => {
     const { acdemic_course_id, assigned_weeks } = filters;
     if (!acdemic_course_id || assigned_weeks === '') return;
@@ -54,9 +65,7 @@ const CourseAssignmentList = () => {
       .then(res => {
         const list = res.data?.data?.data || [];
         setAssignments(list);
-        toast[list.length ? 'success' : 'info'](
-          list.length ? `${list.length} week(s) loaded` : 'No weeks found'
-        );
+        if (!list.length) toast.info('No weeks found');
       })
       .catch(() => {
         setAssignments([]);
@@ -70,11 +79,17 @@ const CourseAssignmentList = () => {
     setPage(0);
   };
 
+  const isFilterSelected = filters.acdemic_course_id && filters.assigned_weeks !== '';
+
   return (
     <Box sx={{ mt: 4 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        Course Week Assignment List
-      </Typography>
+      {/* Header */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h6">Course Week Assignment List</Typography>
+        <Button sx={gradientButtonStyle} onClick={() => navigate('/admin/course-assignment')}>
+          + Add Assignment
+        </Button>
+      </Box>
 
       {/* Filters */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -110,10 +125,31 @@ const CourseAssignmentList = () => {
         </Grid>
       </Grid>
 
-      {/* Table */}
+      {/* Table Display */}
       {loading ? (
-        <CircularProgress />
-      ) : !filters.acdemic_course_id || filters.assigned_weeks === '' ? (
+        <Paper sx={{ width: '100%', overflowX: 'auto' }}>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell><strong>Week Number</strong></TableCell>
+                  <TableCell><strong>Start–End Date</strong></TableCell>
+                  <TableCell><strong>Status</strong></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {[...Array(5)].map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton variant="text" width={100} /></TableCell>
+                    <TableCell><Skeleton variant="text" width={150} /></TableCell>
+                    <TableCell><Skeleton variant="rectangular" width={80} height={24} /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      ) : !isFilterSelected ? (
         <Typography>Select both filters to load data.</Typography>
       ) : assignments.length === 0 ? (
         <Typography>No data found for selected filters.</Typography>

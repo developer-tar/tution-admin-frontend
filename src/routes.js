@@ -37,6 +37,7 @@ const RequireAuth = ({ children }) => {
 const RequireAdmin = ({ children }) => {
   const token = localStorage.getItem("admin-token");
   const role = localStorage.getItem("admin-role");
+
   return token && role?.toLowerCase() === "admin"
     ? children
     : <Navigate to="/admin-login" />;
@@ -133,7 +134,7 @@ const AppRoutes = () => {
       </Route>
 
       {/* STUDENT ROUTES */}
-      <Route path="/student" element={
+      <Route path="/student/" element={
         <RequireRole allowedRoles={["student"]}>
           <StudentLayout />
         </RequireRole>
@@ -155,7 +156,7 @@ const AppRoutes = () => {
       </Route>
 
       {/* TUTOR ROUTES */}
-      <Route path="/tutor" element={
+      <Route path="/tutor/" element={
         <RequireRole allowedRoles={["tutor"]}>
           <Layout />
         </RequireRole>

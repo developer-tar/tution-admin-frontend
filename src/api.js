@@ -6,10 +6,16 @@ const api = axios.create({
 
 // Add token from localStorage to each request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const adminToken = localStorage.getItem("admin-token");
+  const userToken = localStorage.getItem("token");
+
+  // Prioritize admin-token, fallback to user token if not found
+  const token = adminToken || userToken;
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
 

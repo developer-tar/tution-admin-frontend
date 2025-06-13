@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -11,96 +12,122 @@ import {
   Select,
 } from "@mui/material";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import { button, icon } from "../style";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import { toast } from "react-toastify";
 import api from "../../api";
+import { button, icon } from "../style";
+
+// ✅ Yup validation schema
+const schema = yup.object().shape({
+  academicYear: yup.string().required("Academic year is required"),
+  courseAssignmentId: yup
+    .string()
+    .required("Assignment is required")
+    .matches(/^\d+$/, "Invalid assignment"),
+  subjectId: yup
+    .string()
+    .required("Subject is required")
+    .matches(/^\d+$/, "Invalid subject"),
+  topic: yup.string().required("Topic is required"),
+  subTopic: yup.string().nullable(),
+  file: yup
+    .mixed()
+    .required("File is required")
+    .test("fileType", "Unsupported file format", (value) => {
+      if (!value) return false;
+      const supportedFormats = [
+        "video/mp4",
+        "video/mov",
+        "video/avi",
+        "video/wmv",
+        "application/pdf",
+        "image/jpg",
+        "image/jpeg",
+        "image/png",
+      ];
+      return supportedFormats.includes(value.type);
+    })
+    .test("fileSize", "File is too large", (value) => {
+      return value && value.size <= 512000 * 1024; // 500MB
+    }),
+});
 
 const CourseContent = () => {
-  const [academicCourses, setAcademicCourses] = useState([]); // ⬅ Academic Year = Academic Course
+  const [academicCourses, setAcademicCourses] = useState([]);
   const [courseAssignments, setCourseAssignments] = useState([]);
   const [subjects, setSubjects] = useState([]);
 
-  const [formData, setFormData] = useState({
-    academicYear: "", // actually academic_course_id
-    courseAssignmentId: "",
-    subjectId: "",
-    topic: "",
-    subTopic: "",
-    contentType: "",
-    file1: null,
-    file2: null,
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      academicYear: "",
+      courseAssignmentId: "",
+      subjectId: "",
+      topic: "",
+      subTopic: "",
+      file: null,
+    },
   });
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  const academicYear = watch("academicYear");
 
-  const handleFileChange = (e, fileKey) => {
-    setFormData((prev) => ({
-      ...prev,
-      [fileKey]: e.target.files[0],
-    }));
-  };
-
-  // ✅ Step 1: Fetch academic course (year) records on load
+  // ✅ Fetch academic course (year)
   useEffect(() => {
-    const fetchAcademicCourses = async () => {
+    const fetchCourses = async () => {
       try {
         const res = await api.get("admin/ca_records");
         setAcademicCourses(res.data.data || []);
-      } catch (err) {
+      } catch {
         toast.error("Failed to fetch academic course records");
       }
     };
-
-    fetchAcademicCourses();
+    fetchCourses();
   }, []);
 
-  // ✅ Step 2: Fetch subjects & assignments when academicYear (courseId) is selected
+  // ✅ Fetch subjects & assignments
   useEffect(() => {
-    const fetchDetails = async () => {
-      if (!formData.academicYear) return;
+    if (!academicYear) return;
 
+    const fetchDetails = async () => {
       try {
-        const res = await api.get(`admin/ca_based_weeks_subjects/${formData.academicYear}`);
+        const res = await api.get(`admin/ca_based_weeks_subjects/${academicYear}`);
         setCourseAssignments(res.data.data.assignments || []);
         setSubjects(res.data.data.subjects || []);
-      } catch (error) {
+      } catch {
         toast.error("Failed to fetch assignments or subjects");
       }
     };
-
     fetchDetails();
-  }, [formData.academicYear]);
+  }, [academicYear]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const uploadData = new FormData();
-    uploadData.append("course_assigment_id", formData.courseAssignmentId);
-    uploadData.append("subject_id", formData.subjectId);
-    uploadData.append("topic_name", formData.topic);
-    uploadData.append("subtopic_name", formData.subTopic);
-
-    if (formData.file1) uploadData.append("content_upload[0]", formData.file1);
-    if (formData.file2) uploadData.append("content_upload[1]", formData.file2);
+  const onSubmit = async (formData) => {
+    const data = new FormData();
+    data.append("course_assigment_id", formData.courseAssignmentId);
+    data.append("subject_id", formData.subjectId);
+    data.append("topic_name", formData.topic);
+    data.append("subtopic_name", formData.subTopic || "");
+    data.append("content_upload[0]", formData.file);
 
     try {
-      await api.post("admin/assign/topic/subtopic", uploadData);
+      await api.post("admin/assign/topic/subtopic", data);
       toast.success("Content uploaded successfully!");
-      setFormData({
-        academicYear: "",
-        courseAssignmentId: "",
-        subjectId: "",
-        topic: "",
-        subTopic: "",
-        contentType: "",
-        file1: null,
-        file2: null,
-      });
+      reset(); // clear form
     } catch (error) {
-      toast.error("Failed to upload content");
+      if (error.response?.status === 422) {
+        const backendErrors = error.response.data.errors;
+        Object.values(backendErrors).flat().forEach((msg) => toast.error(msg));
+      } else {
+        toast.error("Failed to upload content");
+      }
     }
   };
 
@@ -109,117 +136,124 @@ const CourseContent = () => {
       <Typography variant="h5" mb={3} fontWeight={700}>
         Course Content
       </Typography>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit(onSubmit)}>
         <Grid container spacing={2}>
-          {/* Academic Year (from ca_records) */}
+          {/* Academic Year */}
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel>Academic Year</InputLabel>
-              <Select
-                name="academicYear"
-                value={formData.academicYear}
-                onChange={handleChange}
-                label="Academic Year"
-              >
-                {academicCourses.map((course) => (
-                  <MenuItem key={course.id} value={course.id}>
-                    {course.name || `Course ${course.id}`}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Controller
+              name="academicYear"
+              control={control}
+              render={({ field }) => (
+                <FormControl fullWidth error={!!errors.academicYear}>
+                  <InputLabel>Academic Year</InputLabel>
+                  <Select {...field} label="Academic Year">
+                    {academicCourses.map((course) => (
+                      <MenuItem key={course.id} value={course.id}>
+                        {course.name || `Course ${course.id}`}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <Typography variant="caption" color="error">
+                    {errors.academicYear?.message}
+                  </Typography>
+                </FormControl>
+              )}
+            />
           </Grid>
 
           {/* Assignment */}
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel>Assignment</InputLabel>
-              <Select
-                name="courseAssignmentId"
-                value={formData.courseAssignmentId}
-                onChange={handleChange}
-                label="Assignment"
-              >
-                {courseAssignments.map((a) => (
-                  <MenuItem key={a.id} value={a.id}>
-                    {a.name || `Assignment ${a.id}`}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Controller
+              name="courseAssignmentId"
+              control={control}
+              render={({ field }) => (
+                <FormControl fullWidth error={!!errors.courseAssignmentId}>
+                  <InputLabel>Assignment</InputLabel>
+                  <Select {...field} label="Assignment">
+                    {courseAssignments.map((a) => (
+                      <MenuItem key={a.id} value={a.id}>
+                        {a.name || `Assignment ${a.id}`}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <Typography variant="caption" color="error">
+                    {errors.courseAssignmentId?.message}
+                  </Typography>
+                </FormControl>
+              )}
+            />
           </Grid>
 
           {/* Subject */}
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel>Subject</InputLabel>
-              <Select
-                name="subjectId"
-                value={formData.subjectId}
-                onChange={handleChange}
-                label="Subject"
-              >
-                {subjects.map((s) => (
-                  <MenuItem key={s.id} value={s.id}>
-                    {s.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Controller
+              name="subjectId"
+              control={control}
+              render={({ field }) => (
+                <FormControl fullWidth error={!!errors.subjectId}>
+                  <InputLabel>Subject</InputLabel>
+                  <Select {...field} label="Subject">
+                    {subjects.map((s) => (
+                      <MenuItem key={s.id} value={s.id}>
+                        {s.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <Typography variant="caption" color="error">
+                    {errors.subjectId?.message}
+                  </Typography>
+                </FormControl>
+              )}
+            />
           </Grid>
 
           {/* Topic */}
           <Grid item xs={12} sm={6}>
-            <TextField
+            <Controller
               name="topic"
-              label="Topic"
-              value={formData.topic}
-              onChange={handleChange}
-              fullWidth
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Topic"
+                  fullWidth
+                  error={!!errors.topic}
+                  helperText={errors.topic?.message}
+                />
+              )}
             />
           </Grid>
 
-          {/* SubTopic */}
+          {/* Sub Topic */}
           <Grid item xs={12} sm={6}>
-            <TextField
+            <Controller
               name="subTopic"
-              label="Sub Topic"
-              value={formData.subTopic}
-              onChange={handleChange}
-              fullWidth
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Sub Topic"
+                  fullWidth
+                  error={!!errors.subTopic}
+                  helperText={errors.subTopic?.message}
+                />
+              )}
             />
           </Grid>
 
-          {/* File Upload 1 */}
+          {/* File Upload */}
           <Grid item xs={12} sm={6}>
             <Button variant="outlined" component="label" fullWidth>
-              Upload File 1
+              Upload File
               <input
                 type="file"
                 hidden
-                onChange={(e) => handleFileChange(e, "file1")}
+                onChange={(e) => setValue("file", e.target.files[0])}
               />
             </Button>
-            {formData.file1 && (
-              <Typography variant="body2" mt={1}>
-                Selected: {formData.file1.name}
-              </Typography>
-            )}
-          </Grid>
-
-          {/* File Upload 2 */}
-          <Grid item xs={12} sm={6}>
-            <Button variant="outlined" component="label" fullWidth>
-              Upload File 2
-              <input
-                type="file"
-                hidden
-                onChange={(e) => handleFileChange(e, "file2")}
-              />
-            </Button>
-            {formData.file2 && (
-              <Typography variant="body2" mt={1}>
-                Selected: {formData.file2.name}
+            {errors.file && (
+              <Typography variant="caption" color="error">
+                {errors.file?.message}
               </Typography>
             )}
           </Grid>

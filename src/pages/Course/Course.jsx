@@ -20,12 +20,40 @@ import "react-toastify/dist/ReactToastify.css";
 import api from "../../api";
 
 const schema = yup.object().shape({
-  acdemic_year_id: yup.number().typeError("Academic year is required").required("Academic year is required"),
-  name: yup.string().required("Course name is required"),
-  amount: yup.number().typeError("Amount must be a number").positive("Amount must be positive").required("Amount is required"),
-  description: yup.string().min(500, "Description must be at least 500 characters").required("Description is required"),
-  type_of_modes: yup.array().min(1, "At least one mode is required"),
-  course_image: yup.mixed().required("Course image is required"),
+  acdemic_year_id: yup
+    .number()
+    .typeError("Academic year is required")
+    .required("Academic year is required"),
+  name: yup
+    .string()
+    .max(100, "Course name must be at most 100 characters")
+    .required("Course name is required"),
+  amount: yup
+    .string()
+    .matches(
+      /^\d{1,6}(\.\d{1,2})?$/,
+      "Amount must be a valid number with up to 6 digits and 2 decimals"
+    )
+    .required("Amount is required"),
+  description: yup
+    .string()
+    .min(500, "Description must be at least 500 characters")
+    .max(10000, "Description must be at most 10000 characters")
+    .required("Description is required"),
+  type_of_modes: yup
+    .array()
+    .of(yup.number().typeError("Each mode must be an integer"))
+    .min(1, "At least one mode is required")
+    .required("Type of modes is required"),
+  course_image: yup
+    .mixed()
+    .required("Course image is required")
+    .test("fileType", "Only image files are allowed", (value) =>
+      value && value.type && value.type.startsWith("image/")
+    )
+    .test("fileSize", "Image size must be less than 10MB", (value) =>
+      value && value.size <= 10240 * 1024
+    ),
 });
 
 const Course = () => {
@@ -88,7 +116,6 @@ const Course = () => {
     }
 
     const formData = new FormData();
-
     Object.entries(data).forEach(([key, value]) => {
       if (key !== "course_image" && key !== "type_of_modes") {
         formData.append(key, value);
@@ -108,8 +135,14 @@ const Course = () => {
       });
       toast.success("Course created successfully!");
     } catch (err) {
-      console.error("API Error:", err);
-      toast.error("Failed to create course.");
+      if (err.response?.status === 422) {
+        const errors = err.response.data.errors;
+        Object.keys(errors).forEach((key) => {
+          errors[key].forEach((msg) => toast.error(msg));
+        });
+      } else {
+        toast.error("Failed to create course.");
+      }
     } finally {
       setLoading(false);
     }
@@ -136,245 +169,246 @@ const Course = () => {
       <Typography variant="h5" mb={3} fontWeight={700}>
         Create Course
       </Typography>
-      <Grid container spacing={2}>
-        {/* Academic Year */}
-        <Grid item xs={12} md={6}>
-          <Controller
-            name="acdemic_year_id"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                select
-                fullWidth
-                label="Academic Year"
-                {...field}
-                value={field.value || ""}
-                onChange={(e) => field.onChange(Number(e.target.value))}
-                error={!!errors.acdemic_year_id}
-                helperText={errors.acdemic_year_id?.message}
-              >
-                {academicYears.map((y) => (
-                  <MenuItem key={y.id} value={Number(y.id)}>
-                    {y.start_end_year}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
-          />
-        </Grid>
-
-        {/* Course Name */}
-        <Grid item xs={12} md={6}>
-          <Controller
-            name="name"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                fullWidth
-                label="Course Name"
-                {...field}
-                error={!!errors.name}
-                helperText={errors.name?.message}
-              />
-            )}
-          />
-        </Grid>
-
-        {/* Subject & Location Selection */}
-        <Grid item xs={12} md={6}>
-          <TextField
-            select
-            fullWidth
-            label="Add Subject"
-            value=""
-            onChange={(e) => {
-              const val = e.target.value;
-              if (!subjects.includes(val)) setSubjects([...subjects, val]);
-            }}
-          >
-            {subjectsList.map((s) => (
-              <MenuItem key={s.id} value={s.id}>
-                {s.name}
-              </MenuItem>
-            ))}
-          </TextField>
-          {renderSelectChips(subjectsList, subjects, "Subjects", (id) =>
-            setSubjects(subjects.filter((s) => s !== id))
-          )}
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <TextField
-            select
-            fullWidth
-            label="Add Location"
-            value=""
-            onChange={(e) => {
-              const val = e.target.value;
-              if (!locationsSelected.includes(val))
-                setLocationsSelected([...locationsSelected, val]);
-            }}
-          >
-            {locations.map((l) => (
-              <MenuItem key={l.id} value={l.id}>
-                {l.name}
-              </MenuItem>
-            ))}
-          </TextField>
-          {renderSelectChips(locations, locationsSelected, "Locations", (id) =>
-            setLocationsSelected(locationsSelected.filter((l) => l !== id))
-          )}
-        </Grid>
-
-        {/* Modes Multi-Select */}
-        <Grid item xs={12} md={6}>
-          <Controller
-            name="type_of_modes"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                select
-                fullWidth
-                label="Mode(s)"
-                SelectProps={{ multiple: true }}
-                value={field.value}
-                onChange={(e) => field.onChange(e.target.value)}
-                error={!!errors.type_of_modes}
-                helperText={errors.type_of_modes?.message}
-              >
-                {modes.map((m) => (
-                  <MenuItem key={m.id} value={m.id}>
-                    {m.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
-          />
-        </Grid>
-
-        {/* Amount */}
-        <Grid item xs={12} md={6}>
-          <Controller
-            name="amount"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                fullWidth
-                type="number"
-                label="Amount"
-                {...field}
-                error={!!errors.amount}
-                helperText={errors.amount?.message}
-              />
-            )}
-          />
-        </Grid>
-
-        {/* Description */}
-        <Grid item xs={12}>
-          <Controller
-            name="description"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                label="Course Description"
-                multiline
-                minRows={6}
-                fullWidth
-                {...field}
-                error={!!errors.description}
-                helperText={
-                  errors.description?.message || `${field.value.length}/500 characters`
-                }
-              />
-            )}
-          />
-        </Grid>
-
-        {/* Features Input */}
-        <Grid item xs={12} md={6}>
-          <Box display="flex">
-            <TextField
-              fullWidth
-              label="Add Feature"
-              value={featureInput}
-              onChange={(e) => setFeatureInput(e.target.value)}
+      <form onSubmit={handleSubmit(onSubmit)} encType="multipart/form-data">
+        <Grid container spacing={2}>
+          {/* Academic Year */}
+          <Grid item xs={12} md={6}>
+            <Controller
+              name="acdemic_year_id"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  label="Academic Year"
+                  {...field}
+                  value={field.value || ""}
+                  onChange={(e) => field.onChange(Number(e.target.value))}
+                  error={!!errors.acdemic_year_id}
+                  helperText={errors.acdemic_year_id?.message}
+                >
+                  {academicYears.map((y) => (
+                    <MenuItem key={y.id} value={Number(y.id)}>
+                      {y.start_end_year}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
             />
-            <IconButton
-              onClick={() => {
-                if (featureInput.trim().length < 50) {
-                  toast.error("Feature must be at least 50 characters.");
-                } else {
-                  setFeatures([...features, featureInput.trim()]);
-                  setFeatureInput("");
-                }
+          </Grid>
+
+          {/* Course Name */}
+          <Grid item xs={12} md={6}>
+            <Controller
+              name="name"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  fullWidth
+                  label="Course Name"
+                  {...field}
+                  error={!!errors.name}
+                  helperText={errors.name?.message}
+                />
+              )}
+            />
+          </Grid>
+
+          {/* Subject & Location Selection */}
+          <Grid item xs={12} md={6}>
+            <TextField
+              select
+              fullWidth
+              label="Add Subject"
+              value=""
+              onChange={(e) => {
+                const val = e.target.value;
+                if (!subjects.includes(val)) setSubjects([...subjects, val]);
               }}
             >
-              <AddIcon />
-            </IconButton>
-          </Box>
-          <Box mt={1}>
-            {features.map((f, i) => (
-              <Chip
-                key={i}
-                label={f}
-                onDelete={() => setFeatures(features.filter((_, idx) => idx !== i))}
-                sx={{ mr: 1, mt: 1 }}
-              />
-            ))}
-          </Box>
-        </Grid>
-
-        {/* Course Image Upload */}
-        <Grid item xs={12}>
-          <Typography sx={{ fontWeight: 600, mb: 1 }}>Course Image</Typography>
-          <Controller
-            name="course_image"
-            control={control}
-            render={() => (
-              <TextField
-                type="file"
-                fullWidth
-                inputProps={{ accept: "image/*" }}
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  setValue("course_image", file);
-                }}
-                error={!!errors.course_image}
-                helperText={errors.course_image?.message}
-              />
+              {subjectsList.map((s) => (
+                <MenuItem key={s.id} value={s.id}>
+                  {s.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            {renderSelectChips(subjectsList, subjects, "Subjects", (id) =>
+              setSubjects(subjects.filter((s) => s !== id))
             )}
-          />
-        </Grid>
+          </Grid>
 
-        {/* Submit Button */}
-        <Grid item xs={12}>
-          <Button
-            fullWidth
-            onClick={handleSubmit(onSubmit)}
-            sx={{
-              background: "linear-gradient(to right, #3f2b96, #a71d31)",
-              color: "#fff",
-              borderRadius: "30px",
-              fontWeight: "bold",
-              px: 4,
-              py: 1.5,
-              textTransform: "none",
-              transition: "0.3s",
-              "&:hover": {
+          <Grid item xs={12} md={6}>
+            <TextField
+              select
+              fullWidth
+              label="Add Location"
+              value=""
+              onChange={(e) => {
+                const val = e.target.value;
+                if (!locationsSelected.includes(val))
+                  setLocationsSelected([...locationsSelected, val]);
+              }}
+            >
+              {locations.map((l) => (
+                <MenuItem key={l.id} value={l.id}>
+                  {l.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            {renderSelectChips(locations, locationsSelected, "Locations", (id) =>
+              setLocationsSelected(locationsSelected.filter((l) => l !== id))
+            )}
+          </Grid>
+
+          {/* Modes Multi-Select */}
+          <Grid item xs={12} md={6}>
+            <Controller
+              name="type_of_modes"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  select
+                  fullWidth
+                  label="Mode(s)"
+                  SelectProps={{ multiple: true }}
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.target.value)}
+                  error={!!errors.type_of_modes}
+                  helperText={errors.type_of_modes?.message}
+                >
+                  {modes.map((m) => (
+                    <MenuItem key={m.id} value={m.id}>
+                      {m.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+          </Grid>
+
+          {/* Amount */}
+          <Grid item xs={12} md={6}>
+            <Controller
+              name="amount"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  fullWidth
+                  label="Amount"
+                  {...field}
+                  error={!!errors.amount}
+                  helperText={errors.amount?.message}
+                />
+              )}
+            />
+          </Grid>
+
+          {/* Description */}
+          <Grid item xs={12}>
+            <Controller
+              name="description"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  label="Course Description"
+                  multiline
+                  minRows={6}
+                  fullWidth
+                  {...field}
+                  error={!!errors.description}
+                  helperText={
+                    errors.description?.message || `${field.value.length}/500 characters`
+                  }
+                />
+              )}
+            />
+          </Grid>
+
+          {/* Features Input */}
+          <Grid item xs={12} md={6}>
+            <Box display="flex">
+              <TextField
+                fullWidth
+                label="Add Feature"
+                value={featureInput}
+                onChange={(e) => setFeatureInput(e.target.value)}
+              />
+              <IconButton
+                onClick={() => {
+                  if (featureInput.trim().length < 50) {
+                    toast.error("Feature must be at least 50 characters.");
+                  } else {
+                    setFeatures([...features, featureInput.trim()]);
+                    setFeatureInput("");
+                  }
+                }}
+              >
+                <AddIcon />
+              </IconButton>
+            </Box>
+            <Box mt={1}>
+              {features.map((f, i) => (
+                <Chip
+                  key={i}
+                  label={f}
+                  onDelete={() => setFeatures(features.filter((_, idx) => idx !== i))}
+                  sx={{ mr: 1, mt: 1 }}
+                />
+              ))}
+            </Box>
+          </Grid>
+
+          {/* Course Image Upload */}
+          <Grid item xs={12}>
+            <Typography sx={{ fontWeight: 600, mb: 1 }}>Course Image</Typography>
+            <Controller
+              name="course_image"
+              control={control}
+              render={() => (
+                <TextField
+                  type="file"
+                  fullWidth
+                  inputProps={{ accept: "image/*" }}
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    setValue("course_image", file);
+                  }}
+                  error={!!errors.course_image}
+                  helperText={errors.course_image?.message}
+                />
+              )}
+            />
+          </Grid>
+
+          {/* Submit Button */}
+          <Grid item xs={12}>
+            <Button
+              type="submit"
+              fullWidth
+              sx={{
                 background: "linear-gradient(to right, #3f2b96, #a71d31)",
-                transform: "scale(1.02)",
-              },
-            }}
-            endIcon={
-              loading ? <CircularProgress size={20} color="inherit" /> : <ArrowForwardIcon />
-            }
-            disabled={loading}
-          >
-            {loading ? "Saving..." : "Save"}
-          </Button>
+                color: "#fff",
+                borderRadius: "30px",
+                fontWeight: "bold",
+                px: 4,
+                py: 1.5,
+                textTransform: "none",
+                transition: "0.3s",
+                "&:hover": {
+                  background: "linear-gradient(to right, #3f2b96, #a71d31)",
+                  transform: "scale(1.02)",
+                },
+              }}
+              endIcon={
+                loading ? <CircularProgress size={20} color="inherit" /> : <ArrowForwardIcon />
+              }
+              disabled={loading}
+            >
+              {loading ? "Saving..." : "Save"}
+            </Button>
+          </Grid>
         </Grid>
-      </Grid>
+      </form>
       <ToastContainer position="top-right" autoClose={3000} />
     </Box>
   );
