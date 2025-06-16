@@ -9,6 +9,7 @@ const DropdownField = ({
   options = [],
   error,
   loading,
+  onChange = () => {}, // default fallback
 }) => {
   return (
     <Grid item xs={12} md={6}>
@@ -18,12 +19,19 @@ const DropdownField = ({
         <Controller
           name={name}
           control={control}
+          defaultValue="" // 👈 ensure default value is defined
           render={({ field }) => (
             <TextField
               select
               fullWidth
               label={label}
               {...field}
+              value={field.value ?? ""} // 👈 force controlled value
+              onChange={(e) => {
+                const value = e.target.value;
+                field.onChange(value);
+                onChange(value);
+              }}
               error={!!error}
               helperText={error?.message}
             >

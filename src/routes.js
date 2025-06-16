@@ -5,7 +5,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import SignUp from "./pages/SignUp";
 import Login from "./pages/Login";
 import AdminLogin from "./pages/Adminlogin";
-import Dashboard from "./pages/Dashboard";
+import Dashboard from "./pages/Student/Dashboard";
 import Course from "./pages/Course/Course";
 import CourseAssignment from "./pages/Course/CourseAssignment";
 import CourseContent from "./pages/Course/CourseContent";
@@ -20,7 +20,7 @@ import AdminLayout from "./pages/Layout/AdminLayout";
 import StudentLayout from "./pages/Layout/StudentLayout";
 import ParentLayout from "./pages/Layout/ParentLayout";
 import StudentPannel from "./pages/StudentPannel";
-import TuitionDetailsPage from "./pages/TuitionDetailsPage";
+import TuitionDetailsPage from "./pages/Student/TuitionDetailsPage";
 import VideoLessonsPage from "./pages/VideoLessonsPage";
 import MyCourseVideoPage from "./pages/MyCourseVideoPage";
 import NewStudentPage from "./pages/Parent/AddStudentForm";
@@ -139,9 +139,12 @@ const AppRoutes = () => {
           <StudentLayout />
         </RequireRole>
       }>
-        <Route index element={<StudentPannel />} />
+
         <Route path="videos" element={<VideoLessonsPage />} />
         <Route path="my-course-video-page" element={<MyCourseVideoPage />} />
+        <Route index element={<Dashboard />} />
+        <Route path="new-student" element={<NewStudentPage />} />
+         <Route path="new-student1" element={<TuitionDetailsPage />} />
       </Route>
 
       {/* PARENT ROUTES */}

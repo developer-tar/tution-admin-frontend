@@ -1,7 +1,7 @@
 import React from "react";
-import WelcomHeader from "./Dashboard/WelcomHeader";
-import CurrentAssign from "./Dashboard/CurrentAssign";
-import WeeklyPerformance from "./Dashboard/WeeklyPerformance";
+import WelcomHeader from "../Dashboard/WelcomHeader";
+import CurrentAssign from "../Dashboard/CurrentAssign";
+import WeeklyPerformance from "../Dashboard/WeeklyPerformance";
 
 
 const Dashboard = () => {

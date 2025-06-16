@@ -1,5 +1,3 @@
-// CommonLoader.jsx
-import React from 'react';
 import { Skeleton, Box } from '@mui/material';
 
 export default function CommonLoader({ width = '100%', height = 56, radius = 1 }) {

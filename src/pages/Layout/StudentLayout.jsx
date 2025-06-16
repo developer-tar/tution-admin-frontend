@@ -16,7 +16,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 const drawerWidth = 240;
 
-const ParentLayout = () => {
+const StudentLayout = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [openMenus, setOpenMenus] = useState({});
@@ -31,25 +31,25 @@ const ParentLayout = () => {
 
     const menuItems = [
         {
-            label: "Students",
+            label: "Homework",
             children: [
-                { label: "My Student", path: `${prefix}course` },
-                { label: "New Student", path: `${prefix}new-student` },
-                { label: "Change Student Password", path: `${prefix}course-report` },
+                { label: "My Course Assignment", path: `${prefix}course` },
+                { label: "My Course Test", path: `${prefix}new-student` },
+            ],
+        },
+        {
+            label: "Video",
+            children: [
+                { label: "My Course Video", path: `${prefix}course-assignment` },
+                { label: "My Video Views", path: `${prefix}assignment-list` },
             ],
         },
         {
             label: "Progress",
             children: [
-                { label: "Manage Assignments", path: `${prefix}course-assignment` },
-                { label: "Assignments List", path: `${prefix}assignment-list` },
-            ],
-        },
-        {
-            label: "Videes",
-            children: [
-                { label: "Manage Content", path: `${prefix}course-content` },
-                { label: "Topic List", path: `${prefix}topicsubtopic-list` },
+                { label: "End of report", path: `${prefix}course-content` },
+                { label: "Course Target Area", path: `${prefix}topicsubtopic-list` },
+                { label: "Test Scores", path: `${prefix}topicsubtopic-list` },
             ],
         },
         {
@@ -145,4 +145,4 @@ const ParentLayout = () => {
     );
 };
 
-export default ParentLayout;
+export default StudentLayout;
