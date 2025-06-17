@@ -1,8 +1,8 @@
 import { Container, Grid } from '@mui/material';
 import VideoLessonHeader from './Videos/VideoLessonHeader';
-import VideoPlayer from './Videos/VideoPlayer';
+import MediaRenderer from './Videos/MediaRenderer';
 import LessonDescription from './Videos/LessonDescription';
-import CourseTestList from './Videos/CourseTestList';
+import TestList from './Videos/TestList';
 
 const VideoLessonsPage = () => {
   return (
@@ -10,11 +10,11 @@ const VideoLessonsPage = () => {
       <VideoLessonHeader />
       <Grid container spacing={4}>
         <Grid item xs={12} md={8}>
-          <VideoPlayer />
+          <MediaRenderer />
           <LessonDescription />
         </Grid>
         <Grid item xs={12} md={4}>
-          <CourseTestList />
+          <TestList />
         </Grid>
       </Grid>
     </Container>

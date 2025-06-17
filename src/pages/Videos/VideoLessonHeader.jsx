@@ -3,7 +3,7 @@ import { Box, Typography, IconButton, Stack } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate } from 'react-router-dom';
 
-const VideoLessonHeader = () => {
+const VideoLessonHeader = ({ getContent }) => {
   const navigate = useNavigate();
   return (
     <Stack direction="row" alignItems="center" spacing={1} mb={3}>
@@ -11,8 +11,7 @@ const VideoLessonHeader = () => {
         <ArrowBackIcon />
       </IconButton>
       <Box>
-        <Typography fontWeight={700} fontSize="20px">Video Lessons</Typography>
-        <Typography variant="body2" color="text.secondary">Year 3 11 + tuition</Typography>
+        <Typography fontWeight={700} fontSize="20px">{getContent}</Typography>
       </Box>
     </Stack>
   );

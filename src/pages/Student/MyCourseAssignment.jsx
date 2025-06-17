@@ -103,7 +103,7 @@ const MyCourseAssignment = () => {
       { key: "completed", label: "Is Completed" },
       { key: "completed_at", label: "Completed At" }
     );
-    viewPathPrefix = "topic/content/view";
+    viewPathPrefix = "/student/topic/content/view";
   } else if (title === "SubTopicContent") {
     baseColumns.push(
       { key: "sub_topic_name", label: "Sub-Topic" },
@@ -111,7 +111,7 @@ const MyCourseAssignment = () => {
       { key: "completed", label: "Is Completed" },
       { key: "completed_at", label: "Completed At" }
     );
-    viewPathPrefix = "subtopic/content/view";
+    viewPathPrefix = "/student/subtopic/content/view";
   } else if (title === "TopicTest") {
     baseColumns.push(
       { key: "test_name", label: "Topic Test" },
@@ -119,7 +119,7 @@ const MyCourseAssignment = () => {
       { key: "completed", label: "Is Completed" },
       { key: "completed_at", label: "Completed At" }
     );
-    viewPathPrefix = "/topic/test";
+    viewPathPrefix = "/student/topic/test";
   } else if (title === "SubTopicTest") {
     baseColumns.push(
       { key: "test_name", label: "Sub-Topic Test" },
@@ -128,7 +128,7 @@ const MyCourseAssignment = () => {
       { key: "completed", label: "Is Completed" },
       { key: "completed_at", label: "Completed At" }
     );
-    viewPathPrefix = "/subtopic/test";
+    viewPathPrefix = "/student/subtopic/test";
   }
 
   baseColumns.push({
