@@ -1,11 +1,9 @@
 import { Box, Typography, Paper } from "@mui/material";
-
+import CommonLoader from "../../components/CommonLoader";
 const MediaRenderer = ({ data, loading }) => {
   if (loading) {
     return (
-      <Paper sx={{ p: 3, textAlign: "center", borderRadius: 2 }}>
-        <Typography fontWeight={500}>Loading media...</Typography>
-      </Paper>
+        <CommonLoader  height={400}/>
     );
   }
 

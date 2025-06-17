@@ -30,13 +30,13 @@ const TopicContentView = () => {
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      <VideoLessonHeader getContent={data?.topic_name} />
+      <VideoLessonHeader getContent={data?.topic_name} loading={loading}/>
       <Grid container spacing={4}>
         <Grid item xs={12} md={8}>
           <MediaRenderer data={data} loading={loading} />
         </Grid>
         <Grid item xs={12} md={4}>
-          <TestList relatedData={data?.topic_test || []} slugUrl='topic'/>
+          <TestList relatedData={data?.topic_test || []} slugUrl='topic' loading={loading}/>
         </Grid>
       </Grid>
     </Container>

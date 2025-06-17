@@ -1,7 +1,12 @@
 import { Box, Typography, Stack, Paper } from '@mui/material';
 import { Link } from 'react-router-dom';
-
-const TestList = ({ relatedData = {}, slugUrl }) => {
+import CommonLoader from "../../components/CommonLoader";
+const TestList = ({ relatedData = {}, slugUrl, loading }) => {
+  if (loading) {
+    return (
+       <CommonLoader sx={{ p: 3, textAlign: "center", borderRadius: 2 }} />
+    );
+  }
   const testEntries = Object.entries(relatedData);
 
   return (
@@ -29,7 +34,8 @@ const TestList = ({ relatedData = {}, slugUrl }) => {
             >
               <Typography fontSize="14px" fontWeight={idx === 0 ? 600 : 500}>
                 <Link
-                  to={`/student/${slugUrl}/test/${testId}`}
+                  // to={`/student/${slugUrl}/test/${testId}`}
+                  to={`/student/test`}
                   style={{
                     textDecoration: "none",
                     color: "#26177C",

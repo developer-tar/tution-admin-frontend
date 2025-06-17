@@ -25,6 +25,7 @@ import MyCourseVideoPage from "./pages/MyCourseVideoPage";
 import NewStudentPage from "./pages/Parent/AddStudentForm";
 import TopicContentView from "./pages/Student/TopicContentView";
 import SubTopicContentView from "./pages/Student/SubTopicContentView";
+import StudentTest from "./pages/Student/StudentTest";
 // ============ AUTH GUARDS ============
 
 // General Protected Route
@@ -147,6 +148,7 @@ const AppRoutes = () => {
         <Route index element={<Dashboard />} />
         <Route path="new-student" element={<NewStudentPage />} />
         <Route path="my-current-assignment" element={<MyCourseAssignment />} />
+        <Route path="test" element={<StudentTest />} />
       </Route>
 
       {/* PARENT ROUTES */}
