@@ -1,31 +1,24 @@
-import TuitionCompletionStats from "../StudentPannel/TuitionCompletionStats";
-import DropdownField from "../../components/DropdownField";
+// File: src/pages/TuitionDetailsPage.jsx
 
+import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 import {
   Box,
-  Typography,
-  Skeleton,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  Paper,
-  TableContainer,
-  TablePagination,
-  Chip,
   Grid,
-} from '@mui/material';
-
-import { toast } from 'react-toastify';
-import { useEffect, useState } from 'react';
-import api from '../../api';
-import { useForm } from "react-hook-form";
+  Button,
+} from "@mui/material";
+import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
+import api from "../../api";
+import DropdownField from "../../components/DropdownField";
+import TuitionCompletionStats from "../StudentPannel/TuitionCompletionStats";
+import DataTable from "../../components/DataTable";
 
 const TuitionDetailsPage = () => {
   const { control, setValue } = useForm();
+  const navigate = useNavigate();
 
-  const [filters, setFilters] = useState({ subject_id: '', choose_title: '' });
+  const [filters, setFilters] = useState({ subject_id: "", choose_title: "" });
   const [assignments, setAssignments] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [dropdownLoading, setDropdownLoading] = useState(true);
@@ -34,29 +27,27 @@ const TuitionDetailsPage = () => {
   const [rowsPerPage] = useState(10);
 
   const chooseTitle = [
-    { id: 'TopicContent', name: 'Topic Content' },
-    { id: 'SubTopicContent', name: 'SubTopic Content' },
-    { id: 'TopicTest', name: 'Topic Test' },
-    { id: 'SubTopicTest', name: 'SubTopic Test' }
+    { id: "TopicContent", name: "Topic Content" },
+    { id: "SubTopicContent", name: "SubTopic Content" },
+    { id: "TopicTest", name: "Topic Test" },
+    { id: "SubTopicTest", name: "SubTopic Test" },
   ];
 
-  // Fetch Subjects directly
+  // Fetch Subjects
   useEffect(() => {
     const fetchSubjects = async () => {
       try {
-        const res = await api.get('student/fetch/subjects');
+        const res = await api.get("student/fetch/subjects");
         const data = res.data?.data || [];
-
         setSubjects(data);
         setDropdownLoading(false);
 
-        // Set default subject
         if (!filters.subject_id && data.length > 0) {
           const defaultSubject = String(data[0].id);
-          handleFilterChange('subject_id', defaultSubject);
-          setValue('subject_id', defaultSubject);
+          handleFilterChange("subject_id", defaultSubject);
+          setValue("subject_id", defaultSubject);
         }
-      } catch (error) {
+      } catch {
         toast.error("Failed to fetch subjects");
         setDropdownLoading(false);
       }
@@ -65,42 +56,100 @@ const TuitionDetailsPage = () => {
     fetchSubjects();
   }, []);
 
-  // Set default choose_title
+  // Set default title
   useEffect(() => {
     if (!filters.choose_title) {
       const defaultTitle = chooseTitle[0]?.id;
-      handleFilterChange('choose_title', String(defaultTitle));
-      setValue('choose_title', String(defaultTitle));
+      handleFilterChange("choose_title", defaultTitle);
+      setValue("choose_title", defaultTitle);
     }
   }, []);
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
     setPage(0);
   };
 
-  // Fetch filtered assignments
+  // Fetch Assignments
   useEffect(() => {
     const { subject_id, choose_title } = filters;
     if (!subject_id || !choose_title) return;
 
     setLoading(true);
-    api.get('student/current/assignment', {
-      params: { subject_id, choose_title }
-    })
-      .then(res => {
+    api
+      .get("student/current/assignment", {
+        params: { subject_id, choose_title },
+      })
+      .then((res) => {
         const list = res.data?.data?.data || [];
         setAssignments(list);
-        if (!list.length) toast.info('No record found');
+        if (!list.length) toast.info("No record found");
       })
       .catch(() => {
         setAssignments([]);
-        toast.error('Failed to load data');
+        toast.error("Failed to load data");
       })
       .finally(() => setLoading(false));
   }, [filters]);
 
   const isFilterSelected = filters.subject_id && filters.choose_title;
+
+  const columns = useMemo(() => {
+  const title = filters.choose_title;
+  const baseColumns = [{ key: "id", label: "Order Id" }];
+  let viewPathPrefix = "";
+
+  if (title === "TopicContent") {
+    baseColumns.push(
+      { key: "name", label: "Topic" },
+      { key: "completed", label: "Is Completed" },
+      { key: "completed_at", label: "Completed At" }
+    );
+    viewPathPrefix = "topic/content/view";
+  } else if (title === "SubTopicContent") {
+    baseColumns.push(
+      { key: "sub_topic_name", label: "Sub-Topic" },
+      { key: "course_name", label: "Topic" },
+      { key: "completed", label: "Is Completed" },
+      { key: "completed_at", label: "Completed At" }
+    );
+    viewPathPrefix = "subtopic/content/view";
+  } else if (title === "TopicTest") {
+    baseColumns.push(
+      { key: "test_name", label: "Topic Test" },
+      { key: "course_name", label: "Topic" },
+      { key: "completed", label: "Is Completed" },
+      { key: "completed_at", label: "Completed At" }
+    );
+    viewPathPrefix = "/topic/test";
+  } else if (title === "SubTopicTest") {
+    baseColumns.push(
+      { key: "test_name", label: "Sub-Topic Test" },
+      { key: "sub_topic_name", label: "Topic" },
+      { key: "topic_name", label: "Topic" },
+      { key: "completed", label: "Is Completed" },
+      { key: "completed_at", label: "Completed At" }
+    );
+    viewPathPrefix = "/subtopic/test";
+  }
+
+  baseColumns.push({
+    key: "action",
+    label: "Action",
+    render: (row) => (
+      <Button
+        variant="outlined"
+        size="small"
+        onClick={() => navigate(`${viewPathPrefix}/${row.id}`)}
+      >
+        View
+      </Button>
+    ),
+  });
+
+  return baseColumns;
+}, [filters.choose_title, navigate]);
+
 
   return (
     <Box sx={{ py: 4 }}>
@@ -115,7 +164,9 @@ const TuitionDetailsPage = () => {
             label="Subject"
             options={subjects}
             loading={dropdownLoading}
-            onChange={(value) => handleFilterChange('subject_id', String(value))}
+            onChange={(value) =>
+              handleFilterChange("subject_id", String(value))
+            }
             defaultValue={filters.subject_id}
           />
           <DropdownField
@@ -124,75 +175,23 @@ const TuitionDetailsPage = () => {
             label="Title"
             options={chooseTitle}
             loading={dropdownLoading}
-            onChange={(value) => handleFilterChange('choose_title', String(value))}
+            onChange={(value) =>
+              handleFilterChange("choose_title", String(value))
+            }
             defaultValue={filters.choose_title}
           />
         </Grid>
 
-        {/* Table */}
-        {loading ? (
-          <Paper sx={{ width: '100%', overflowX: 'auto' }}>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell><strong>Week Number</strong></TableCell>
-                    <TableCell><strong>Start–End Date</strong></TableCell>
-                    <TableCell><strong>Status</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {[...Array(5)].map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton variant="text" width={100} /></TableCell>
-                      <TableCell><Skeleton variant="text" width={150} /></TableCell>
-                      <TableCell><Skeleton variant="rectangular" width={80} height={24} /></TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        ) : !isFilterSelected ? (
-          <Typography>Select both filters to load data.</Typography>
-        ) : assignments.length === 0 ? (
-          <Typography>No data found for selected filters.</Typography>
-        ) : (
-          <Paper sx={{ width: '100%', overflowX: 'auto' }}>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell><strong>Week Number</strong></TableCell>
-                    <TableCell><strong>Start–End Date</strong></TableCell>
-                    <TableCell><strong>Status</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {assignments
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{item.week_number || item.weeks?.week_number || 'N/A'}</TableCell>
-                        <TableCell>{item.start_end_date || item.weeks?.start_end_date || 'N/A'}</TableCell>
-                        <TableCell>
-                          <Chip label="Assigned" color="success" size="small" />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            <TablePagination
-              component="div"
-              count={assignments.length}
-              page={page}
-              onPageChange={(e, newPage) => setPage(newPage)}
-              rowsPerPage={rowsPerPage}
-              rowsPerPageOptions={[10]}
-            />
-          </Paper>
-        )}
+        {/* Data Table */}
+        <DataTable
+          loading={loading}
+          data={assignments}
+          page={page}
+          setPage={setPage}
+          rowsPerPage={rowsPerPage}
+          isFilterSelected={isFilterSelected}
+          columns={columns}
+        />
       </Box>
     </Box>
   );

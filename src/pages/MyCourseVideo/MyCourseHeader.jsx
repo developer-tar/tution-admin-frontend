@@ -13,7 +13,6 @@ const MyCourseHeader = () => {
       </IconButton>
       <Box>
         <Typography fontWeight={700} fontSize="20px">My Course Video</Typography>
-        <Typography variant="body2" color="text.secondary">Year 3 11 + tuition</Typography>
       </Box>
     </Stack>
   );

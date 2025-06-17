@@ -24,6 +24,7 @@ import TuitionDetailsPage from "./pages/Student/TuitionDetailsPage";
 import VideoLessonsPage from "./pages/VideoLessonsPage";
 import MyCourseVideoPage from "./pages/MyCourseVideoPage";
 import NewStudentPage from "./pages/Parent/AddStudentForm";
+import ContentView from "./pages/Student/ContentView";
 
 // ============ AUTH GUARDS ============
 
@@ -141,6 +142,7 @@ const AppRoutes = () => {
       }>
 
         <Route path="videos" element={<VideoLessonsPage />} />
+        <Route path="topic/content/view/:topic_id" element={<ContentView />} />
         <Route path="my-course-video-page" element={<MyCourseVideoPage />} />
         <Route index element={<Dashboard />} />
         <Route path="new-student" element={<NewStudentPage />} />
