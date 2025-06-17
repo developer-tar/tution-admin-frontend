@@ -33,7 +33,7 @@ const StudentLayout = () => {
         {
             label: "Homework",
             children: [
-                { label: "My Course Assignment", path: `${prefix}course` },
+                { label: "My Course Assignment", path: `${prefix}my-current-assignment` },
                 { label: "My Course Test", path: `${prefix}new-student` },
             ],
         },

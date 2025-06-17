@@ -1,4 +1,3 @@
-import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 // Pages
@@ -20,7 +19,7 @@ import AdminLayout from "./pages/Layout/AdminLayout";
 import StudentLayout from "./pages/Layout/StudentLayout";
 import ParentLayout from "./pages/Layout/ParentLayout";
 import StudentPannel from "./pages/StudentPannel";
-import TuitionDetailsPage from "./pages/Student/TuitionDetailsPage";
+import MyCourseAssignment from "./pages/Student/MyCourseAssignment";
 import VideoLessonsPage from "./pages/VideoLessonsPage";
 import MyCourseVideoPage from "./pages/MyCourseVideoPage";
 import NewStudentPage from "./pages/Parent/AddStudentForm";
@@ -146,7 +145,7 @@ const AppRoutes = () => {
         <Route path="my-course-video-page" element={<MyCourseVideoPage />} />
         <Route index element={<Dashboard />} />
         <Route path="new-student" element={<NewStudentPage />} />
-         <Route path="new-student1" element={<TuitionDetailsPage />} />
+         <Route path="my-current-assignment" element={<MyCourseAssignment />} />
       </Route>
 
       {/* PARENT ROUTES */}
@@ -155,7 +154,6 @@ const AppRoutes = () => {
           <ParentLayout />
         </RequireRole>
       }>
-        <Route index element={<TuitionDetailsPage />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="new-student" element={<NewStudentPage />} />
       </Route>
@@ -177,7 +175,6 @@ const AppRoutes = () => {
       }>
         <Route index element={<Dashboard />} />
         <Route path="student-pannel" element={<StudentPannel />} />
-        <Route path="tuition-details" element={<TuitionDetailsPage />} />
         <Route path="videos" element={<VideoLessonsPage />} />
         <Route path="my-course-video-page" element={<MyCourseVideoPage />} />
       </Route>
