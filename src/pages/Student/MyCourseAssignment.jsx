@@ -13,6 +13,8 @@ import TuitionCompletionStats from "../StudentPannel/TuitionCompletionStats";
 import DataTable from "../../components/DataTable";
 
 const MyCourseAssignment = () => {
+  const prefix = process.env.REACT_APP_STUDENT_PREFIX;
+
   const { control, setValue } = useForm();
   const navigate = useNavigate();
 
@@ -33,26 +35,31 @@ const MyCourseAssignment = () => {
 
   // Fetch Subjects
   useEffect(() => {
-    const fetchSubjects = async () => {
-      try {
-        const res = await api.get("student/fetch/subjects");
-        const data = res.data?.data || [];
-        setSubjects(data);
-        setDropdownLoading(false);
+  const fetchSubjects = async () => {
+    try {
+      const { data } = await api.get(`${prefix}/fetch/subjects`);
+      
 
-        if (!filters.subject_id && data.length > 0) {
-          const defaultSubject = String(data[0].id);
-          handleFilterChange("subject_id", defaultSubject);
-          setValue("subject_id", defaultSubject);
-        }
-      } catch {
-        toast.error("Failed to fetch subjects");
-        setDropdownLoading(false);
+      const dataList = data?.data || [];
+      setSubjects(dataList);
+      
+
+      if (!filters.subject_id && dataList.length > 0) {
+        const defaultSubject = String(dataList[0].id);
+      
+        handleFilterChange("subject_id", defaultSubject);
+        setValue("subject_id", defaultSubject);
       }
-    };
+      setDropdownLoading(false);
+    } catch {
+      toast.error("Failed to fetch subjects");
+      setDropdownLoading(false);
+    }
+  };
 
-    fetchSubjects();
-  }, []);
+  fetchSubjects();
+}, []);
+
 
   // Set default title
   useEffect(() => {
@@ -75,7 +82,7 @@ const MyCourseAssignment = () => {
 
     setLoading(true);
     api
-      .get("student/current/assignment", {
+      .get(`${prefix}/current/assignment`, {
         params: { subject_id, choose_title },
       })
       .then((res) => {
@@ -97,39 +104,55 @@ const MyCourseAssignment = () => {
   const baseColumns = [{ key: "id", label: "Order Id" }];
   let viewPathPrefix = "";
 
-  if (title === "TopicContent") {
-    baseColumns.push(
-      { key: "name", label: "Topic" },
-      { key: "completed", label: "Is Completed" },
-      { key: "completed_at", label: "Completed At" }
-    );
-    viewPathPrefix = "/student/topic/content/view";
-  } else if (title === "SubTopicContent") {
-    baseColumns.push(
-      { key: "sub_topic_name", label: "Sub-Topic" },
-      { key: "course_name", label: "Topic" },
-      { key: "completed", label: "Is Completed" },
-      { key: "completed_at", label: "Completed At" }
-    );
-    viewPathPrefix = "/student/subtopic/content/view";
-  } else if (title === "TopicTest") {
-    baseColumns.push(
-      { key: "test_name", label: "Topic Test" },
-      { key: "course_name", label: "Topic" },
-      { key: "completed", label: "Is Completed" },
-      { key: "completed_at", label: "Completed At" }
-    );
-    viewPathPrefix = "/student/topic/test";
-  } else if (title === "SubTopicTest") {
-    baseColumns.push(
-      { key: "test_name", label: "Sub-Topic Test" },
-      { key: "sub_topic_name", label: "Topic" },
-      { key: "topic_name", label: "Topic" },
-      { key: "completed", label: "Is Completed" },
-      { key: "completed_at", label: "Completed At" }
-    );
-    viewPathPrefix = "/student/subtopic/test";
-  }
+
+  var columns = [
+    {
+      'title': 'TopicContent',
+      'columns': [
+        { key: "name", label: "Topic" },
+        { key: "completed", label: "Is Completed" },
+        { key: "completed_at", label: "Completed At" }  
+      ],
+      "viewPathPrefix": `/${prefix}/topic/content/view`
+    },
+    {
+      "title": 'SubTopicContent',
+      "columns": [
+        { key: "sub_topic_name", label: "Sub-Topic" },
+        { key: "course_name", label: "Topic" },
+        { key: "completed", label: "Is Completed" },
+        { key: "completed_at", label: "Completed At" }
+      ],
+      "viewPathPrefix": `/${prefix}/subtopic/content/view`
+    },
+    {
+      "title": 'TopicTest',
+      "columns": [    
+        { key: "test_name", label: "Topic Test" },
+        { key: "course_name", label: "Topic" },
+        { key: "completed", label: "Is Completed" },
+        { key: "completed_at", label: "Completed At" }
+      ],
+      "viewPathPrefix": `/${prefix}/topic/test`
+    },
+    {
+      "title": 'SubTopicTest',
+      "columns": [
+        { key: "test_name", label: "Sub-Topic Test" },
+        { key: "sub_topic_name", label: "Topic" },
+        { key: "topic_name", label: "Topic" },
+        { key: "completed", label: "Is Completed" },
+        { key: "completed_at", label: "Completed At" }
+      ],
+      "viewPathPrefix": `/${prefix}/subtopic/test`
+    },
+  ]
+  columns.map((col) => {
+    if (col.title === title) {
+      baseColumns.push(...col.columns);
+      viewPathPrefix = col.viewPathPrefix;
+    }
+  });
 
   baseColumns.push({
     key: "action",
@@ -148,6 +171,26 @@ const MyCourseAssignment = () => {
   return baseColumns;
 }, [filters.choose_title, navigate]);
 
+  const fields = [
+    {
+      "name":"subject_id",
+      "label":"Subject",
+      "options": subjects,
+      "loading": dropdownLoading,
+      "onChange": (value) => handleFilterChange("subject_id", String(value)),
+      "defaultValue": filters.subject_id
+
+  },
+  {
+      "name":"choose_title",
+      "label":"Title",
+      "options": chooseTitle,
+      "loading": dropdownLoading,
+      "onChange": (value) => handleFilterChange("choose_title", String(value)),
+      "defaultValue": filters.choose_title
+  },
+
+];//render the fields 
 
   return (
     <Box sx={{ py: 4 }}>
@@ -156,28 +199,19 @@ const MyCourseAssignment = () => {
       <Box sx={{ mt: 4 }}>
         {/* Filters */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <DropdownField
-            control={control}
-            name="subject_id"
-            label="Subject"
-            options={subjects}
-            loading={dropdownLoading}
-            onChange={(value) =>
-              handleFilterChange("subject_id", String(value))
-            }
-            defaultValue={filters.subject_id}
-          />
-          <DropdownField
-            control={control}
-            name="choose_title"
-            label="Title"
-            options={chooseTitle}
-            loading={dropdownLoading}
-            onChange={(value) =>
-              handleFilterChange("choose_title", String(value))
-            }
-            defaultValue={filters.choose_title}
-          />
+
+          {fields.map((field) => (
+              <DropdownField
+                control={control}
+                name={field.name}
+                label={field.label}
+                options={field.options}     
+                loading={field.loading}
+                onChange={field.onChange}
+                defaultValue={field.defaultValue}
+              />
+          ))}
+
         </Grid>
 
         {/* Data Table */}
