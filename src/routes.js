@@ -19,7 +19,7 @@ import AdminLayout from "./pages/Layout/AdminLayout";
 import StudentLayout from "./pages/Layout/StudentLayout";
 import ParentLayout from "./pages/Layout/ParentLayout";
 import StudentPannel from "./pages/StudentPannel";
-import MyCourseAssignment from "./pages/Student/MyCourseAssignment";
+import MyCurrentCourseAssignment from "./pages/Student/MyCurrentCourseAssignment";
 import VideoLessonsPage from "./pages/VideoLessonsPage";
 import MyCourseVideoPage from "./pages/MyCourseVideoPage";
 import NewStudentPage from "./pages/Parent/AddStudentForm";
@@ -147,7 +147,7 @@ const AppRoutes = () => {
         <Route path="my-course-video-page" element={<MyCourseVideoPage />} />
         <Route index element={<Dashboard />} />
         <Route path="new-student" element={<NewStudentPage />} />
-        <Route path="my-current-assignment" element={<MyCourseAssignment />} />
+        <Route path="my-current-assignment" element={<MyCurrentCourseAssignment />} />
         <Route path="test" element={<StudentTest />} />
       </Route>
 
