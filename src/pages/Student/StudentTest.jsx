@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Box, Button, Typography, Grid, Paper } from '@mui/material';
+import { Box, Button, Grid, Paper, Typography } from '@mui/material';
+import { useEffect, useRef, useState } from 'react';
 
 // Sample vocabulary test questions
 const sampleQuestions = [
@@ -22,7 +22,7 @@ const StudentTest = () => {
 
   // ⏱️ Timer per question logic
   useEffect(() => {
-    const savedTime = remainingTime[current] ?? 10; // load saved time or default 10s
+    const savedTime = remainingTime[current] ?? sampleQuestions[current]?.duration_in_sec ?? 10;
     setTimeLeft(savedTime);
     latestTimeRef.current = savedTime;
 
@@ -62,8 +62,27 @@ const StudentTest = () => {
 
   // Auto navigate to next question if time is up
   const handleAutoNext = () => {
-    setCurrent(prev => (prev < sampleQuestions.length - 1 ? prev + 1 : prev));
-  };
+  const total = sampleQuestions.length;
+
+  for (let i = current + 1; i < total; i++) {
+    if (!answers[i] && !skipped[i] && !expired[i]) {
+      setCurrent(i);
+      return;
+    }
+  }
+
+  // If no future valid question, try earlier ones
+  for (let i = 0; i < current; i++) {
+    if (!answers[i] && !skipped[i] && !expired[i]) {
+      setCurrent(i);
+      return;
+    }
+  }
+
+  // If nothing left to show, stay on current
+  setCurrent(current);
+};
+
 
   // Skip current question manually
   const handleSkip = () => {
