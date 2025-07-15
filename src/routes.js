@@ -36,6 +36,8 @@ import TestScores from "./pages/Parent/Progress/TestScores";
 //setting route
 import Setting from "./pages/Parent/Setting";
 import EndOfReport from "./pages/Parent/Progress/EndOfReport";
+import FinishedTest from "./pages/Parent/Progress/FinishedTest";
+import ParentDashboard from "./pages/Parent/Dashboard";
 // ============ AUTH GUARDS ============
 
 // General Protected Route
@@ -167,7 +169,7 @@ const AppRoutes = () => {
           <ParentLayout />
         </RequireRole>
       }>
-        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="dashboard" element={<ParentDashboard />} />
         { /* parent student routes */}
         <Route path="add-student" element={<AddStudent />} />
         <Route path="my-student-list" element={<MyStudentList />} />
@@ -176,9 +178,8 @@ const AppRoutes = () => {
         { /* parent student progress routes */}
         <Route path="end-of-report" element={<EndOfReport />} />
         <Route path="course-target-area" element={<MyStudentList />} />
-        <Route path="cohort-analysis" element={<ChangePassword />} />
-        <Route path="finished-test" element={<ChangePassword />} />
         <Route path="test-scores" element={<TestScores />} />
+        <Route path="finished-test" element={<FinishedTest />} />
 
         { /* parent setting routes */}
         <Route path="settings" element={<Setting />} />
