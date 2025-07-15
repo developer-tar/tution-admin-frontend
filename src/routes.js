@@ -26,7 +26,7 @@ import TopicContentView from "./pages/Student/TopicContentView";
 import StudentPannel from "./pages/StudentPannel";
 import VideoLessonsPage from "./pages/VideoLessonsPage";
 
-//============ PARENT ============
+//============ START PARENT ROUTING ============
 // student routes
 import AddStudent from "./pages/Parent/Student/AddStudent";
 import ChangePassword from "./pages/Parent/Student/ChangePassword";
@@ -38,7 +38,8 @@ import ParentDashboard from "./pages/Parent/Dashboard";
 import EndOfReport from "./pages/Parent/Progress/EndOfReport";
 import FinishedTest from "./pages/Parent/Progress/FinishedTest";
 import Setting from "./pages/Parent/Setting";
-
+import CourseTargetArea from "./pages/Parent/Progress/CourseTargetArea";
+//============ END PARENT ROUTING ============
 
 //============ STUDENT ============
 //dashboard route
@@ -108,7 +109,7 @@ const RedirectByRole = () => {
     case "student":
       return <Navigate to="/student" />;
     case "parent":
-      return <Navigate to="/parent" />;
+      return <Navigate to="/parent/" />;
     case "tutor":
       return <Navigate to="/tutor" />;
     case "admin":
@@ -197,9 +198,10 @@ const AppRoutes = () => {
 
         { /* parent student progress routes */}
         <Route path="end-of-report" element={<EndOfReport />} />
-        <Route path="course-target-area" element={<MyStudentList />} />
         <Route path="test-scores" element={<TestScores />} />
         <Route path="finished-test" element={<FinishedTest />} />
+        <Route path="course-target-area" element={<CourseTargetArea />} />
+
 
         { /* parent setting routes */}
         <Route path="settings" element={<Setting />} />

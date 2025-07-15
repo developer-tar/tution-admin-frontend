@@ -56,7 +56,7 @@ const dummyResults = [
     subtopic: "Factoring",
     test_name: "Quiz 1",
     attempt_type: "last",
-    score: 8, // Changed to number for calculation
+    score: 8,
     total_questions: 10,
     total_answered: 9,
   },
@@ -111,6 +111,8 @@ const FinishedTest = () => {
   });
 
   const [filters, setFilters] = useState(formFilters);
+  const [scoreFilterType, setScoreFilterType] = useState("");
+  const [scoreFilterValue, setScoreFilterValue] = useState("");
 
   const handleFormFilterChange = (key, value) => {
     setFormFilters((prev) => ({ ...prev, [key]: value }));
@@ -124,18 +126,28 @@ const FinishedTest = () => {
 
   const filteredData = useMemo(() => {
     return dummyResults.filter((item) => {
+      const score = item.score;
+      let scoreMatch = true;
+
+      if (scoreFilterType && scoreFilterValue !== "") {
+        const value = Number(scoreFilterValue);
+        if (scoreFilterType === "gt") scoreMatch = score > value;
+        else if (scoreFilterType === "lt") scoreMatch = score < value;
+        else if (scoreFilterType === "eq") scoreMatch = score === value;
+      }
+
       return (
         (!filters.student_id || item.student_id === filters.student_id) &&
         (!filters.course_id || item.course_id === filters.course_id) &&
         (!filters.subject_id || item.subject_id === filters.subject_id) &&
         (!filters.topic_id || item.topic_id === filters.topic_id) &&
         (!filters.subtopic_id || item.subtopic_id === filters.subtopic_id) &&
-        (filters.attempt_type === "all" || item.attempt_type === filters.attempt_type)
+        (filters.attempt_type === "all" || item.attempt_type === filters.attempt_type) &&
+        scoreMatch
       );
     });
-  }, [filters]);
+  }, [filters, scoreFilterType, scoreFilterValue]);
 
-  // Add computed columns skipped and incorrect
   const enhancedData = filteredData.map((item) => ({
     ...item,
     skipped: item.total_questions - item.total_answered,
@@ -218,6 +230,43 @@ const FinishedTest = () => {
             onChange={field.onChange}
           />
         ))}
+
+        {/* Score Filter Dropdown */}
+        <Grid item xs={12} sm={4}>
+          <Box display="flex" gap={1} alignItems="center">
+            <Box flex={1}>
+              <DropdownField
+                control={control}
+                name="score_filter_type"
+                label="Score Type"
+                options={[
+                  { id: "gt", name: "Greater than" },
+                  { id: "lt", name: "Less than" },
+                  { id: "eq", name: "Equal to" },
+                ]}
+                defaultValue={scoreFilterType}
+                onChange={(val) => setScoreFilterType(val)}
+              />
+            </Box>
+            <Box flex={1} display="flex" alignItems="center">
+              <input
+                type="number"
+                value={scoreFilterValue}
+                onChange={(e) => setScoreFilterValue(e.target.value)}
+                placeholder="Score"
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: "4px",
+                  border: "1px solid #ccc",
+                  fontSize: "14px",
+                }}
+              />
+              <Typography ml={1}>%</Typography>
+            </Box>
+          </Box>
+        </Grid>
+
         <Grid item xs={12} sm={2} mt="auto">
           <Button fullWidth variant="contained" onClick={handleSearch}>
             Search
