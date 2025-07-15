@@ -25,13 +25,14 @@ const drawerWidth = 240;
 const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const name = process.env.REACT_APP_ADMIN_PREFIX;
 
   const menuItems = [
-    { label: "Course", path: "/admin/course-list", icon: <SchoolIcon /> },
-    { label: "Assignments", path: "/admin/assignment-list", icon: <AssignmentIcon /> },
-    { label: "Topic", path: "/admin/topicsubtopic-list", icon: <TopicIcon /> },
-    { label: "Test", path: "/admin/test-list", icon: <QuizIcon /> },
-    { label: "Reports", path: "/admin/course-report", icon: <BarChartIcon /> },
+    { label: "Course", path: `/${name}/course-list`, icon: <SchoolIcon /> },
+    { label: "Assignments", path: `/${name}/assignment-list`, icon: <AssignmentIcon /> },
+    { label: "Topic", path: `/${name}/topicsubtopic-list`, icon: <TopicIcon /> },
+    { label: "Test", path: `/${name}/test-list`, icon: <QuizIcon /> },
+    { label: "Reports", path: `/${name}/course-report`, icon: <BarChartIcon /> },
   ];
 
   return (

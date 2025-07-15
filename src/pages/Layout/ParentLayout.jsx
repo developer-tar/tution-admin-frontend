@@ -16,6 +16,7 @@ import {
 import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import logout  from "../../logout";
+import  CapitalizeFirstLetter  from "../../CapitalizeFirstLetter";
 const drawerWidth = 240;
 
 const ParentLayout = () => {
@@ -35,7 +36,7 @@ const ParentLayout = () => {
       [label]: !prev[label],
     }));
   };
-  const prefix = process.env.REACT_APP_PARENT_PREFIX;
+  const name = process.env.REACT_APP_PARENT_PREFIX;
 
   // Simulate page load finished by hiding loader after mount
   useEffect(() => {
@@ -47,28 +48,28 @@ const ParentLayout = () => {
   const menuItems = [
     {
       label: "Dashboard",
-       path: `/${prefix}/dashboard`,
+       path: `/${name}/dashboard`,
     },
     {
       label: "Students",
       children: [
-        { label: "My Student", path: `/${prefix}/my-student-list` },
-        { label: "Add Student", path: `/${prefix}/add-student` },
-        { label: "Change Student Password", path: `/${prefix}/change-password` },
+        { label: "My Student", path: `/${name}/my-student-list` },
+        { label: "Add Student", path: `/${name}/add-student` },
+        { label: "Change Student Password", path: `/${name}/change-password` },
       ],
     },
     {
       label: "Progress",
       children: [
-        { label: "End of Report", path: `/${prefix}/end-of-report` },
-        { label: "Course Target Area", path: `/${prefix}/course-target-area` },
-        { label: "Finished Test", path: `/${prefix}/finished-test` },
-        { label: "Test Scores", path: `/${prefix}/test-scores` },
+        { label: "End of Report", path: `/${name}/end-of-report` },
+        { label: "Course Target Area", path: `/${name}/course-target-area` },
+        { label: "Finished Test", path: `/${name}/finished-test` },
+        { label: "Test Scores", path: `/${name}/test-scores` },
       ],
     },
     {
       label: "Setting",
-      path: `/${prefix}/settings`,
+      path: `/${name}/settings`,
     },
   ];
 
@@ -94,7 +95,7 @@ const ParentLayout = () => {
         >
           <Toolbar sx={{ justifyContent: "space-between" }}>
             <Typography variant="h6" noWrap sx={{ color: "#fff", fontWeight: "bold" }}>
-              Parent Panel
+               📘 {CapitalizeFirstLetter(name)} Panel
             </Typography>
 
             <Box>

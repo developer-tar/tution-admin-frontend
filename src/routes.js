@@ -38,6 +38,17 @@ import ParentDashboard from "./pages/Parent/Dashboard";
 import EndOfReport from "./pages/Parent/Progress/EndOfReport";
 import FinishedTest from "./pages/Parent/Progress/FinishedTest";
 import Setting from "./pages/Parent/Setting";
+
+
+//============ STUDENT ============
+//dashboard route
+import StudentDashboard from "./pages/Student/Dashboard";
+//homework route
+import MyCourseTest from "./pages/Student/Homework/MyCourseTest";
+
+//videos route
+import MyCourseVideo from "./pages/Student/Video/MyCourseVideo";
+import MyCourseView from "./pages/Student/Video/MyCourseView";
 // ============ AUTH GUARDS ============
 
 // General Protected Route
@@ -76,7 +87,7 @@ const GuestRoute = ({ children }) => {
       case "student":
         return <Navigate to="/student" />;
       case "parent":
-        return <Navigate to="/parent/dashboard" />;
+        return <Navigate to="/parent/" />;
       case "tutor":
         return <Navigate to="/tutor" />;
       case "admin":
@@ -97,7 +108,7 @@ const RedirectByRole = () => {
     case "student":
       return <Navigate to="/student" />;
     case "parent":
-      return <Navigate to="/parent/dashboard" />;
+      return <Navigate to="/parent" />;
     case "tutor":
       return <Navigate to="/tutor" />;
     case "admin":
@@ -147,20 +158,29 @@ const AppRoutes = () => {
       </Route>
 
       {/* STUDENT ROUTES */}
-      <Route path="/student/" element={
+      <Route path="student" element={
         <RequireRole allowedRoles={["student"]}>
           <StudentLayout />
         </RequireRole>
       }>
-
+        <Route index element={<StudentDashboard />} />  
+        { /*student homework routes */}
+        <Route path="my-course-test" element={<MyCourseTest />} />
+        <Route path="course-target-area" element={<MyStudentList />} />
+        <Route path="test-scores" element={<TestScores />} />
+        <Route path="finished-test" element={<FinishedTest />} />
+       
         <Route path="videos" element={<VideoLessonsPage />} />
         <Route path="topic/content/view/:topic_id" element={<TopicContentView />} />
         <Route path="subtopic/content/view/:sub_topic_id" element={<SubTopicContentView />} />
         <Route path="my-course-video-page" element={<MyCourseVideoPage />} />
-        <Route index element={<Dashboard />} />
+        
         <Route path="add-student" element={<AddStudent />} />
         <Route path="my-current-assignment" element={<MyCurrentCourseAssignment />} />
         <Route path="test" element={<StudentTest />} />
+        { /*student video routes */}
+        <Route path="my-course-video" element={<MyCourseVideo />} />
+        <Route path="my-course-view" element={<MyCourseView />} />
       </Route>
 
       {/* PARENT ROUTES */}
@@ -169,8 +189,7 @@ const AppRoutes = () => {
           <ParentLayout />
         </RequireRole>
       }>
-       <Route index element={<ParentDashboard />} /> {/* 👈 Fix: default content at /parent/ */}
-       <Route path="dashboard" element={<ParentDashboard />} />
+       <Route index element={<ParentDashboard />} /> 
         { /* parent student routes */}
         <Route path="add-student" element={<AddStudent />} />
         <Route path="my-student-list" element={<MyStudentList />} />
