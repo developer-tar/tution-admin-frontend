@@ -27,34 +27,37 @@ const ParentLayout = () => {
             [label]: !prev[label],
         }));
     };
-    const prefix = '/parent/'
+   const prefix = process.env.REACT_APP_PARENT_PREFIX; //getting the prefix from the environment variable
 
     const menuItems = [
         {
             label: "Students",
             children: [
-                { label: "My Student", path: `${prefix}course` },
-                { label: "New Student", path: `${prefix}new-student` },
-                { label: "Change Student Password", path: `${prefix}course-report` },
+                { label: "My Student", path: `/${prefix}/my-student-list` },
+                { label: "Add Student", path: `/${prefix}/add-student` },
+                { label: "Change Student Password", path: `/${prefix}/change-password` },
             ],
         },
         {
             label: "Progress",
             children: [
-                { label: "Manage Assignments", path: `${prefix}course-assignment` },
-                { label: "Assignments List", path: `${prefix}assignment-list` },
+                { label: "End of Report", path: `/${prefix}/end-of-report` },
+                { label: "Course Target Area", path: `/${prefix}/course-target-area` },
+                { label: "Finished Test", path: `/${prefix}/finished-test` },
+                { label: "Test Scores", path: `/${prefix}/test-scores` },
+
             ],
         },
         {
             label: "Videes",
             children: [
-                { label: "Manage Content", path: `${prefix}course-content` },
-                { label: "Topic List", path: `${prefix}topicsubtopic-list` },
+                { label: "Manage Content", path: `/${prefix}/course-content` },
+                { label: "Topic List", path: `/${prefix}/topicsubtopic-list` },
             ],
         },
         {
-            label: "Announcements",
-            path: `${prefix}course-test`,
+            label: "Setting",
+            path: `/${prefix}/settings`,
         },
     ];
 

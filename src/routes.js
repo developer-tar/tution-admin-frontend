@@ -22,10 +22,20 @@ import StudentPannel from "./pages/StudentPannel";
 import MyCurrentCourseAssignment from "./pages/Student/MyCurrentCourseAssignment";
 import VideoLessonsPage from "./pages/VideoLessonsPage";
 import MyCourseVideoPage from "./pages/MyCourseVideoPage";
-import NewStudentPage from "./pages/Parent/AddStudentForm";
 import TopicContentView from "./pages/Student/TopicContentView";
 import SubTopicContentView from "./pages/Student/SubTopicContentView";
 import StudentTest from "./pages/Student/StudentTest";
+
+//============ PARENT ============
+// student routes
+import MyStudentList from "./pages/Parent/Student/MyStudentList";
+import AddStudent from "./pages/Parent/Student/AddStudent";
+import ChangePassword from "./pages/Parent/Student/ChangePassword";
+
+import TestScores from "./pages/Parent/Progress/TestScores";
+//setting route
+import Setting from "./pages/Parent/Setting";
+import EndOfReport from "./pages/Parent/Progress/EndOfReport";
 // ============ AUTH GUARDS ============
 
 // General Protected Route
@@ -146,7 +156,7 @@ const AppRoutes = () => {
         <Route path="subtopic/content/view/:sub_topic_id" element={<SubTopicContentView />} />
         <Route path="my-course-video-page" element={<MyCourseVideoPage />} />
         <Route index element={<Dashboard />} />
-        <Route path="new-student" element={<NewStudentPage />} />
+        <Route path="add-student" element={<AddStudent />} />
         <Route path="my-current-assignment" element={<MyCurrentCourseAssignment />} />
         <Route path="test" element={<StudentTest />} />
       </Route>
@@ -158,7 +168,20 @@ const AppRoutes = () => {
         </RequireRole>
       }>
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="new-student" element={<NewStudentPage />} />
+        { /* parent student routes */}
+        <Route path="add-student" element={<AddStudent />} />
+        <Route path="my-student-list" element={<MyStudentList />} />
+        <Route path="change-password" element={<ChangePassword />} />
+
+        { /* parent student progress routes */}
+        <Route path="end-of-report" element={<EndOfReport />} />
+        <Route path="course-target-area" element={<MyStudentList />} />
+        <Route path="cohort-analysis" element={<ChangePassword />} />
+        <Route path="finished-test" element={<ChangePassword />} />
+        <Route path="test-scores" element={<TestScores />} />
+
+        { /* parent setting routes */}
+        <Route path="settings" element={<Setting />} />
       </Route>
 
       {/* TUTOR ROUTES */}

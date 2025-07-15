@@ -27,34 +27,34 @@ const StudentLayout = () => {
             [label]: !prev[label],
         }));
     };
-    const prefix = '/student/'
 
+    const prefix = process.env.REACT_APP_STUDENT_PREFIX; //getting the prefix from the environment variable
     const menuItems = [
         {
             label: "Homework",
             children: [
-                { label: "My Course Assignment", path: `${prefix}my-current-assignment` },
-                { label: "My Course Test", path: `${prefix}new-student` },
+                { label: "My Course Assignment", path: `/${prefix}/my-current-assignment` },
+                { label: "My Course Test", path: `/${prefix}/add-student` },
             ],
         },
         {
             label: "Video",
             children: [
-                { label: "My Course Video", path: `${prefix}course-assignment` },
-                { label: "My Video Views", path: `${prefix}assignment-list` },
+                { label: "My Course Video", path: `/${prefix}/course-assignment` },
+                { label: "My Video Views", path: `/${prefix}/assignment-list` },
             ],
         },
         {
             label: "Progress",
             children: [
-                { label: "End of report", path: `${prefix}course-content` },
-                { label: "Course Target Area", path: `${prefix}topicsubtopic-list` },
-                { label: "Test Scores", path: `${prefix}topicsubtopic-list` },
+                { label: "End of report", path: `/${prefix}/course-content` },
+                { label: "Course Target Area", path: `/${prefix}/topicsubtopic-list` },
+                { label: "Test Scores", path: `/${prefix}/topicsubtopic-list` },
             ],
         },
         {
             label: "Announcements",
-            path: `${prefix}course-test`,
+            path: `/${prefix}/course-test`,
         },
     ];
 
@@ -73,7 +73,7 @@ const StudentLayout = () => {
             >
                 <Toolbar>
                     <Typography variant="h6" noWrap sx={{ color: "#fff", fontWeight: "bold" }}>
-                        Parent Panel
+                        Student Panel
                     </Typography>
                 </Toolbar>
             </AppBar>

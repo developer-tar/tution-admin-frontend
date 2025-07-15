@@ -8,13 +8,13 @@ import { useForm } from "react-hook-form";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import api from "../../api";
-import useCommonDropdowns from "../../hooks/useCommonDropdowns";
-import DropdownField from "../../components/DropdownField";
-import InputField from "../../components/InputField";
-import TextareaField from "../../components/TextareaField";
-import BooleanSelectField from "../../components/BooleanSelectField";
-import SubmitButton from "../../components/SubmitButton";
+import api from "../../../api";
+import useCommonDropdowns from "../../../hooks/useCommonDropdowns";
+import DropdownField from "../../../components/DropdownField";
+import InputField from "../../../components/InputField";
+import TextareaField from "../../../components/TextareaField";
+import BooleanSelectField from "../../../components/BooleanSelectField";
+import SubmitButton from "../../../components/SubmitButton";
 
 const dropdownParams = [
   "Genders",
@@ -26,7 +26,7 @@ const dropdownParams = [
 ];
 
 
-const AddStudentForm = () => {
+const AddStudent = () => {
   const [loading, setLoading] = useState(false);
   const { dropdowns, loading: dropdownLoading } = useCommonDropdowns(
     dropdownParams
@@ -232,4 +232,4 @@ const AddStudentForm = () => {
   );
 };
 
-export default AddStudentForm;
+export default AddStudent;
