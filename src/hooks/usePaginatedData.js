@@ -7,24 +7,28 @@ const usePaginatedData = ({
   queryParams = {},
   defaultPage = 0,
   rowsPerPage = 10,
+  enabled = true,
 }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(defaultPage);
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!endpoint || !queryParams) return;
+    if (!enabled) return;
 
+    const fetchData = async () => {
       setLoading(true);
       try {
         const res = await api.get(endpoint, {
           params: { ...queryParams },
         });
 
-        const list = res.data?.data?.data || [];
-        setData(list);
-        if (!list.length) toast.info("No record found");
+        const list = res.data?.data?.data || res.data?.data || [];
+
+        setData(Array.isArray(list) ? list : []);
+        if (Array.isArray(list) && list.length === 0) {
+          toast.info("No record found");
+        }
       } catch (error) {
         toast.error("Failed to load data");
         setData([]);
@@ -34,7 +38,7 @@ const usePaginatedData = ({
     };
 
     fetchData();
-  }, [endpoint, JSON.stringify(queryParams)]);
+  }, [endpoint, JSON.stringify(queryParams), enabled]);
 
   return { data, loading, page, setPage, rowsPerPage };
 };

@@ -48,6 +48,10 @@ const StudentLayout = () => {
 
     const menuItems = [
         {
+            label: "Dashboard",
+            path: `/${name}`,
+        },
+        {
             label: "Homework",
             children: [
                 { label: "My Course Assignment", path: `/${name}/my-current-assignment` },
