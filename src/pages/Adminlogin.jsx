@@ -11,8 +11,7 @@ import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import axios from "axios";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify"
 import { useNavigate } from "react-router-dom";
 import { button, icon } from "./style";
 
@@ -165,8 +164,6 @@ const AdminLogin = () => {
           </Box>
         </Grid>
       </Grid>
-
-      <ToastContainer position="top-right" autoClose={3000} />
     </>
   );
 };

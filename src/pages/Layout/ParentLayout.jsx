@@ -11,10 +11,11 @@ import {
   ListItemText,
   Toolbar,
   Typography,
+  Button
 } from "@mui/material";
 import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-
+import logout  from "../../logout";
 const drawerWidth = 240;
 
 const ParentLayout = () => {
@@ -22,6 +23,11 @@ const ParentLayout = () => {
   const location = useLocation();
   const [openMenus, setOpenMenus] = useState({});
   const [loading, setLoading] = useState(true);  // loader state
+  
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };//logout 
 
   const handleToggle = (label) => {
     setOpenMenus((prev) => ({
@@ -82,16 +88,35 @@ const ParentLayout = () => {
             zIndex: (theme) => theme.zIndex.drawer + 1,
             background: "linear-gradient(90deg, #3B2A9F 0%, #D62926 100%)",
             boxShadow: "none",
-            top: loading ? "4px" : 0, // keep space if loader is visible, else 0
+            top: loading ? "4px" : 0,
             transition: "top 0.3s",
           }}
         >
-          <Toolbar>
+          <Toolbar sx={{ justifyContent: "space-between" }}>
             <Typography variant="h6" noWrap sx={{ color: "#fff", fontWeight: "bold" }}>
               Parent Panel
             </Typography>
+
+            <Box>
+              <Button
+                onClick={handleLogout}
+                variant="outlined"
+                size="small"
+                sx={{
+                  color: "#fff",
+                  borderColor: "#fff",
+                  "&:hover": {
+                    backgroundColor: "rgba(255,255,255,0.1)",
+                    borderColor: "#fff",
+                  },
+                }}
+              >
+                Logout
+              </Button>
+            </Box>
           </Toolbar>
         </AppBar>
+
 
         {/* Sidebar */}
         <Drawer

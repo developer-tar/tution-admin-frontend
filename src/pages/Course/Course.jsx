@@ -15,8 +15,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify"
 import api from "../../api";
 
 const schema = yup.object().shape({
@@ -409,7 +408,6 @@ const Course = () => {
           </Grid>
         </Grid>
       </form>
-      <ToastContainer position="top-right" autoClose={3000} />
     </Box>
   );
 };

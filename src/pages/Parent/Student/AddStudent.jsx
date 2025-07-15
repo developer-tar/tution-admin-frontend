@@ -5,8 +5,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useForm } from "react-hook-form";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify"
 
 import api from "../../../api";
 import useCommonDropdowns from "../../../hooks/useCommonDropdowns";
@@ -227,7 +226,6 @@ const AddStudent = () => {
 
         </Grid>
       </form>
-      <ToastContainer />
     </Box>
   );
 };

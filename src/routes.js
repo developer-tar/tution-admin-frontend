@@ -1,43 +1,43 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 
 // Pages
-import SignUp from "./pages/SignUp";
-import Login from "./pages/Login";
 import AdminLogin from "./pages/Adminlogin";
-import Dashboard from "./pages/Student/Dashboard";
 import Course from "./pages/Course/Course";
 import CourseAssignment from "./pages/Course/CourseAssignment";
-import CourseContent from "./pages/Course/CourseContent";
-import CourseTest from "./pages/Course/CourseTest";
-import CourseList from "./pages/Course/CourseList";
 import CourseAssignmentList from "./pages/Course/CourseAssignmentList";
-import TopicSubtopicList from "./pages/Course/TopicList";
-import TestList from "./pages/Course/TestList";
+import CourseContent from "./pages/Course/CourseContent";
+import CourseList from "./pages/Course/CourseList";
 import CourseReport from "./pages/Course/CourseReport";
-import Layout from "./pages/Layout/Layout";
+import CourseTest from "./pages/Course/CourseTest";
+import TestList from "./pages/Course/TestList";
+import TopicSubtopicList from "./pages/Course/TopicList";
 import AdminLayout from "./pages/Layout/AdminLayout";
-import StudentLayout from "./pages/Layout/StudentLayout";
+import Layout from "./pages/Layout/Layout";
 import ParentLayout from "./pages/Layout/ParentLayout";
-import StudentPannel from "./pages/StudentPannel";
-import MyCurrentCourseAssignment from "./pages/Student/MyCurrentCourseAssignment";
-import VideoLessonsPage from "./pages/VideoLessonsPage";
+import StudentLayout from "./pages/Layout/StudentLayout";
+import Login from "./pages/Login";
 import MyCourseVideoPage from "./pages/MyCourseVideoPage";
-import TopicContentView from "./pages/Student/TopicContentView";
-import SubTopicContentView from "./pages/Student/SubTopicContentView";
+import SignUp from "./pages/SignUp";
+import Dashboard from "./pages/Student/Dashboard";
+import MyCurrentCourseAssignment from "./pages/Student/MyCurrentCourseAssignment";
 import StudentTest from "./pages/Student/StudentTest";
+import SubTopicContentView from "./pages/Student/SubTopicContentView";
+import TopicContentView from "./pages/Student/TopicContentView";
+import StudentPannel from "./pages/StudentPannel";
+import VideoLessonsPage from "./pages/VideoLessonsPage";
 
 //============ PARENT ============
 // student routes
-import MyStudentList from "./pages/Parent/Student/MyStudentList";
 import AddStudent from "./pages/Parent/Student/AddStudent";
 import ChangePassword from "./pages/Parent/Student/ChangePassword";
+import MyStudentList from "./pages/Parent/Student/MyStudentList";
 
 import TestScores from "./pages/Parent/Progress/TestScores";
 //setting route
-import Setting from "./pages/Parent/Setting";
+import ParentDashboard from "./pages/Parent/Dashboard";
 import EndOfReport from "./pages/Parent/Progress/EndOfReport";
 import FinishedTest from "./pages/Parent/Progress/FinishedTest";
-import ParentDashboard from "./pages/Parent/Dashboard";
+import Setting from "./pages/Parent/Setting";
 // ============ AUTH GUARDS ============
 
 // General Protected Route
@@ -76,7 +76,7 @@ const GuestRoute = ({ children }) => {
       case "student":
         return <Navigate to="/student" />;
       case "parent":
-        return <Navigate to="/parent" />;
+        return <Navigate to="/parent/dashboard" />;
       case "tutor":
         return <Navigate to="/tutor" />;
       case "admin":
@@ -97,7 +97,7 @@ const RedirectByRole = () => {
     case "student":
       return <Navigate to="/student" />;
     case "parent":
-      return <Navigate to="/parent" />;
+      return <Navigate to="/parent/dashboard" />;
     case "tutor":
       return <Navigate to="/tutor" />;
     case "admin":
@@ -169,7 +169,8 @@ const AppRoutes = () => {
           <ParentLayout />
         </RequireRole>
       }>
-        <Route path="dashboard" element={<ParentDashboard />} />
+       <Route index element={<ParentDashboard />} /> {/* 👈 Fix: default content at /parent/ */}
+       <Route path="dashboard" element={<ParentDashboard />} />
         { /* parent student routes */}
         <Route path="add-student" element={<AddStudent />} />
         <Route path="my-student-list" element={<MyStudentList />} />

@@ -16,8 +16,7 @@ import { styled } from '@mui/material/styles';
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 import * as yup from "yup";
 import api from "../api";
 import { button, icon } from "./style";
@@ -279,8 +278,6 @@ const Login = () => {
           </Box>
         </Grid>
       </Grid>
-
-      <ToastContainer position="top-right" autoClose={3000} />
     </>
   );
 };

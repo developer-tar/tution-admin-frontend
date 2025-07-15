@@ -5,8 +5,7 @@ import {
     Typography,
 } from "@mui/material";
 import { useForm } from "react-hook-form";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify"
 
 import api from "../../../api";
 import InputField from "../../../components/InputField";
@@ -108,7 +107,6 @@ const ChangePassword = () => {
                     />
                 </Grid>
             </form>
-            <ToastContainer />
         </Box>
     );
 };

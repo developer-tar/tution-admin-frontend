@@ -17,8 +17,7 @@ import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import api from "../api";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify"
 import { button, icon } from "./style";
 import { styled } from '@mui/material/styles';
 import CommonLoader from "../components/CommonLoader";
@@ -320,8 +319,6 @@ export default function SignUp() {
 
       </Box>
 
-      {/* Toast Message Container */}
-      <ToastContainer position="top-right" autoClose={3000} />
     </>
   );
 }
