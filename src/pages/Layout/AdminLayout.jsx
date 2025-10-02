@@ -19,6 +19,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import TopicIcon from '@mui/icons-material/Topic';
 import QuizIcon from '@mui/icons-material/Quiz';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import AccessTimeIcon from '@mui/icons-material/AccessTime'; 
 
 const drawerWidth = 240;
 
@@ -29,6 +30,7 @@ const AdminLayout = () => {
 
   const menuItems = [
     { label: "Course", path: `/${name}/course-list`, icon: <SchoolIcon /> },
+    { label: "Timeslots", path: "/admin/timeslot", icon: <AccessTimeIcon /> }, 
     { label: "Assignments", path: `/${name}/assignment-list`, icon: <AssignmentIcon /> },
     { label: "Topic", path: `/${name}/topicsubtopic-list`, icon: <TopicIcon /> },
     { label: "Test", path: `/${name}/test-list`, icon: <QuizIcon /> },

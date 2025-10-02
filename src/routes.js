@@ -25,6 +25,7 @@ import SubTopicContentView from "./pages/Student/SubTopicContentView";
 import TopicContentView from "./pages/Student/TopicContentView";
 import StudentPannel from "./pages/StudentPannel";
 import VideoLessonsPage from "./pages/VideoLessonsPage";
+import TimeSlots from "./pages/Course/CourseTimeSlot";
 
 //============ START PARENT ROUTING ============
 // student routes
@@ -152,6 +153,7 @@ const AppRoutes = () => {
         <Route path="course-content" element={<CourseContent />} />
         <Route path="course-test" element={<CourseTest />} />
         <Route path="course-list" element={<CourseList />} />
+        <Route path="timeslot" element={<TimeSlots />} />
         <Route path="assignment-list" element={<CourseAssignmentList />} />
         <Route path="topicsubtopic-list" element={<TopicSubtopicList />} />
         <Route path="test-list" element={<TestList />} />
