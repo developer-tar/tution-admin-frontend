@@ -27,6 +27,10 @@ import StudentPannel from "./pages/StudentPannel";
 import VideoLessonsPage from "./pages/VideoLessonsPage";
 import TimeSlots from "./pages/Course/CourseTimeSlot";
 
+// Mock Exam imports
+import MockExamCategory from "./pages/MockExam/MockExamCategory";
+import MockExam from "./pages/MockExam/MockExam";
+
 //============ START PARENT ROUTING ============
 // student routes
 import AddStudent from "./pages/Parent/Student/AddStudent";
@@ -158,6 +162,8 @@ const AppRoutes = () => {
         <Route path="topicsubtopic-list" element={<TopicSubtopicList />} />
         <Route path="test-list" element={<TestList />} />
         <Route path="course-report" element={<CourseReport />} />
+        <Route path="mock-exam-categories" element={<MockExamCategory />} />
+        <Route path="mock-exams" element={<MockExam />} />
       </Route>
 
       {/* STUDENT ROUTES */}

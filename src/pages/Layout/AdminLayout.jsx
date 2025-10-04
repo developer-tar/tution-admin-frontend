@@ -19,7 +19,8 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import TopicIcon from '@mui/icons-material/Topic';
 import QuizIcon from '@mui/icons-material/Quiz';
 import BarChartIcon from '@mui/icons-material/BarChart';
-import AccessTimeIcon from '@mui/icons-material/AccessTime'; 
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import CategoryIcon from '@mui/icons-material/Category'; 
 
 const drawerWidth = 240;
 
@@ -34,6 +35,8 @@ const AdminLayout = () => {
     { label: "Assignments", path: `/${name}/assignment-list`, icon: <AssignmentIcon /> },
     { label: "Topic", path: `/${name}/topicsubtopic-list`, icon: <TopicIcon /> },
     { label: "Test", path: `/${name}/test-list`, icon: <QuizIcon /> },
+    { label: "Mock Exam Categories", path: "/admin/mock-exam-categories", icon: <CategoryIcon /> },
+    { label: "Mock Exams", path: "/admin/mock-exams", icon: <QuizIcon /> },
     { label: "Reports", path: `/${name}/course-report`, icon: <BarChartIcon /> },
   ];
 
