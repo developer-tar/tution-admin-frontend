@@ -8,6 +8,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogActions,
   IconButton,
   Divider,
   Chip,
@@ -20,6 +21,21 @@ import { toast } from "react-toastify";
 import DropdownField from "../../../components/DropdownField";
 import DataTable from "../../../components/DataTable";
 import api from "../../../api";
+
+// Gradient button style (matching admin course list)
+const gradientButtonStyle = {
+  background: 'linear-gradient(90deg, #3B2A9F 0%, #D62926 100%)',
+  color: '#fff',
+  fontWeight: 600,
+  paddingX: 2,
+  paddingY: 0.5,
+  borderRadius: 2,
+  textTransform: 'none',
+  '&:hover': {
+    background: 'linear-gradient(90deg, #3B2A9F 0%, #D62926 100%)',
+    opacity: 0.9,
+  }
+};
 
 // Dummy student list - commented out for API implementation
 // const dummyStudents = [
@@ -46,7 +62,7 @@ import api from "../../../api";
 //   },
 // ];
 
-const MyCurrentCourseAssignment = () => {
+const MyStudentList = () => {
   const { control, setValue } = useForm();
   const navigate = useNavigate();
 
@@ -63,15 +79,14 @@ const MyCurrentCourseAssignment = () => {
     to: 0,
   });
 
-  // Search and Filter State
+  // UI State Management
+  const [page, setPage] = useState(0);
+  const [rowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [page, setPage] = useState(0);
-  const rowsPerPage = 10;
-  
-  // Modal State
   const [selectedStudent, setSelectedStudent] = useState(null);
-
+  const [deletingStudentId, setDeletingStudentId] = useState(null);
+  const [deleteConfirmDialog, setDeleteConfirmDialog] = useState({ open: false, student: null });
   // Debounced search implementation
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -175,6 +190,19 @@ const MyCurrentCourseAssignment = () => {
       target_school: student.target_school?.name || 'N/A',
       bio: student.bio || 'N/A',
       created_at: student.created_at,
+      updated_at: student.updated_at,
+      // Include all the original data for the modal
+      show_answer_after_n_attempts: student.show_answer_after_n_attempts,
+      allow_view_examiner_report_for_mocks: student.allow_view_examiner_report_for_mocks,
+      can_change_password: student.can_change_password,
+      // Keep original nested objects for modal display
+      student: student.student,
+      year_obj: student.year,
+      month_obj: student.month,
+      day_obj: student.day,
+      region_obj: student.region,
+      gender_obj: student.gender,
+      target_school_obj: student.target_school,
     }));
   }, [students]);
 
@@ -208,12 +236,83 @@ const MyCurrentCourseAssignment = () => {
   };
 
   const handleDeleteStudent = (student) => {
-    // Add delete confirmation logic here
-    if (window.confirm(`Are you sure you want to delete student "${student.first_name} ${student.last_name}"?`)) {
-      // TODO: Implement delete API call
-      console.log("Delete student:", student.id);
-      toast.info("Delete functionality will be implemented soon!");
+    // Open confirmation dialog
+    setDeleteConfirmDialog({ open: true, student });
+  };
+
+  const handleConfirmDelete = async () => {
+    const student = deleteConfirmDialog.student;
+    if (!student) return;
+
+    try {
+      setDeletingStudentId(student.id);
+      setDeleteConfirmDialog({ open: false, student: null });
+      
+      // Call DELETE API
+      const response = await api.delete(`parent/student/${student.id}`);
+      
+      // Handle success response
+      if (response.data.success !== false) {
+        toast.success("Student deleted successfully!");
+        
+        // Refresh the student list
+        await fetchStudents(debouncedSearch, page + 1);
+      } else {
+        throw new Error(response.data.message || "Failed to delete student");
+      }
+      
+    } catch (err) {
+      console.error("Error deleting student:", err);
+      
+      // Handle different error responses
+      if (!err.response) {
+        toast.error('Network error. Please check your internet connection.');
+        return;
+      }
+
+      const { status, data } = err.response;
+
+      switch (status) {
+        case 401:
+          // Unauthorized - redirect to login
+          localStorage.removeItem('token');
+          toast.error('Session expired. Please login again.');
+          window.location.href = '/login';
+          break;
+
+        case 403:
+          // Forbidden
+          toast.error('You do not have permission to delete this student.');
+          break;
+
+        case 404:
+          // Not Found
+          toast.error(data.message || 'Student not found or you do not have permission to delete this student.');
+          // Refresh the list to remove the student from UI
+          await fetchStudents(debouncedSearch, page + 1);
+          break;
+
+        case 422:
+          // Validation Error
+          const errorMessage = data.errors?.student?.[0] || data.message || 'Validation error occurred.';
+          toast.error(errorMessage);
+          break;
+
+        case 500:
+          // Server Error
+          toast.error(data.message || 'Server error occurred. Please try again later.');
+          break;
+
+        default:
+          toast.error(data.message || 'An error occurred while deleting the student.');
+      }
+    } finally {
+      setDeletingStudentId(null);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmDialog({ open: false, student: null });
   };
 
   // Removed status filter fields
@@ -251,19 +350,72 @@ const MyCurrentCourseAssignment = () => {
             size="small"
             color="error"
             onClick={() => handleDeleteStudent(row)}
+            disabled={deletingStudentId === row.id}
           >
-            Delete
+            {deletingStudentId === row.id ? 'Deleting...' : 'Delete'}
           </Button>
         </Box>
       ),
     }
-  ], []);
+  ], [deletingStudentId]);
 
   return (
     <Box sx={{ py: 4 }}>
-      <Typography variant="h5" mb={2}>
-        My Student List
-      </Typography>
+      {/* Fancy Header Section */}
+      <Box 
+        sx={{ 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          borderRadius: 3,
+          p: 3,
+          mb: 3,
+          color: 'white',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box 
+              sx={{ 
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                borderRadius: '50%',
+                p: 1.5,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <span style={{ fontSize: '24px' }} role="img" aria-label="students">👨‍🎓</span>
+            </Box>
+            <Box>
+              <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+                My Student List
+              </Typography>
+              <Typography variant="body1" sx={{ opacity: 0.9, fontSize: '14px' }}>
+                Manage and monitor your students' progress
+              </Typography>
+            </Box>
+          </Box>
+          <Button
+            sx={{
+              ...gradientButtonStyle,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+              '&:hover': {
+                ...gradientButtonStyle['&:hover'],
+                transform: 'translateY(-2px)',
+                boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
+              },
+              transition: 'all 0.3s ease'
+            }}
+            onClick={() => navigate('/parent/add-student')}
+          >
+            <span style={{ fontSize: '18px', fontWeight: 'bold' }}>+</span>
+            Add Student
+          </Button>
+        </Box>
+      </Box>
 
       {/* Error Display */}
       {error && (
@@ -369,9 +521,9 @@ const MyCurrentCourseAssignment = () => {
                 </Grid>
                 
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle1"><strong>Gender:</strong> {selectedStudent.gender?.name || selectedStudent.gender || 'N/A'}</Typography>
-                  <Typography variant="subtitle1"><strong>Region:</strong> {selectedStudent.region?.name || selectedStudent.region || 'N/A'}</Typography>
-                  <Typography variant="subtitle1"><strong>Target School:</strong> {selectedStudent.target_school?.name || selectedStudent.target_school || 'N/A'}</Typography>
+                  <Typography variant="subtitle1"><strong>Gender:</strong> {selectedStudent.gender_obj?.name || selectedStudent.gender || 'N/A'}</Typography>
+                  <Typography variant="subtitle1"><strong>Region:</strong> {selectedStudent.region_obj?.name || selectedStudent.region || 'N/A'}</Typography>
+                  <Typography variant="subtitle1"><strong>Target School:</strong> {selectedStudent.target_school_obj?.name || selectedStudent.target_school || 'N/A'}</Typography>
                 </Grid>
 
                 <Grid item xs={12}><Divider sx={{ my: 2 }} /></Grid>
@@ -384,13 +536,13 @@ const MyCurrentCourseAssignment = () => {
                 </Grid>
                 
                 <Grid item xs={12} md={4}>
-                  <Typography variant="subtitle1"><strong>Birth Year:</strong> {selectedStudent.year?.name || selectedStudent.year || 'N/A'}</Typography>
+                  <Typography variant="subtitle1"><strong>Birth Year:</strong> {selectedStudent.year_obj?.name || selectedStudent.year || 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <Typography variant="subtitle1"><strong>Birth Month:</strong> {selectedStudent.month?.name || selectedStudent.month || 'N/A'}</Typography>
+                  <Typography variant="subtitle1"><strong>Birth Month:</strong> {selectedStudent.month_obj?.name || selectedStudent.month || 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <Typography variant="subtitle1"><strong>Birth Day:</strong> {selectedStudent.day?.name || selectedStudent.day || 'N/A'}</Typography>
+                  <Typography variant="subtitle1"><strong>Birth Day:</strong> {selectedStudent.day_obj?.name || selectedStudent.day || 'N/A'}</Typography>
                 </Grid>
 
                 <Grid item xs={12}><Divider sx={{ my: 2 }} /></Grid>
@@ -465,8 +617,56 @@ const MyCurrentCourseAssignment = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteConfirmDialog.open}
+        onClose={handleCancelDelete}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'error.main' }}>
+          <span role="img" aria-label="warning">⚠️</span>
+          Confirm Delete
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Are you sure you want to delete this student? This action cannot be undone.
+          </Typography>
+          {deleteConfirmDialog.student && (
+            <Box sx={{ p: 2, backgroundColor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'grey.300' }}>
+              <Typography variant="subtitle1" fontWeight={600}>
+                <strong>Student:</strong> {deleteConfirmDialog.student.first_name} {deleteConfirmDialog.student.last_name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Email:</strong> {deleteConfirmDialog.student.email}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Display Name:</strong> {deleteConfirmDialog.student.display_name}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3, gap: 1 }}>
+          <Button
+            onClick={handleCancelDelete}
+            variant="outlined"
+            color="inherit"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            color="error"
+            disabled={deletingStudentId === deleteConfirmDialog.student?.id}
+          >
+            {deletingStudentId === deleteConfirmDialog.student?.id ? 'Deleting...' : 'Delete Student'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
 
-export default MyCurrentCourseAssignment;
+export default MyStudentList;

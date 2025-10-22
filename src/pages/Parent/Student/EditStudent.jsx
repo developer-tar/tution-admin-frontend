@@ -61,15 +61,89 @@ const EditStudent = () => {
     },
   });
 
+  useEffect(() => {
+    if (studentId) {
+      fetchStudentData();
+    }
+  }, [studentId]);
+
+  // Complete Error Handling Function
+  const handleApiError = (error, defaultMessage = 'An error occurred') => {
+    console.error('API Error:', error);
+
+    // Network/Connection Error
+    if (!error.response) {
+      return {
+        success: false,
+        message: 'Network error. Please check your internet connection.',
+        errors: {}
+      };
+    }
+
+    const { status, data } = error.response;
+
+    switch (status) {
+      case 401:
+        // Unauthorized - redirect to login
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return {
+          success: false,
+          message: 'Session expired. Please login again.',
+          errors: {}
+        };
+
+      case 403:
+        // Forbidden
+        return {
+          success: false,
+          message: 'You do not have permission to perform this action.',
+          errors: {}
+        };
+
+      case 404:
+        // Not Found - Student not found or no permission
+        return {
+          success: false,
+          message: data.message || 'Student not found or access denied.',
+          errors: data.data || {}
+        };
+
+      case 422:
+        // Validation Error
+        return {
+          success: false,
+          message: 'Please check the form for errors.',
+          errors: data.errors || {},
+          validationErrors: true
+        };
+
+      case 500:
+        // Server Error
+        return {
+          success: false,
+          message: data.message || 'Server error. Please try again later.',
+          errors: data.data || {}
+        };
+
+      default:
+        return {
+          success: false,
+          message: data.message || defaultMessage,
+          errors: data.data || {}
+        };
+    }
+  };
+
   // Fetch student data for editing
   const fetchStudentData = async () => {
     setFetchingData(true);
     try {
       const response = await api.get(`parent/student/${studentId}/edit`);
-      
+
       if (response.data.success) {
         const studentData = response.data.data;
-        
+
         // Set form values with fetched data
         setValue("first_name", studentData.student?.first_name || "");
         setValue("last_name", studentData.student?.last_name || "");
@@ -85,64 +159,64 @@ const EditStudent = () => {
         setValue("allow_view_examiner_report_for_mocks", studentData.allow_view_examiner_report_for_mocks || false);
         setValue("can_change_password", studentData.can_change_password || false);
         setValue("bio", studentData.bio || "");
-        
+
         toast.success("Student data loaded successfully!");
       } else {
         throw new Error(response.data.message || "Failed to fetch student data");
       }
     } catch (err) {
-      console.error("Error fetching student data:", err);
+      const errorResult = handleApiError(err, "Failed to fetch student data");
+      toast.error(errorResult.message);
       
-      if (err.response?.status === 401) {
-        toast.error("Session expired. Please login again.");
-        window.location.href = '/login';
-        return;
+      // For 404 errors or other critical errors, redirect back to student list
+      if (err.response?.status === 404 || err.response?.status === 403) {
+        setTimeout(() => {
+          navigate("/parent/my-student-list");
+        }, 2000);
       }
-      
-      if (err.response?.status === 404) {
-        toast.error("Student not found.");
-        navigate("/parent/my-student-list");
-        return;
-      }
-      
-      const errorMessage = err.message || err.response?.data?.message || "Failed to fetch student data";
-      toast.error(errorMessage);
-      navigate("/parent/my-student-list");
     } finally {
       setFetchingData(false);
     }
   };
 
-  useEffect(() => {
-    if (studentId) {
-      fetchStudentData();
-    }
-  }, [studentId]);
-
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      await api.put(`parent/student/${studentId}`, data);
-      toast.success("Student updated successfully!");
-      navigate("/parent/my-student-list");
+      const response = await api.put(`parent/student/${studentId}`, data);
+      
+      if (response.data.success) {
+        toast.success(response.data.message || "Student updated successfully!");
+        navigate("/parent/my-student-list");
+      } else {
+        toast.error(response.data.message || "Failed to update student");
+      }
     } catch (err) {
-      const backendErrors = err.response?.data?.errors;
-      if (backendErrors) {
-        Object.entries(backendErrors).forEach(([field, messages]) => {
+      const errorResult = handleApiError(err, "Failed to update student");
+      
+      if (errorResult.validationErrors && errorResult.errors) {
+        // Handle validation errors by setting form field errors
+        Object.entries(errorResult.errors).forEach(([field, messages]) => {
           setError(field, {
             type: "server",
-            message: messages[0],
+            message: Array.isArray(messages) ? messages[0] : messages,
           });
         });
+        toast.error(errorResult.message);
       } else {
-        const message = err.response?.data?.message || "Something went wrong";
-        toast.error(message);
+        // Handle other errors with toast notification
+        toast.error(errorResult.message);
+        
+        // For 404 errors, redirect back to student list
+        if (err.response?.status === 404) {
+          setTimeout(() => {
+            navigate("/parent/my-student-list");
+          }, 2000);
+        }
       }
     } finally {
       setLoading(false);
     }
   };
-
   if (fetchingData) {
     return (
       <Box p={3}>

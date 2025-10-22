@@ -1,114 +1,193 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-    Box,
-    Grid,
-    Typography,
+  Box,
+  Grid,
+  Typography,
 } from "@mui/material";
 import { useForm } from "react-hook-form";
-import { toast } from "react-toastify"
+import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 
 import api from "../../../api";
-import InputField from "../../../components/InputField";
 import DropdownField from "../../../components/DropdownField";
+import InputField from "../../../components/InputField";
 import SubmitButton from "../../../components/SubmitButton";
 
-const dummyEmails = [
-    { id: "user1@example.com", name: "tarun@example.com" },
-    { id: "user2@example.com", name: "anjali@example.com" },
-    { id: "admin@example.com", name: "rohan@example.com" },
-];
-
 const ChangePassword = () => {
-    const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [studentEmails, setStudentEmails] = useState([]);
+  const [emailsLoading, setEmailsLoading] = useState(false);
+  const navigate = useNavigate();
 
-    const {
-        control,
-        handleSubmit,
-        setError,
-        setValue,
-        formState: { errors },
-        reset,
-    } = useForm({
-        defaultValues: {
-            email: "",
-            current_password: "",
-            new_password: "",
-            new_password_confirmation: "",
-        },
-    });
+  const {
+    control,
+    handleSubmit,
+    setError,
+    formState: { errors },
+    reset,
+  } = useForm({
+    defaultValues: {
+      email_id: "",
+      current_password: "",
+      new_password: "",
+      confirm_password: "",
+    },
+  });
 
-    const onSubmit = async (data) => {
-        setLoading(true);
-        try {
-            await api.post("/change-password", data); // Adjust endpoint as needed
-            toast.success("Password changed successfully!");
-            reset();
-        } catch (err) {
-            const backendErrors = err.response?.data?.errors;
-            if (backendErrors) {
-                Object.entries(backendErrors).forEach(([field, messages]) => {
-                    setError(field, {
-                        type: "server",
-                        message: messages[0],
-                    });
-                });
-            } else {
-                const message = err.response?.data?.message || "Something went wrong";
-                toast.error(message);
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
+  // Fetch student emails on component mount
+  const fetchStudentEmails = async () => {
+    setEmailsLoading(true);
+    try {
+      const response = await api.get("parent/student-emails");
+      
+      if (response.data.success) {
+        // Transform data to match dropdown format
+        const emailOptions = response.data.data.map(student => ({
+          id: student.email,
+          name: student.email
+        }));
+        setStudentEmails(emailOptions);
+      } else {
+        throw new Error(response.data.message || "Failed to fetch student emails");
+      }
+    } catch (err) {
+      console.error("Error fetching student emails:", err);
+      
+      if (err.response?.status === 401) {
+        toast.error("Session expired. Please login again.");
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return;
+      }
+      
+      const errorMessage = err.response?.data?.message || err.message || "Failed to fetch student emails";
+      toast.error(errorMessage);
+    } finally {
+      setEmailsLoading(false);
+    }
+  };
 
-    return (
-        <Box p={3}>
-            <Typography variant="h5" mb={2}>
-                Change Password
-            </Typography>
-            <form onSubmit={handleSubmit(onSubmit)}>
-                <Grid container spacing={2}>
-                    <DropdownField
-                        control={control}
-                        name="email"
-                        label="Email"
-                        options={dummyEmails}
-                        error={errors.email}
-                        onChange={(value) => setValue("email", value)}
-                    />
+  useEffect(() => {
+    fetchStudentEmails();
+  }, []);
 
-                    <InputField
-                        control={control}
-                        name="current_password"
-                        label="Current Password"
-                        type="password"
-                        error={errors.current_password}
-                    />
+  const onSubmit = async (data) => {
+    setLoading(true);
+    try {
+      const response = await api.post("parent/student/reset-password", data);
+      
+      if (response.data.success) {
+        toast.success(response.data.message || "Student password reset successfully!");
+        reset();
+        // Redirect to student list after successful password change
+        navigate("/parent/my-student-list");
+      } else {
+        throw new Error(response.data.message || "Failed to reset password");
+      }
+    } catch (err) {
+      console.error("Error resetting password:", err);
+      
+      // Handle different error responses
+      if (!err.response) {
+        toast.error('Network error. Please check your internet connection.');
+        return;
+      }
 
-                    <InputField
-                        control={control}
-                        name="new_password"
-                        label="New Password"
-                        type="password"
-                        error={errors.new_password}
-                    />
+      const { status, data } = err.response;
 
-                    <InputField
-                        control={control}
-                        name="new_password_confirmation"
-                        label="Confirm New Password"
-                        type="password"
-                        error={errors.new_password_confirmation}
-                    />
+      switch (status) {
+        case 401:
+          // Unauthorized - redirect to login
+          localStorage.removeItem('token');
+          toast.error('Session expired. Please login again.');
+          window.location.href = '/login';
+          break;
 
-                    <SubmitButton
-                        loading={loading}
-                        label="Update Password"
-                    />
-                </Grid>
-            </form>
-        </Box>
-    );
+        case 422:
+          // Validation Error - show field-specific errors
+          const backendErrors = data.errors;
+          if (backendErrors) {
+            Object.entries(backendErrors).forEach(([field, messages]) => {
+              setError(field, {
+                type: "server",
+                message: Array.isArray(messages) ? messages[0] : messages,
+              });
+            });
+            toast.error(data.message || "Please check the form for errors.");
+          } else {
+            toast.error(data.message || "Validation error occurred.");
+          }
+          break;
+
+        case 500:
+          // Server Error
+          toast.error(data.message || 'Server error occurred. Please try again later.');
+          break;
+
+        default:
+          toast.error(data.message || 'An error occurred while resetting password.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Box p={3}>
+      <Typography variant="h5" mb={2}>
+        Reset Student Password
+      </Typography>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <Grid container spacing={2}>
+          <DropdownField
+            control={control}
+            name="email_id"
+            label="Select Student Email"
+            options={studentEmails}
+            error={errors.email_id}
+            loading={emailsLoading}
+            required={true}
+          />
+
+          <InputField
+            control={control}
+            name="current_password"
+            label="Current Password"
+            type="password"
+            error={errors.current_password}
+            loading={emailsLoading}
+            required={true}
+          />
+
+          <InputField
+            control={control}
+            name="new_password"
+            label="New Password"
+            type="password"
+            error={errors.new_password}
+            loading={emailsLoading}
+            required={true}
+          />
+
+          <InputField
+            control={control}
+            name="confirm_password"
+            label="Confirm New Password"
+            type="password"
+            error={errors.confirm_password}
+            loading={emailsLoading}
+            required={true}
+          />
+
+          <SubmitButton
+            loading={loading}
+            label="Reset Password"
+          />
+
+        </Grid>
+      </form>
+    </Box>
+  );
 };
 
 export default ChangePassword;
