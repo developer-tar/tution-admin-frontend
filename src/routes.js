@@ -34,6 +34,7 @@ import MockExam from "./pages/MockExam/MockExam";
 //============ START PARENT ROUTING ============
 // student routes
 import AddStudent from "./pages/Parent/Student/AddStudent";
+import EditStudent from "./pages/Parent/Student/EditStudent";
 import ChangePassword from "./pages/Parent/Student/ChangePassword";
 import MyStudentList from "./pages/Parent/Student/MyStudentList";
 
@@ -201,6 +202,7 @@ const AppRoutes = () => {
        <Route index element={<ParentDashboard />} /> 
         { /* parent student routes */}
         <Route path="add-student" element={<AddStudent />} />
+        <Route path="edit-student/:studentId" element={<EditStudent />} />
         <Route path="my-student-list" element={<MyStudentList />} />
         <Route path="change-password" element={<ChangePassword />} />
 

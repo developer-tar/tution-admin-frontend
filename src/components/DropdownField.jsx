@@ -10,6 +10,7 @@ const DropdownField = ({
   error,
   loading,
   onChange = () => {}, // default fallback
+  required = false,
 }) => {
   return (
     <Grid item xs={12} md={6}>
@@ -24,7 +25,7 @@ const DropdownField = ({
             <TextField
               select
               fullWidth
-              label={label}
+              label={required ? `${label} *` : label}
               {...field}
               value={field.value ?? ""} // 👈 force controlled value
               onChange={(e) => {
@@ -34,6 +35,13 @@ const DropdownField = ({
               }}
               error={!!error}
               helperText={error?.message}
+              sx={{
+                '& .MuiInputLabel-root': {
+                  '& .MuiInputLabel-asterisk': {
+                    color: 'red',
+                  },
+                },
+              }}
             >
               {options.map((item) => (
                 <MenuItem key={item.id} value={item.id}>

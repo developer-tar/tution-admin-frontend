@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Grid,
@@ -6,7 +6,7 @@ import {
 } from "@mui/material";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import api from "../../../api";
 import useCommonDropdowns from "../../../hooks/useCommonDropdowns";
@@ -25,10 +25,12 @@ const dropdownParams = [
   "TargetSchools",
 ];
 
-
-const AddStudent = () => {
+const EditStudent = () => {
   const [loading, setLoading] = useState(false);
+  const [fetchingData, setFetchingData] = useState(true);
   const navigate = useNavigate();
+  const { studentId } = useParams();
+  
   const { dropdowns, loading: dropdownLoading } = useCommonDropdowns(
     dropdownParams
   );
@@ -39,13 +41,12 @@ const AddStudent = () => {
     setError,
     formState: { errors },
     reset,
+    setValue,
   } = useForm({
     defaultValues: {
       first_name: "",
       last_name: "",
-      // email: "", // Commented out to remove prefilled data
-      // password: "", // Commented out to remove prefilled data
-      // password_confirmation: "", // Commented out to remove prefilled data
+      email: "",
       year_id: "",
       month_id: "",
       day_id: "",
@@ -60,14 +61,69 @@ const AddStudent = () => {
     },
   });
 
+  // Fetch student data for editing
+  const fetchStudentData = async () => {
+    setFetchingData(true);
+    try {
+      const response = await api.get(`parent/student/${studentId}/edit`);
+      
+      if (response.data.success) {
+        const studentData = response.data.data;
+        
+        // Set form values with fetched data
+        setValue("first_name", studentData.student?.first_name || "");
+        setValue("last_name", studentData.student?.last_name || "");
+        setValue("email", studentData.student?.email || "");
+        setValue("year_id", studentData.year_id || "");
+        setValue("month_id", studentData.month_id || "");
+        setValue("day_id", studentData.day_id || "");
+        setValue("region_id", studentData.region_id || "");
+        setValue("gender_id", studentData.gender_id || "");
+        setValue("target_school_id", studentData.target_school_id || "");
+        setValue("display_name", studentData.display_name || "");
+        setValue("show_answer_after_n_attempts", studentData.show_answer_after_n_attempts || 1);
+        setValue("allow_view_examiner_report_for_mocks", studentData.allow_view_examiner_report_for_mocks || false);
+        setValue("can_change_password", studentData.can_change_password || false);
+        setValue("bio", studentData.bio || "");
+        
+        toast.success("Student data loaded successfully!");
+      } else {
+        throw new Error(response.data.message || "Failed to fetch student data");
+      }
+    } catch (err) {
+      console.error("Error fetching student data:", err);
+      
+      if (err.response?.status === 401) {
+        toast.error("Session expired. Please login again.");
+        window.location.href = '/login';
+        return;
+      }
+      
+      if (err.response?.status === 404) {
+        toast.error("Student not found.");
+        navigate("/parent/my-student-list");
+        return;
+      }
+      
+      const errorMessage = err.message || err.response?.data?.message || "Failed to fetch student data";
+      toast.error(errorMessage);
+      navigate("/parent/my-student-list");
+    } finally {
+      setFetchingData(false);
+    }
+  };
+
+  useEffect(() => {
+    if (studentId) {
+      fetchStudentData();
+    }
+  }, [studentId]);
 
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      await api.post("parent/add/student", data);
-      toast.success("Student created successfully!");
-      reset();
-      // Redirect to student list after successful creation
+      await api.put(`parent/student/${studentId}`, data);
+      toast.success("Student updated successfully!");
       navigate("/parent/my-student-list");
     } catch (err) {
       const backendErrors = err.response?.data?.errors;
@@ -87,10 +143,20 @@ const AddStudent = () => {
     }
   };
 
+  if (fetchingData) {
+    return (
+      <Box p={3}>
+        <Typography variant="h5" mb={2}>
+          Loading Student Data...
+        </Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box p={3}>
       <Typography variant="h5" mb={2}>
-        Add New Student
+        Edit Student
       </Typography>
       <form onSubmit={handleSubmit(onSubmit)}>
         <Grid container spacing={2}>
@@ -116,24 +182,6 @@ const AddStudent = () => {
             label="Email"
             type="email"
             error={errors.email}
-            loading={dropdownLoading}
-            required={true}
-          />
-          <InputField
-            control={control}
-            name="password"
-            label="Password"
-            type="password"
-            error={errors.password}
-            loading={dropdownLoading}
-            required={true}
-          />
-          <InputField
-            control={control}
-            name="password_confirmation"
-            label="Confirm Password"
-            type="password"
-            error={errors.password_confirmation}
             loading={dropdownLoading}
             required={true}
           />
@@ -226,7 +274,6 @@ const AddStudent = () => {
             loading={dropdownLoading}
           />
 
-
           <TextareaField
             control={control}
             name="bio"
@@ -237,7 +284,7 @@ const AddStudent = () => {
 
           <SubmitButton
             loading={loading}
-            label="Add Student"
+            label="Update Student"
           />
 
         </Grid>
@@ -246,4 +293,4 @@ const AddStudent = () => {
   );
 };
 
-export default AddStudent;
+export default EditStudent;
