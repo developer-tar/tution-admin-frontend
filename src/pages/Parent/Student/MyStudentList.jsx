@@ -325,6 +325,9 @@ const MyStudentList = () => {
       bio: student.bio || 'N/A',
       created_at: student.created_at,
       updated_at: student.updated_at,
+      // Include assigned courses data
+      assigned_courses_count: student.assigned_courses_count || 0,
+      assigned_courses: student.assigned_courses || [],
       // Include all the original data for the modal
       show_answer_after_n_attempts: student.show_answer_after_n_attempts,
       allow_view_examiner_report_for_mocks: student.allow_view_examiner_report_for_mocks,
@@ -355,9 +358,8 @@ const MyStudentList = () => {
   };
 
   const handleViewStudent = (student) => {
-    // Find the full student data from the original API response
-    const fullStudentData = students.find(s => s.id === student.id);
-    setSelectedStudent(fullStudentData || student);
+    // Use the transformed student data directly as it contains all necessary information
+    setSelectedStudent(student);
   };
 
   const handleCloseModal = () => {
@@ -460,6 +462,52 @@ const MyStudentList = () => {
     { key: "target_school", label: "Target School" },
     { key: "region", label: "Region" },
     {
+      key: "assigned_courses_count",
+      label: "Courses Count",
+      render: (row) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Chip
+            label={row.assigned_courses_count || 0}
+            size="small"
+            color={row.assigned_courses_count > 0 ? "success" : "default"}
+            sx={{ fontWeight: 600 }}
+          />
+        </Box>
+      ),
+    },
+    {
+      key: "assigned_courses",
+      label: "Assigned Courses",
+      render: (row) => (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, maxWidth: 200 }}>
+          {row.assigned_courses && row.assigned_courses.length > 0 ? (
+            row.assigned_courses.slice(0, 2).map((course, index) => (
+              <Chip
+                key={course.id}
+                label={course.course.name}
+                size="small"
+                variant="outlined"
+                color="primary"
+                sx={{ fontSize: '11px' }}
+              />
+            ))
+          ) : (
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+              No courses assigned
+            </Typography>
+          )}
+          {row.assigned_courses && row.assigned_courses.length > 2 && (
+            <Chip
+              label={`+${row.assigned_courses.length - 2} more`}
+              size="small"
+              variant="outlined"
+              sx={{ fontSize: '10px' }}
+            />
+          )}
+        </Box>
+      ),
+    },
+    {
       key: "action",
       label: "Action",
       render: (row) => (
@@ -560,7 +608,7 @@ const MyStudentList = () => {
                     },
                   }}
                 >
-                  {courseAssignmentData.available_courses.map((course) => (
+                  {(courseAssignmentData.available_courses || []).map((course) => (
                     <MenuItem key={course.course_id} value={course.course_id}>
                       <Box>
                         <Typography variant="body1" sx={{ fontWeight: 600 }}>
@@ -595,7 +643,7 @@ const MyStudentList = () => {
                   renderValue={(selected) => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {selected.map((studentId) => {
-                        const student = courseAssignmentData.students.find(s => s.student_id === studentId);
+                        const student = (courseAssignmentData.students || []).find(s => s.student_id === studentId);
                         return (
                           <Chip
                             key={studentId}
@@ -627,7 +675,7 @@ const MyStudentList = () => {
                     },
                   }}
                 >
-                  {courseAssignmentData.students.map((student) => (
+                  {(courseAssignmentData.students || []).map((student) => (
                     <MenuItem key={student.student_id} value={student.student_id}>
                       <Checkbox 
                         checked={selectedStudents.indexOf(student.student_id) > -1}
@@ -690,8 +738,8 @@ const MyStudentList = () => {
           ) : (
             <Box sx={{ mt: 2 }}>
               <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                Available Courses: {courseAssignmentData.available_courses.length} | 
-                Students: {courseAssignmentData.students.length}
+                Available Courses: {(courseAssignmentData.available_courses || []).length} | 
+                Students: {(courseAssignmentData.students || []).length}
               </Typography>
             </Box>
           )}
@@ -831,9 +879,9 @@ const MyStudentList = () => {
         fullWidth
       >
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <span role="img" aria-label="student">👨‍🎓</span> Student Details
-          </Typography>
+          </Box>
           <IconButton onClick={handleCloseModal}>
             <CloseIcon />
           </IconButton>
@@ -858,9 +906,9 @@ const MyStudentList = () => {
                 </Grid>
                 
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle1"><strong>Gender:</strong> {selectedStudent.gender_obj?.name || selectedStudent.gender || 'N/A'}</Typography>
-                  <Typography variant="subtitle1"><strong>Region:</strong> {selectedStudent.region_obj?.name || selectedStudent.region || 'N/A'}</Typography>
-                  <Typography variant="subtitle1"><strong>Target School:</strong> {selectedStudent.target_school_obj?.name || selectedStudent.target_school || 'N/A'}</Typography>
+                  <Typography variant="subtitle1"><strong>Gender:</strong> {selectedStudent.gender_obj?.name || (typeof selectedStudent.gender === 'string' ? selectedStudent.gender : 'N/A')}</Typography>
+                  <Typography variant="subtitle1"><strong>Region:</strong> {selectedStudent.region_obj?.name || (typeof selectedStudent.region === 'string' ? selectedStudent.region : 'N/A')}</Typography>
+                  <Typography variant="subtitle1"><strong>Target School:</strong> {selectedStudent.target_school_obj?.name || (typeof selectedStudent.target_school === 'string' ? selectedStudent.target_school : 'N/A')}</Typography>
                 </Grid>
 
                 <Grid item xs={12}><Divider sx={{ my: 2 }} /></Grid>
@@ -873,13 +921,13 @@ const MyStudentList = () => {
                 </Grid>
                 
                 <Grid item xs={12} md={4}>
-                  <Typography variant="subtitle1"><strong>Birth Year:</strong> {selectedStudent.year_obj?.name || selectedStudent.year || 'N/A'}</Typography>
+                  <Typography variant="subtitle1"><strong>Birth Year:</strong> {selectedStudent.year_obj?.name || (typeof selectedStudent.year === 'string' ? selectedStudent.year : 'N/A')}</Typography>
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <Typography variant="subtitle1"><strong>Birth Month:</strong> {selectedStudent.month_obj?.name || selectedStudent.month || 'N/A'}</Typography>
+                  <Typography variant="subtitle1"><strong>Birth Month:</strong> {selectedStudent.month_obj?.name || (typeof selectedStudent.month === 'string' ? selectedStudent.month : 'N/A')}</Typography>
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <Typography variant="subtitle1"><strong>Birth Day:</strong> {selectedStudent.day_obj?.name || selectedStudent.day || 'N/A'}</Typography>
+                  <Typography variant="subtitle1"><strong>Birth Day:</strong> {selectedStudent.day_obj?.name || (typeof selectedStudent.day === 'string' ? selectedStudent.day : 'N/A')}</Typography>
                 </Grid>
 
                 <Grid item xs={12}><Divider sx={{ my: 2 }} /></Grid>
@@ -928,6 +976,71 @@ const MyStudentList = () => {
                   <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', backgroundColor: 'grey.50', p: 2, borderRadius: 1 }}>
                     {selectedStudent.bio || 'No biography provided.'}
                   </Typography>
+                </Grid>
+
+                <Grid item xs={12}><Divider sx={{ my: 2 }} /></Grid>
+
+                {/* Assigned Courses */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" fontWeight={600} sx={{ mb: 2, color: 'primary.main' }}>
+                    Assigned Courses ({selectedStudent.assigned_courses_count || 0})
+                  </Typography>
+                  {selectedStudent.assigned_courses && selectedStudent.assigned_courses.length > 0 ? (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {selectedStudent.assigned_courses.map((courseAssignment) => (
+                        <Card 
+                          key={courseAssignment.id} 
+                          sx={{ 
+                            minWidth: 200, 
+                            backgroundColor: 'primary.50',
+                            border: '1px solid',
+                            borderColor: 'primary.200'
+                          }}
+                        >
+                          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                            <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+                              {courseAssignment.course.name}
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                Course ID: {courseAssignment.course.id}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                Assigned: {new Date(courseAssignment.created_at).toLocaleDateString()}
+                              </Typography>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                                <Chip
+                                  label={courseAssignment.is_completed ? 'Completed' : 'In Progress'}
+                                  size="small"
+                                  color={courseAssignment.is_completed ? 'success' : 'warning'}
+                                  sx={{ fontSize: '10px' }}
+                                />
+                                {courseAssignment.status && (
+                                  <Chip
+                                    label={courseAssignment.status}
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{ fontSize: '10px' }}
+                                  />
+                                )}
+                              </Box>
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" sx={{ 
+                      color: 'text.secondary', 
+                      fontStyle: 'italic',
+                      backgroundColor: 'grey.50', 
+                      p: 2, 
+                      borderRadius: 1,
+                      textAlign: 'center'
+                    }}>
+                      No courses assigned to this student yet.
+                    </Typography>
+                  )}
                 </Grid>
 
                 <Grid item xs={12}><Divider sx={{ my: 2 }} /></Grid>
