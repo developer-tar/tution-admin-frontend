@@ -12,6 +12,15 @@ import {
   IconButton,
   Divider,
   Chip,
+  Card,
+  CardContent,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Checkbox,
+  ListItemText,
+  OutlinedInput,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useEffect, useMemo, useState } from "react";
@@ -36,31 +45,6 @@ const gradientButtonStyle = {
     opacity: 0.9,
   }
 };
-
-// Dummy student list - commented out for API implementation
-// const dummyStudents = [
-//   {
-//     id: 1,
-//     first_name: "Tarun",
-//     last_name: "Singh",
-//     email: "tarun@example.com",
-//     status: "Active",
-//   },
-//   {
-//     id: 2,
-//     first_name: "Anjali",
-//     last_name: "Verma",
-//     email: "anjali@example.com",
-//     status: "Inactive",
-//   },
-//   {
-//     id: 3,
-//     first_name: "Rohan",
-//     last_name: "Sharma",
-//     email: "rohan@example.com",
-//     status: "Active",
-//   },
-// ];
 
 const MyStudentList = () => {
   const { control, setValue } = useForm();
@@ -87,6 +71,16 @@ const MyStudentList = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [deletingStudentId, setDeletingStudentId] = useState(null);
   const [deleteConfirmDialog, setDeleteConfirmDialog] = useState({ open: false, student: null });
+
+  // Course Assignment State Management
+  const [courseAssignmentData, setCourseAssignmentData] = useState({
+    students: [],
+    available_courses: []
+  });
+  const [selectedCourse, setSelectedCourse] = useState("");
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [courseDataLoading, setCourseDataLoading] = useState(false);
   // Debounced search implementation
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -163,9 +157,149 @@ const MyStudentList = () => {
     }
   };
 
+  // Fetch course assignment data
+  const fetchCourseAssignmentData = async () => {
+    try {
+      setCourseDataLoading(true);
+      setError("");
+      
+      const response = await api.get('parent/students-with-courses');
+      
+      if (response.data.success) {
+        setCourseAssignmentData(response.data.data);
+      } else {
+        throw new Error(response.data.message || "Failed to fetch course assignment data");
+      }
+    } catch (err) {
+      console.error("Error fetching course assignment data:", err);
+      
+      // Handle different error types
+      if (err.response?.status === 401) {
+        toast.error("Session expired. Please login again.");
+        window.location.href = '/login';
+        return;
+      }
+      
+      if (err.response?.status === 422) {
+        const errors = err.response?.data?.errors;
+        if (errors?.parent) {
+          toast.error(errors.parent[0]);
+        } else if (errors?.subscriptions) {
+          toast.error(errors.subscriptions[0]);
+        } else if (errors?.courses) {
+          toast.error(errors.courses[0]);
+        } else {
+          toast.error(err.response?.data?.message || "Validation error");
+        }
+        return;
+      }
+      
+      if (err.response?.status >= 500) {
+        toast.error('Server error. Please try again later.');
+        return;
+      }
+      
+      const errorMessage = err.message || err.response?.data?.message || "Failed to fetch course assignment data";
+      toast.error(errorMessage);
+    } finally {
+      setCourseDataLoading(false);
+    }
+  };
+
+  // Handle course assignment
+  const handleCourseAssignment = async () => {
+    if (!selectedCourse || selectedStudents.length === 0) {
+      toast.error("Please select a course and at least one student");
+      return;
+    }
+
+    try {
+      setAssignmentLoading(true);
+      
+      const payload = {
+        student_ids: selectedStudents,
+        course_id: selectedCourse
+      };
+
+      const response = await api.post('parent/assign-course-to-student', payload);
+      
+      if (response.data.success) {
+        toast.success(response.data.message || "Course assigned successfully!");
+        setSelectedCourse("");
+        setSelectedStudents([]);
+        
+        // Refresh data
+        fetchCourseAssignmentData();
+        fetchStudents(debouncedSearch, page + 1);
+      } else {
+        throw new Error(response.data.message || "Failed to assign course");
+      }
+      
+    } catch (err) {
+      console.error("Error assigning course:", err);
+      
+      // Handle different error types
+      if (err.response?.status === 401) {
+        toast.error("Session expired. Please login again.");
+        window.location.href = '/login';
+        return;
+      }
+      
+      if (err.response?.status === 422) {
+        const errors = err.response?.data?.errors;
+        if (errors) {
+          // Handle validation errors
+          const errorMessages = [];
+          
+          if (errors.student_ids) {
+            errorMessages.push(...errors.student_ids);
+          }
+          if (errors.course_id) {
+            errorMessages.push(...errors.course_id);
+          }
+          if (errors.student_id) {
+            errorMessages.push(...errors.student_id);
+          }
+          
+          // Handle array validation errors
+          Object.keys(errors).forEach(key => {
+            if (key.startsWith('student_ids.')) {
+              errorMessages.push(...errors[key]);
+            }
+          });
+          
+          if (errorMessages.length > 0) {
+            toast.error(errorMessages.join(', '));
+          } else {
+            toast.error(err.response?.data?.message || "Validation error");
+          }
+        } else {
+          toast.error(err.response?.data?.message || "Validation error");
+        }
+        return;
+      }
+      
+      if (err.response?.status === 404) {
+        toast.error(err.response?.data?.message || "Academic course not found");
+        return;
+      }
+      
+      if (err.response?.status >= 500) {
+        toast.error(err.response?.data?.message || "Server error occurred during assignment");
+        return;
+      }
+      
+      const errorMessage = err.message || err.response?.data?.message || "Failed to assign course";
+      toast.error(errorMessage);
+    } finally {
+      setAssignmentLoading(false);
+    }
+  };
+
   // Initial load
   useEffect(() => {
     fetchStudents("", 1);
+    fetchCourseAssignmentData();
   }, []);
 
   // Search effect
@@ -361,6 +495,209 @@ const MyStudentList = () => {
 
   return (
     <Box sx={{ py: 4 }}>
+      {/* Course Assignment Section */}
+      <Card 
+        sx={{ 
+          mb: 4,
+          background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+          color: 'white',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+        }}
+      >
+        <CardContent sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+            <Box 
+              sx={{ 
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                borderRadius: '50%',
+                p: 1.5,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <span style={{ fontSize: '24px' }} role="img" aria-label="course">📚</span>
+            </Box>
+            <Box>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+                Assign Course to Students
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '14px' }}>
+                Select a course and assign it to multiple students
+              </Typography>
+            </Box>
+          </Box>
+
+          <Grid container spacing={3}>
+            {/* Course Selection */}
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth disabled={courseDataLoading}>
+                <InputLabel 
+                  sx={{ 
+                    color: 'rgba(255,255,255,0.8)',
+                    '&.Mui-focused': { color: 'white' }
+                  }}
+                >
+                  Select Course
+                </InputLabel>
+                <Select
+                  value={selectedCourse}
+                  onChange={(e) => setSelectedCourse(e.target.value)}
+                  input={<OutlinedInput />}
+                  sx={{
+                    color: 'white',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(255,255,255,0.3)',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(255,255,255,0.5)',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'white',
+                    },
+                    '& .MuiSvgIcon-root': {
+                      color: 'white',
+                    },
+                  }}
+                >
+                  {courseAssignmentData.available_courses.map((course) => (
+                    <MenuItem key={course.course_id} value={course.course_id}>
+                      <Box>
+                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          {course.course_name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          ₹{(course.amount / 100).toFixed(2)} {course.currency.toUpperCase()}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Student Selection */}
+            <Grid item xs={12} md={5}>
+              <FormControl fullWidth disabled={courseDataLoading}>
+                <InputLabel 
+                  sx={{ 
+                    color: 'rgba(255,255,255,0.8)',
+                    '&.Mui-focused': { color: 'white' }
+                  }}
+                >
+                  Select Students
+                </InputLabel>
+                <Select
+                  multiple
+                  value={selectedStudents}
+                  onChange={(e) => setSelectedStudents(e.target.value)}
+                  input={<OutlinedInput />}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((studentId) => {
+                        const student = courseAssignmentData.students.find(s => s.student_id === studentId);
+                        return (
+                          <Chip
+                            key={studentId}
+                            label={student?.display_name || student?.student_name}
+                            size="small"
+                            sx={{ 
+                              backgroundColor: 'rgba(255,255,255,0.2)',
+                              color: 'white',
+                              '& .MuiChip-deleteIcon': { color: 'rgba(255,255,255,0.7)' }
+                            }}
+                          />
+                        );
+                      })}
+                    </Box>
+                  )}
+                  sx={{
+                    color: 'white',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(255,255,255,0.3)',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(255,255,255,0.5)',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'white',
+                    },
+                    '& .MuiSvgIcon-root': {
+                      color: 'white',
+                    },
+                  }}
+                >
+                  {courseAssignmentData.students.map((student) => (
+                    <MenuItem key={student.student_id} value={student.student_id}>
+                      <Checkbox 
+                        checked={selectedStudents.indexOf(student.student_id) > -1}
+                        sx={{ color: 'primary.main' }}
+                      />
+                      <ListItemText 
+                        primary={student.display_name || student.student_name}
+                        secondary={
+                          <Box>
+                            <Typography variant="caption" display="block">
+                              {student.student_email}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'success.main' }}>
+                              Assigned: {student.assigned_courses_count} | Available: {student.available_courses_count}
+                            </Typography>
+                          </Box>
+                        }
+                      />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Assign Button */}
+            <Grid item xs={12} md={3}>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={handleCourseAssignment}
+                disabled={assignmentLoading || courseDataLoading || !selectedCourse || selectedStudents.length === 0}
+                sx={{
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  color: 'white',
+                  fontWeight: 600,
+                  py: 1.5,
+                  borderRadius: 2,
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255,255,255,0.3)',
+                  },
+                  '&:disabled': {
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    color: 'rgba(255,255,255,0.5)',
+                  }
+                }}
+              >
+                {assignmentLoading ? 'Assigning...' : 'Assign Course'}
+              </Button>
+            </Grid>
+          </Grid>
+
+          {/* Course Assignment Info */}
+          {courseDataLoading ? (
+            <Box sx={{ mt: 2, textAlign: 'center' }}>
+              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                Loading course assignment data...
+              </Typography>
+            </Box>
+          ) : (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                Available Courses: {courseAssignmentData.available_courses.length} | 
+                Students: {courseAssignmentData.students.length}
+              </Typography>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Fancy Header Section */}
       <Box 
         sx={{ 

@@ -1,12 +1,15 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Grid,
   Typography,
   TextField,
   Button,
+  IconButton,
+  InputAdornment,
 } from "@mui/material";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -23,6 +26,7 @@ const schema = yup.object().shape({
 
 const AdminLogin = () => {
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     control,
@@ -35,6 +39,10 @@ const AdminLogin = () => {
       password: "",
     },
   });
+
+  const handleTogglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
   const onSubmit = async (data) => {
     try {
@@ -137,13 +145,26 @@ const AdminLogin = () => {
               render={({ field }) => (
                 <TextField
                   fullWidth
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Password"
                   variant="outlined"
                   {...field}
                   error={!!errors.password}
                   helperText={errors.password?.message}
                   sx={{ mb: 2 }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={handleTogglePasswordVisibility}
+                          edge="end"
+                          sx={{ color: "#666" }}
+                        >
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               )}
             />

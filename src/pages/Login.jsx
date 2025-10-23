@@ -1,5 +1,6 @@
 import { yupResolver } from "@hookform/resolvers/yup";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 import {
   Box,
   Button,
@@ -7,6 +8,8 @@ import {
   FormControlLabel,
   FormLabel,
   Grid,
+  IconButton,
+  InputAdornment,
   Radio,
   RadioGroup,
   TextField,
@@ -43,6 +46,7 @@ const Login = () => {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loginLoading, setLoginLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
  const {
     control,
@@ -79,7 +83,9 @@ const Login = () => {
     fetchRoles();
   }, [reset]);
 
- 
+  const handleTogglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
   const onSubmit = async (data) => {
 
@@ -235,13 +241,26 @@ const Login = () => {
                 render={({ field }) => (
                   <TextField
                     fullWidth
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Password"
                     variant="outlined"
                     {...field}
                     error={!!errors.password}
                     helperText={errors.password?.message}
                     sx={{ mb: 2 }}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            onClick={handleTogglePasswordVisibility}
+                            edge="end"
+                            sx={{ color: "#666" }}
+                          >
+                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                 )}
               />
