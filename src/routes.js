@@ -160,7 +160,7 @@ const AppRoutes = () => {
         <Route path="course-list" element={<CourseList />} />
         <Route path="timeslot" element={<TimeSlots />} />
         <Route path="assignment-list" element={<CourseAssignmentList />} />
-        <Route path="topicsubtopic-list" element={<TopicSubtopicList />} />
+        <Route path="topic/subtopic-list" element={<TopicSubtopicList />} />
         <Route path="test-list" element={<TestList />} />
         <Route path="course-report" element={<CourseReport />} />
         <Route path="mock-exam-categories" element={<MockExamCategory />} />

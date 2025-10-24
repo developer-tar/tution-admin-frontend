@@ -89,7 +89,7 @@ const AdminLayout = () => {
       label: "Topics",
       icon: <TopicIcon />,
       children: [
-        { label: "Topic List", path: `/${name}/topicsubtopic-list`, icon: <ListIcon /> },
+        { label: "Topic & SubTopic List", path: `/${name}/topic/subtopic-list`, icon: <ListIcon /> },
         { label: "Course Content", path: `/${name}/course-content`, icon: <VideoLibraryIcon /> },
       ],
     },

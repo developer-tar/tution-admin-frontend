@@ -27,6 +27,7 @@ import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import { button, icon } from "../style";
 
@@ -84,6 +85,7 @@ const schema = yup.object().shape({
 });
 
 const CourseContent = () => {
+  const navigate = useNavigate();
   const [academicCourses, setAcademicCourses] = useState([]);
   const [courseAssignments, setCourseAssignments] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -169,6 +171,8 @@ const CourseContent = () => {
       await api.post("admin/assign/topic/subtopic", data);
       toast.success("Content uploaded successfully!");
       reset(); // clear form
+      // Redirect to topic/subtopic list page
+      navigate("/admin/topic/subtopic-list");
     } catch (error) {
       if (error.response?.status === 422) {
         const backendErrors = error.response.data.errors;
