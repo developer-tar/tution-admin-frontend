@@ -465,7 +465,7 @@ const StudentLayout = () => {
                     background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
                     p: 3,
                     mt: '70px',
-                    minHeight: "100vh",
+                    minHeight: "calc(100vh - 70px)",
                     // Custom scrollbar for main content
                     "&::-webkit-scrollbar": {
                         width: "10px",

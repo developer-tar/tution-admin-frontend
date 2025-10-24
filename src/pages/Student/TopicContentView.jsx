@@ -57,12 +57,7 @@ const TopicContentView = () => {
   const testCount = data?.topic_test?.length || 0;
 
   return (
-    <Box sx={{ 
-      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-      minHeight: '100vh',
-      py: 4
-    }}>
-      <Container maxWidth="xl">
+      <Container maxWidth="xl" sx={{ py: 4 }}>
         {/* Fancy Header Section */}
         <Fade in timeout={800}>
           <Card sx={{
@@ -190,7 +185,6 @@ const TopicContentView = () => {
           </Grid>
         </Grid>
       </Container>
-    </Box>
   );
 };
 

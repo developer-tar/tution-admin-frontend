@@ -397,12 +397,15 @@ const MediaRenderer = ({ data, loading }) => {
       <Dialog
         open={mediaViewerOpen}
         onClose={handleCloseMediaViewer}
-        maxWidth={false}
-        fullScreen
+        maxWidth="lg"
+        fullWidth
         PaperProps={{
           sx: {
             background: 'rgba(0,0,0,0.95)',
-            backdropFilter: 'blur(10px)'
+            backdropFilter: 'blur(10px)',
+            borderRadius: 3,
+            maxHeight: '85vh',
+            margin: 2
           }
         }}
       >
@@ -468,7 +471,7 @@ const MediaRenderer = ({ data, loading }) => {
           </Box>
         </DialogTitle>
         
-        <DialogContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <DialogContent sx={{ p: 0, height: '70vh', display: 'flex', flexDirection: 'column' }}>
           {selectedMedia && (
             <Box sx={{ 
               flex: 1, 

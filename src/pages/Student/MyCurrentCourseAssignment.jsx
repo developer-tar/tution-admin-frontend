@@ -410,9 +410,7 @@ const MyCurrentCourseAssignment = () => {
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
                   {selectedType?.name || '📊 Assignment Data'}
                 </Typography>
-                <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                  {assignments?.data?.length || 0} items found
-                </Typography>
+               
               </Box>
             </Box>
           </Box>
