@@ -39,6 +39,7 @@ import { toast } from "react-toastify";
 import api from "../../api";
 import DataTable from "../../components/DataTable";
 import DropdownField from "../../components/DropdownField";
+import CourseCompletionStats from "../../components/CourseCompletionStats";
 import TuitionCompletionStats from "../StudentPannel/TuitionCompletionStats";
 import usePaginatedData from "../../hooks/usePaginatedData";
 
@@ -85,23 +86,56 @@ const chooseTitle = [
       { key: "completed", label: "✅ Is Completed" },
       { key: "completed_at", label: "📅 Completed At" },
       { 
-        key: "test_track_record", 
+        key: "test_progress", 
         label: "📊 Test Progress",
         render: (row) => {
-          const record = row.test_track_record;
-          if (!record || record.total_tests === 0) {
-            return <Chip label="No Tests" size="small" color="default" />;
+          const progress = row.test_progress;
+          if (!progress || progress.total_attempts === 0) {
+            return <Chip label="No Attempts" size="small" sx={{ bgcolor: 'grey.300', color: 'grey.700' }} />;
           }
           return (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-              <Chip 
-                label={`${record.completed_tests}/${record.total_tests} Completed`}
-                size="small" 
-                color={record.completed_tests === record.total_tests ? "success" : "warning"}
-              />
-              <Typography variant="caption" color="text.secondary">
-                Score: {record.overall_score}%
-              </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                  <Chip 
+                    label={`${progress.total_attempts} Attempts`}
+                    size="small" 
+                    sx={{ bgcolor: 'info.main', color: 'white' }}
+                  />
+                  <Chip 
+                    label={`Best: ${progress.best_score}%`}
+                    size="small" 
+                    sx={{ bgcolor: 'success.main', color: 'white' }}
+                  />
+                </Box>
+                <Typography variant="caption" color="text.secondary">
+                  Latest: {progress.latest_score}% | Avg: {progress.average_score}%
+                </Typography>
+              </Box>
+              <Tooltip title="View Detailed Analytics" arrow>
+                <IconButton
+                  size="small"
+                  data-analytics={JSON.stringify({
+                    ...progress,
+                    testName: row.test_name,
+                    courseName: row.course_name,
+                    contentType: 'TopicTest'
+                  })}
+                  sx={{
+                    background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
+                    color: 'white',
+                    width: 28,
+                    height: 28,
+                    '&:hover': {
+                      transform: 'scale(1.1)',
+                      boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
+                    },
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  <Visibility sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
             </Box>
           );
         }
@@ -197,6 +231,8 @@ const MyCurrentCourseAssignment = () => {
   const [selectedTestRecord, setSelectedTestRecord] = useState(null);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
+  const [showCompletedDialog, setShowCompletedDialog] = useState(false);
+  const [completedContentInfo, setCompletedContentInfo] = useState(null);
 
   // Only fetch when both filters have values
   const shouldFetch = !!filters.subject_id && !!filters.choose_title;
@@ -271,16 +307,21 @@ const MyCurrentCourseAssignment = () => {
     const selectedType = chooseTitle.find((col) => col.id === selectedChooseTitle);
     const viewPathPrefix = selectedType?.viewPathPrefix || '';
     
-    // First check if test is already completed
-    const isTestCompleted = row.completed === "YES" || 
-                           row.completed === "yes" || 
-                           row.completed === true || 
-                           row.completed === 1 ||
-                           row.completed_at;
+    // First check if content/test is already completed
+    const isCompleted = row.completed === "YES" || 
+                       row.completed === "yes" || 
+                       row.completed === true || 
+                       row.completed === 1 ||
+                       row.completed_at;
     
-    if (isTestCompleted) {
-      // Test is completed, navigate directly
-      navigate(`${viewPathPrefix}/${row.id}`);
+    if (isCompleted) {
+      // Content/Test is completed, show completion dialog
+      setCompletedContentInfo({
+        contentType: selectedType?.name || 'content',
+        contentName: row.name || row.test_name || row.sub_topic_name || 'Unknown',
+        completedAt: row.completed_at
+      });
+      setShowCompletedDialog(true);
       return;
     }
     
@@ -365,6 +406,8 @@ const MyCurrentCourseAssignment = () => {
         e.stopPropagation();
         try {
           const analyticsData = JSON.parse(button.getAttribute('data-analytics'));
+          
+          // Eye icon should always show analytics modal regardless of completion status
           setSelectedTestRecord(analyticsData);
           setShowTestModal(true);
         } catch (error) {
@@ -502,7 +545,7 @@ const MyCurrentCourseAssignment = () => {
               </Avatar>
               <Box>
                 <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-                  📚 My Course Assignments
+                  📚 My Current Course Assignments
                 </Typography>
                 <Typography variant="body1" sx={{ opacity: 0.9 }}>
                   Track your learning progress across all subjects and topics
@@ -519,6 +562,27 @@ const MyCurrentCourseAssignment = () => {
           <TuitionCompletionStats />
         </Box>
       </Fade>
+
+      {/* Course Completion Statistics */}
+      {isFilterSelected && (
+        <Fade in timeout={800}>
+          <Card sx={{ 
+            borderRadius: 4, 
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)', 
+            overflow: 'hidden',
+            mb: 4
+          }}>
+        
+            
+            <CardContent sx={{ p: 4 }}>
+              <CourseCompletionStats 
+                subjectId={filters.subject_id}
+                chooseTitle={filters.choose_title}
+              />
+            </CardContent>
+          </Card>
+        </Fade>
+      )}
 
       {/* Filters Section */}
       <Fade in timeout={1200}>
@@ -679,82 +743,259 @@ const MyCurrentCourseAssignment = () => {
       <Dialog 
         open={showTestModal} 
         onClose={() => setShowTestModal(false)}
-        maxWidth="md"
+        maxWidth="xl"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 4,
+            background: 'linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%)',
+            overflow: 'hidden',
+            boxShadow: '0 25px 80px rgba(0,0,0,0.15)'
+          }
+        }}
       >
-        <DialogTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar sx={{ 
-                background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
-                width: 40,
-                height: 40
+        <DialogTitle sx={{ pb: 2, position: 'relative' }}>
+          {/* Background Pattern */}
+          <Box sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'radial-gradient(circle at 15% 85%, rgba(33, 150, 243, 0.08) 0%, transparent 50%), radial-gradient(circle at 85% 15%, rgba(255, 152, 0, 0.08) 0%, transparent 50%)',
+            zIndex: 0
+          }} />
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              {/* Animated Analytics Icon */}
+              <Box sx={{ 
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}>
-                <Quiz sx={{ fontSize: 20 }} />
-              </Avatar>
+                <Box sx={{
+                  width: 70,
+                  height: 70,
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 8px 32px rgba(33, 150, 243, 0.4)',
+                  animation: 'analyticsGlow 3s ease-in-out infinite',
+                  '@keyframes analyticsGlow': {
+                    '0%': { transform: 'scale(1)', boxShadow: '0 8px 32px rgba(33, 150, 243, 0.4)' },
+                    '50%': { transform: 'scale(1.03)', boxShadow: '0 12px 40px rgba(33, 150, 243, 0.6)' },
+                    '100%': { transform: 'scale(1)', boxShadow: '0 8px 32px rgba(33, 150, 243, 0.4)' }
+                  }
+                }}>
+                  <Quiz sx={{ fontSize: 28, color: 'white' }} />
+                </Box>
+                
+                {/* Floating data points */}
+                <Box sx={{
+                  position: 'absolute',
+                  width: '100%',
+                  height: '100%',
+                  '&::before, &::after': {
+                    content: '""',
+                    position: 'absolute',
+                    width: '3px',
+                    height: '3px',
+                    background: '#2196f3',
+                    borderRadius: '50%',
+                    animation: 'dataFloat 4s ease-in-out infinite'
+                  },
+                  '&::before': {
+                    top: '15%',
+                    right: '20%',
+                    animationDelay: '0s'
+                  },
+                  '&::after': {
+                    bottom: '20%',
+                    left: '25%',
+                    animationDelay: '2s'
+                  },
+                  '@keyframes dataFloat': {
+                    '0%, 100%': { transform: 'translateY(0px) scale(1)', opacity: 0.6 },
+                    '50%': { transform: 'translateY(-8px) scale(1.3)', opacity: 1 }
+                  }
+                }} />
+              </Box>
+              
               <Box>
-                <Typography variant="h6" fontWeight={600}>
-                  📊 Test Track Record
+                <Typography variant="h4" fontWeight={700} sx={{ mb: 0.5, color: '#1565c0' }}>
+                  📊 Test Analytics Dashboard
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {selectedTestRecord?.contentName} - {selectedTestRecord?.contentType}
+                <Typography variant="h6" sx={{ color: '#424242', fontWeight: 400 }}>
+                  {selectedTestRecord?.testName || selectedTestRecord?.contentName} - {selectedTestRecord?.contentType}
                 </Typography>
               </Box>
             </Box>
-            <IconButton onClick={() => setShowTestModal(false)}>
-              <Close />
+            
+            <IconButton 
+              onClick={() => setShowTestModal(false)}
+              sx={{
+                background: 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(10px)',
+                '&:hover': {
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  transform: 'scale(1.1)'
+                },
+                transition: 'all 0.3s ease'
+              }}
+            >
+              <Close sx={{ color: '#666' }} />
             </IconButton>
           </Box>
         </DialogTitle>
         
         <DialogContent>
-          {selectedTestRecord && selectedTestRecord.contentType === 'SubTopicTest' && (
+          {selectedTestRecord && (selectedTestRecord.contentType === 'SubTopicTest' || selectedTestRecord.contentType === 'TopicTest') && (
             <Box>
               {/* Overview Stats Cards */}
               <Grid container spacing={3} sx={{ mb: 4 }}>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Card sx={{ textAlign: 'center', background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)', color: 'white' }}>
-                    <CardContent>
-                      <Typography variant="h4" fontWeight={700}>
+                  <Card sx={{ 
+                    textAlign: 'center', 
+                    background: 'linear-gradient(135deg, #ffffff 0%, #f0f8ff 100%)', 
+                    border: '2px solid rgba(33, 150, 243, 0.2)',
+                    borderRadius: 3,
+                    boxShadow: '0 8px 32px rgba(33, 150, 243, 0.15)',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 12px 40px rgba(33, 150, 243, 0.25)'
+                    }
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{
+                        width: 50,
+                        height: 50,
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 16px auto',
+                        fontSize: '24px'
+                      }}>
+                        🎯
+                      </Box>
+                      <Typography variant="h3" fontWeight={700} sx={{ color: '#1565c0', mb: 1 }}>
                         {selectedTestRecord.total_attempts}
                       </Typography>
-                      <Typography variant="body2">
+                      <Typography variant="body1" sx={{ color: '#424242', fontWeight: 500 }}>
                         Total Attempts
                       </Typography>
                     </CardContent>
                   </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Card sx={{ textAlign: 'center', background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)', color: 'white' }}>
-                    <CardContent>
-                      <Typography variant="h4" fontWeight={700}>
+                  <Card sx={{ 
+                    textAlign: 'center', 
+                    background: 'linear-gradient(135deg, #ffffff 0%, #f1f8e9 100%)', 
+                    border: '2px solid rgba(76, 175, 80, 0.2)',
+                    borderRadius: 3,
+                    boxShadow: '0 8px 32px rgba(76, 175, 80, 0.15)',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 12px 40px rgba(76, 175, 80, 0.25)'
+                    }
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{
+                        width: 50,
+                        height: 50,
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 16px auto',
+                        fontSize: '24px'
+                      }}>
+                        🏆
+                      </Box>
+                      <Typography variant="h3" fontWeight={700} sx={{ color: '#2e7d32', mb: 1 }}>
                         {selectedTestRecord.best_score}%
                       </Typography>
-                      <Typography variant="body2">
+                      <Typography variant="body1" sx={{ color: '#424242', fontWeight: 500 }}>
                         Best Score
                       </Typography>
                     </CardContent>
                   </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Card sx={{ textAlign: 'center', background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)', color: 'white' }}>
-                    <CardContent>
-                      <Typography variant="h4" fontWeight={700}>
+                  <Card sx={{ 
+                    textAlign: 'center', 
+                    background: 'linear-gradient(135deg, #ffffff 0%, #fff8e1 100%)', 
+                    border: '2px solid rgba(255, 152, 0, 0.2)',
+                    borderRadius: 3,
+                    boxShadow: '0 8px 32px rgba(255, 152, 0, 0.15)',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 12px 40px rgba(255, 152, 0, 0.25)'
+                    }
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{
+                        width: 50,
+                        height: 50,
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 16px auto',
+                        fontSize: '24px'
+                      }}>
+                        📈
+                      </Box>
+                      <Typography variant="h3" fontWeight={700} sx={{ color: '#ef6c00', mb: 1 }}>
                         {selectedTestRecord.latest_score}%
                       </Typography>
-                      <Typography variant="body2">
+                      <Typography variant="body1" sx={{ color: '#424242', fontWeight: 500 }}>
                         Latest Score
                       </Typography>
                     </CardContent>
                   </Card>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Card sx={{ textAlign: 'center', background: 'linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%)', color: 'white' }}>
-                    <CardContent>
-                      <Typography variant="h4" fontWeight={700}>
+                  <Card sx={{ 
+                    textAlign: 'center', 
+                    background: 'linear-gradient(135deg, #ffffff 0%, #f3e5f5 100%)', 
+                    border: '2px solid rgba(156, 39, 176, 0.2)',
+                    borderRadius: 3,
+                    boxShadow: '0 8px 32px rgba(156, 39, 176, 0.15)',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 12px 40px rgba(156, 39, 176, 0.25)'
+                    }
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{
+                        width: 50,
+                        height: 50,
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 16px auto',
+                        fontSize: '24px'
+                      }}>
+                        📊
+                      </Box>
+                      <Typography variant="h3" fontWeight={700} sx={{ color: '#7b1fa2', mb: 1 }}>
                         {selectedTestRecord.average_score}%
                       </Typography>
-                      <Typography variant="body2">
+                      <Typography variant="body1" sx={{ color: '#424242', fontWeight: 500 }}>
                         Average Score
                       </Typography>
                     </CardContent>
@@ -766,37 +1007,133 @@ const MyCurrentCourseAssignment = () => {
               {selectedTestRecord.performance_analytics && (
                 <Grid container spacing={3} sx={{ mb: 4 }}>
                   <Grid item xs={12} md={6}>
-                    <Card sx={{ p: 3 }}>
-                      <Typography variant="h6" fontWeight={600} sx={{ mb: 2, color: 'success.main' }}>
-                        💪 Strong Areas
-                      </Typography>
-                      {selectedTestRecord.performance_analytics.strong_areas?.map((area, index) => (
-                        <Box key={index} sx={{ mb: 2, p: 2, bgcolor: 'success.50', borderRadius: 2 }}>
-                          <Typography variant="body2" fontWeight={600}>
-                            Question {area.question_id}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Correct: {area.correct_count} times | Mastery: {area.mastery_level}
+                    <Card sx={{ 
+                      p: 4, 
+                      background: 'linear-gradient(135deg, #ffffff 0%, #f1f8e9 100%)',
+                      border: '2px solid rgba(76, 175, 80, 0.2)',
+                      borderRadius: 3,
+                      boxShadow: '0 8px 32px rgba(76, 175, 80, 0.1)',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}>
+                      {/* Background decoration */}
+                      <Box sx={{
+                        position: 'absolute',
+                        top: -20,
+                        right: -20,
+                        width: 80,
+                        height: 80,
+                        borderRadius: '50%',
+                        background: 'rgba(76, 175, 80, 0.1)',
+                        zIndex: 0
+                      }} />
+                      
+                      <Box sx={{ position: 'relative', zIndex: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                          <Box sx={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '20px'
+                          }}>
+                            💪
+                          </Box>
+                          <Typography variant="h5" fontWeight={700} sx={{ color: '#2e7d32' }}>
+                            Strong Areas
                           </Typography>
                         </Box>
-                      ))}
+                        
+                        {selectedTestRecord.performance_analytics.strong_areas?.map((area, index) => (
+                          <Box key={index} sx={{ 
+                            mb: 2, 
+                            p: 3, 
+                            background: 'linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%)', 
+                            borderRadius: 3,
+                            border: '1px solid rgba(76, 175, 80, 0.3)',
+                            transition: 'all 0.3s ease',
+                            '&:hover': {
+                              transform: 'translateX(4px)',
+                              boxShadow: '0 4px 20px rgba(76, 175, 80, 0.2)'
+                            }
+                          }}>
+                            <Typography variant="body1" fontWeight={600} sx={{ color: '#2e7d32', mb: 1 }}>
+                              Question {area.question_id}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: '#424242' }}>
+                              Correct: {area.correct_count} times | Mastery: {area.mastery_level}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
                     </Card>
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <Card sx={{ p: 3 }}>
-                      <Typography variant="h6" fontWeight={600} sx={{ mb: 2, color: 'warning.main' }}>
-                        📚 Areas for Improvement
-                      </Typography>
-                      {selectedTestRecord.performance_analytics.weak_areas?.map((area, index) => (
-                        <Box key={index} sx={{ mb: 2, p: 2, bgcolor: 'warning.50', borderRadius: 2 }}>
-                          <Typography variant="body2" fontWeight={600}>
-                            Question {area.question_id}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Incorrect: {area.incorrect_count} times | Difficulty: {area.difficulty_level}
+                    <Card sx={{ 
+                      p: 4, 
+                      background: 'linear-gradient(135deg, #ffffff 0%, #fff8e1 100%)',
+                      border: '2px solid rgba(255, 152, 0, 0.2)',
+                      borderRadius: 3,
+                      boxShadow: '0 8px 32px rgba(255, 152, 0, 0.1)',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}>
+                      {/* Background decoration */}
+                      <Box sx={{
+                        position: 'absolute',
+                        top: -20,
+                        right: -20,
+                        width: 80,
+                        height: 80,
+                        borderRadius: '50%',
+                        background: 'rgba(255, 152, 0, 0.1)',
+                        zIndex: 0
+                      }} />
+                      
+                      <Box sx={{ position: 'relative', zIndex: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                          <Box sx={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '20px'
+                          }}>
+                            📚
+                          </Box>
+                          <Typography variant="h5" fontWeight={700} sx={{ color: '#ef6c00' }}>
+                            Areas for Improvement
                           </Typography>
                         </Box>
-                      ))}
+                        
+                        {selectedTestRecord.performance_analytics.weak_areas?.map((area, index) => (
+                          <Box key={index} sx={{ 
+                            mb: 2, 
+                            p: 3, 
+                            background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)', 
+                            borderRadius: 3,
+                            border: '1px solid rgba(255, 152, 0, 0.3)',
+                            transition: 'all 0.3s ease',
+                            '&:hover': {
+                              transform: 'translateX(4px)',
+                              boxShadow: '0 4px 20px rgba(255, 152, 0, 0.2)'
+                            }
+                          }}>
+                            <Typography variant="body1" fontWeight={600} sx={{ color: '#ef6c00', mb: 1 }}>
+                              Question {area.question_id}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: '#424242' }}>
+                              Incorrect: {area.incorrect_count} times | Difficulty: {area.difficulty_level}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
                     </Card>
                   </Grid>
                 </Grid>
@@ -900,7 +1237,7 @@ const MyCurrentCourseAssignment = () => {
           )}
           
           {/* Fallback for old test_track_record format */}
-          {selectedTestRecord && selectedTestRecord.contentType !== 'SubTopicTest' && (
+          {selectedTestRecord && selectedTestRecord.contentType !== 'SubTopicTest' && selectedTestRecord.contentType !== 'TopicTest' && (
             <Box>
               {/* Original test track record display */}
               <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -1182,6 +1519,312 @@ const MyCurrentCourseAssignment = () => {
           >
             Go to {pendingNavigation?.contentType} Content
           </Button> */}
+        </DialogActions>
+      </Dialog>
+
+      {/* Completed Content Dialog */}
+      <Dialog 
+        open={showCompletedDialog} 
+        onClose={() => setShowCompletedDialog(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 4,
+            background: 'linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%)',
+            color: '#2c3e50',
+            overflow: 'hidden',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.1)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1, position: 'relative' }}>
+          {/* Background Pattern */}
+          <Box sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'radial-gradient(circle at 20% 80%, rgba(102, 126, 234, 0.05) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(118, 75, 162, 0.05) 0%, transparent 50%)',
+            zIndex: 0
+          }} />
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, position: 'relative', zIndex: 1 }}>
+            {/* Animated Success Icon */}
+            <Box sx={{ 
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Box sx={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 8px 32px rgba(76, 175, 80, 0.4)',
+                animation: 'pulse 2s infinite',
+                '@keyframes pulse': {
+                  '0%': { transform: 'scale(1)', boxShadow: '0 8px 32px rgba(76, 175, 80, 0.4)' },
+                  '50%': { transform: 'scale(1.05)', boxShadow: '0 12px 40px rgba(76, 175, 80, 0.6)' },
+                  '100%': { transform: 'scale(1)', boxShadow: '0 8px 32px rgba(76, 175, 80, 0.4)' }
+                }
+              }}>
+                {/* Custom Checkmark */}
+                <Box sx={{
+                  width: 32,
+                  height: 32,
+                  position: 'relative',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    left: '50%',
+                    top: '50%',
+                    width: '6px',
+                    height: '12px',
+                    border: '3px solid white',
+                    borderTop: 'none',
+                    borderLeft: 'none',
+                    transform: 'translate(-50%, -60%) rotate(45deg)',
+                    animation: 'checkmark 0.6s ease-in-out'
+                  },
+                  '@keyframes checkmark': {
+                    '0%': { opacity: 0, transform: 'translate(-50%, -60%) rotate(45deg) scale(0)' },
+                    '100%': { opacity: 1, transform: 'translate(-50%, -60%) rotate(45deg) scale(1)' }
+                  }
+                }} />
+              </Box>
+              
+              {/* Floating particles */}
+              <Box sx={{
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                '&::before, &::after': {
+                  content: '""',
+                  position: 'absolute',
+                  width: '4px',
+                  height: '4px',
+                  background: '#ffd700',
+                  borderRadius: '50%',
+                  animation: 'float 3s ease-in-out infinite'
+                },
+                '&::before': {
+                  top: '10%',
+                  left: '20%',
+                  animationDelay: '0s'
+                },
+                '&::after': {
+                  bottom: '15%',
+                  right: '25%',
+                  animationDelay: '1.5s'
+                },
+                '@keyframes float': {
+                  '0%, 100%': { transform: 'translateY(0px) scale(1)', opacity: 0.7 },
+                  '50%': { transform: 'translateY(-10px) scale(1.2)', opacity: 1 }
+                }
+              }} />
+            </Box>
+            
+            <Box>
+              <Typography variant="h4" fontWeight={700} sx={{ mb: 1, color: '#2c3e50' }}>
+                🎉 Mission Accomplished!
+              </Typography>
+              <Typography variant="h6" sx={{ color: '#5a6c7d', fontWeight: 400 }}>
+                This content has been successfully completed
+              </Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent sx={{ pt: 2, px: 4, pb: 2 }}>
+          {completedContentInfo && (
+            <Box>
+              {/* Content Info Card */}
+              <Box sx={{ 
+                p: 4, 
+                background: 'linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%)',
+                borderRadius: 3, 
+                border: '1px solid rgba(102, 126, 234, 0.1)',
+                mb: 3,
+                position: 'relative',
+                overflow: 'hidden',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.08)'
+              }}>
+                {/* Shimmer effect */}
+                <Box sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: '-100%',
+                  width: '100%',
+                  height: '100%',
+                  background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
+                  animation: 'shimmer 3s ease-in-out infinite',
+                  '@keyframes shimmer': {
+                    '0%': { left: '-100%' },
+                    '100%': { left: '100%' }
+                  }
+                }} />
+                
+                <Box sx={{ position: 'relative', zIndex: 1 }}>
+                  <Typography variant="h5" fontWeight={700} sx={{ 
+                    mb: 2, 
+                    color: '#2c3e50',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2
+                  }}>
+                    <Box sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #ffd700 0%, #ffb300 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '20px'
+                    }}>
+                      📚
+                    </Box>
+                    {completedContentInfo.contentType}
+                  </Typography>
+                  
+                  <Typography variant="h6" fontWeight={500} sx={{ 
+                    mb: 3, 
+                    color: '#34495e',
+                    background: 'linear-gradient(135deg, #e8f2ff 0%, #f0f7ff 100%)',
+                    padding: '12px 16px',
+                    borderRadius: 2,
+                    border: '1px solid rgba(102, 126, 234, 0.15)'
+                  }}>
+                    {completedContentInfo.contentName}
+                  </Typography>
+                  
+                  {completedContentInfo.completedAt && (
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 2,
+                      background: 'linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%)',
+                      padding: '12px 16px',
+                      borderRadius: 2,
+                      border: '1px solid rgba(76, 175, 80, 0.2)'
+                    }}>
+                      <Box sx={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        background: '#4caf50',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px'
+                      }}>
+                        ⏰
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" sx={{ color: '#5a6c7d', mb: 0.5 }}>
+                          Completed on:
+                        </Typography>
+                        <Typography variant="body1" fontWeight={600} sx={{ color: '#2c3e50' }}>
+                          {new Date(completedContentInfo.completedAt).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+              
+              {/* Achievement Message */}
+              <Box sx={{ 
+                p: 4, 
+                background: 'linear-gradient(135deg, #fff8e1 0%, #fffbf0 100%)',
+                borderRadius: 3, 
+                border: '1px solid rgba(255, 193, 7, 0.2)',
+                textAlign: 'center',
+                position: 'relative',
+                boxShadow: '0 4px 20px rgba(255, 193, 7, 0.1)'
+              }}>
+                <Typography variant="h6" sx={{ mb: 2, color: '#2c3e50', fontWeight: 600 }}>
+                  🏆 Outstanding Achievement!
+                </Typography>
+                <Typography variant="body1" sx={{ mb: 2, color: '#34495e' }}>
+                  You have successfully mastered this content and earned your completion badge.
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#5a6c7d', lineHeight: 1.6 }}>
+                  This content is now locked to preserve your learning journey integrity. 
+                  Your progress has been saved and you can view your achievements in the dashboard.
+                </Typography>
+                
+                {/* Decorative stars */}
+                <Box sx={{
+                  position: 'absolute',
+                  top: '10px',
+                  right: '20px',
+                  fontSize: '20px',
+                  animation: 'twinkle 2s ease-in-out infinite',
+                  '@keyframes twinkle': {
+                    '0%, 100%': { opacity: 0.5, transform: 'scale(1)' },
+                    '50%': { opacity: 1, transform: 'scale(1.2)' }
+                  }
+                }}>
+                  ⭐
+                </Box>
+                <Box sx={{
+                  position: 'absolute',
+                  bottom: '15px',
+                  left: '25px',
+                  fontSize: '16px',
+                  animation: 'twinkle 2s ease-in-out infinite',
+                  animationDelay: '1s'
+                }}>
+                  ✨
+                </Box>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        
+        <DialogActions sx={{ p: 4, pt: 2 }}>
+          <Button 
+            onClick={() => setShowCompletedDialog(false)}
+            fullWidth
+            sx={{ 
+              py: 2,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              border: '1px solid rgba(102, 126, 234, 0.3)',
+              borderRadius: 3,
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 600,
+              textTransform: 'none',
+              boxShadow: '0 4px 20px rgba(102, 126, 234, 0.3)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 8px 30px rgba(102, 126, 234, 0.4)'
+              },
+              '&:active': {
+                transform: 'translateY(0px)'
+              },
+              transition: 'all 0.3s ease'
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography sx={{ fontSize: '18px' }}>👍</Typography>
+              Got it, Thanks!
+            </Box>
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
