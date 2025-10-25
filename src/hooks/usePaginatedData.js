@@ -8,6 +8,7 @@ const usePaginatedData = ({
   defaultPage = 0,
   rowsPerPage = 10,
   enabled = true,
+  onError,
 }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -30,7 +31,11 @@ const usePaginatedData = ({
           toast.info("No record found");
         }
       } catch (error) {
-        toast.error("Failed to load data");
+        if (onError) {
+          onError(error);
+        } else {
+          toast.error("Failed to load data");
+        }
         setData([]);
       } finally {
         setLoading(false);

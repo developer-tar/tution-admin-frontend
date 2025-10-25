@@ -2,7 +2,7 @@ import { Box, Typography, Stack, Paper, Card, CardContent, Avatar, Chip, Fade, I
 import { Assignment, Quiz, PlayArrow, Visibility, TrendingUp, School } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import CommonLoader from "../../components/CommonLoader";
-const TestList = ({ relatedData = {}, slugUrl, loading }) => {
+const TestList = ({ relatedData = {}, slugUrl, loading, onTestClick }) => {
   if (loading) {
     return (
        <CommonLoader sx={{ p: 3, textAlign: "center", borderRadius: 2 }} />
@@ -149,17 +149,16 @@ const TestList = ({ relatedData = {}, slugUrl, loading }) => {
                         </Avatar>
                         
                         <Box sx={{ flex: 1 }}>
-                          <Link
-                            to={`/student/test`}
-                            style={{ textDecoration: 'none' }}
-                          >
+                          {onTestClick ? (
                             <Typography
                               variant="body2"
+                              onClick={() => onTestClick(testId, testName)}
                               sx={{
                                 fontWeight: 600,
                                 color: idx === 0 ? 'white' : '#333',
                                 fontSize: '14px',
                                 lineHeight: 1.3,
+                                cursor: 'pointer',
                                 '&:hover': {
                                   textDecoration: 'underline',
                                 },
@@ -167,13 +166,34 @@ const TestList = ({ relatedData = {}, slugUrl, loading }) => {
                             >
                               {testName}
                             </Typography>
-                          </Link>
+                          ) : (
+                            <Link
+                              to={`/student/${slugUrl}/test/${testId}`}
+                              style={{ textDecoration: 'none' }}
+                            >
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontWeight: 600,
+                                  color: idx === 0 ? 'white' : '#333',
+                                  fontSize: '14px',
+                                  lineHeight: 1.3,
+                                  '&:hover': {
+                                    textDecoration: 'underline',
+                                  },
+                                }}
+                              >
+                                {testName}
+                              </Typography>
+                            </Link>
+                          )}
                         </Box>
 
                         <Tooltip title="Take Test" arrow>
                           <IconButton
-                            component={Link}
-                            to={`/student/test`}
+                            onClick={onTestClick ? () => onTestClick(testId, testName) : undefined}
+                            component={onTestClick ? 'button' : Link}
+                            to={onTestClick ? undefined : `/student/${slugUrl}/test/${testId}`}
                             size="small"
                             sx={{
                               background: idx === 0 

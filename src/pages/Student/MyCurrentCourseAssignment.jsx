@@ -11,6 +11,12 @@ import {
   Tooltip,
   Fade,
   Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  LinearProgress,
+  Divider,
 } from "@mui/material";
 import {
   Assignment,
@@ -21,6 +27,10 @@ import {
   FilterList,
   Visibility,
   PlayArrow,
+  CheckCircle,
+  Cancel,
+  AccessTime,
+  Close,
 } from "@mui/icons-material";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -42,9 +52,9 @@ const chooseTitle = [
     color: "#2196f3",
     gradient: "linear-gradient(135deg, #2196f3 0%, #1976d2 100%)",
     columns: [
-      { key: "name", label: "📖 Topic" },
+      { key: "name", label: "📖 Topic Name" },
       { key: "completed", label: "✅ Is Completed" },
-      { key: "completed_at", label: "📅 Completed At" }
+      { key: "completed_at", label: "📅 Completed At" },
     ],
     viewPathPrefix: `/${prefix}/topic/content/view`
   },
@@ -55,10 +65,11 @@ const chooseTitle = [
     color: "#4caf50",
     gradient: "linear-gradient(135deg, #4caf50 0%, #388e3c 100%)",
     columns: [
-      { key: "sub_topic_name", label: "📝 Sub-Topic" },
-      { key: "course_name", label: "📖 Topic" },
+      { key: "sub_topic_name", label: "📝 Sub-Topic Name" },
+      { key: "course_name", label: "📖 Course Name" },
       { key: "completed", label: "✅ Is Completed" },
-      { key: "completed_at", label: "📅 Completed At" }
+      { key: "completed_at", label: "📅 Completed At" },
+     
     ],
     viewPathPrefix: `/${prefix}/subtopic/content/view`
   },
@@ -72,7 +83,29 @@ const chooseTitle = [
       { key: "test_name", label: "🎯 Topic Test" },
       { key: "course_name", label: "📖 Topic" },
       { key: "completed", label: "✅ Is Completed" },
-      { key: "completed_at", label: "📅 Completed At" }
+      { key: "completed_at", label: "📅 Completed At" },
+      { 
+        key: "test_track_record", 
+        label: "📊 Test Progress",
+        render: (row) => {
+          const record = row.test_track_record;
+          if (!record || record.total_tests === 0) {
+            return <Chip label="No Tests" size="small" color="default" />;
+          }
+          return (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              <Chip 
+                label={`${record.completed_tests}/${record.total_tests} Completed`}
+                size="small" 
+                color={record.completed_tests === record.total_tests ? "success" : "warning"}
+              />
+              <Typography variant="caption" color="text.secondary">
+                Score: {record.overall_score}%
+              </Typography>
+            </Box>
+          );
+        }
+      }
     ],
     viewPathPrefix: `/${prefix}/topic/test`
   },
@@ -87,10 +120,66 @@ const chooseTitle = [
       { key: "sub_topic_name", label: "📝 Sub-Topic" },
       { key: "topic_name", label: "📖 Topic" },
       { key: "completed", label: "✅ Is Completed" },
-      { key: "completed_at", label: "📅 Completed At" }
+      { key: "completed_at", label: "📅 Completed At" },
+      { 
+        key: "test_progress", 
+        label: "📊 Test Progress",
+        render: (row) => {
+          const progress = row.test_progress;
+          if (!progress || progress.total_attempts === 0) {
+            return <Chip label="No Attempts" size="small" sx={{ bgcolor: 'grey.300', color: 'grey.700' }} />;
+          }
+          return (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                  <Chip 
+                    label={`${progress.total_attempts} Attempts`}
+                    size="small" 
+                    sx={{ bgcolor: 'info.main', color: 'white' }}
+                  />
+                  <Chip 
+                    label={`Best: ${progress.best_score}%`}
+                    size="small" 
+                    sx={{ bgcolor: 'success.main', color: 'white' }}
+                  />
+                </Box>
+                <Typography variant="caption" color="text.secondary">
+                  Latest: {progress.latest_score}% | Avg: {progress.average_score}%
+                </Typography>
+              </Box>
+              <Tooltip title="View Detailed Analytics" arrow>
+                <IconButton
+                  size="small"
+                  data-analytics={JSON.stringify({
+                    ...progress,
+                    testName: row.test_name,
+                    subTopicName: row.sub_topic_name,
+                    topicName: row.topic_name,
+                    contentType: 'SubTopicTest'
+                  })}
+                  sx={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    width: 28,
+                    height: 28,
+                    '&:hover': {
+                      transform: 'scale(1.1)',
+                      boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
+                    },
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  <Visibility sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          );
+        }
+      }
     ],
     viewPathPrefix: `/${prefix}/subtopic/test`
-  },
+  }
 ];
 
 const MyCurrentCourseAssignment = () => {
@@ -99,11 +188,15 @@ const MyCurrentCourseAssignment = () => {
 
   const [filters, setFilters] = useState({
     subject_id: "",
-    choose_title: chooseTitle[0]?.id || "",
+    choose_title: "TopicContent", // Default to first option
     subjects: [],
   });
 
   const [dropdownLoading, setDropdownLoading] = useState(true);
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [selectedTestRecord, setSelectedTestRecord] = useState(null);
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
 
   // Only fetch when both filters have values
   const shouldFetch = !!filters.subject_id && !!filters.choose_title;
@@ -123,10 +216,47 @@ const MyCurrentCourseAssignment = () => {
     page,
     setPage,
     rowsPerPage,
+    error
   } = usePaginatedData({
     endpoint: `${prefix}/current/assignment`,
     queryParams,
     enabled: shouldFetch,
+    onError: (error) => {
+      console.error('Assignment fetch error:', error);
+      
+      // Handle specific error cases
+      if (error.response?.status === 404) {
+        const message = error.response.data.message;
+        // if (message?.includes('No course found')) {
+        //   toast.warning('No course found for the selected subject.');
+        // } else if (message?.includes('No assignment found')) {
+        //   toast.warning('No assignment found for this course.');
+        // } else if (message?.includes('Topics are not found')) {
+        //   toast.warning('Topics are not found for this assignment.');
+        // } else if (message?.includes('No Topic content record found')) {
+        //   toast.warning('No content record found for the selected topic.');
+        // } else {
+        //   toast.warning(message || 'Content not found.');
+        // }
+      } else if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        navigate('/login');
+      } else if (error.response?.status === 422) {
+        const errors = error.response.data.errors;
+        if (errors) {
+          const errorMessages = Object.values(errors).flat();
+          toast.error(errorMessages.join(', '));
+        } else {
+          toast.error(error.response.data.message || 'Validation error occurred.');
+        }
+      } else if (error.response?.status === 500) {
+        toast.error(error.response.data.message || 'An error occurred while fetching assignments.');
+      } else {
+        toast.error('Failed to fetch assignments. Please try again.');
+      }
+    }
   });
 
   const handleFilterChange = (key, value) => {
@@ -135,7 +265,69 @@ const MyCurrentCourseAssignment = () => {
     setPage(0);
   };
 
-  // Fetch subjects on mount
+  // Check if content needs to be completed before viewing
+  const handleViewClick = (row) => {
+    const selectedChooseTitle = filters.choose_title;
+    const selectedType = chooseTitle.find((col) => col.id === selectedChooseTitle);
+    const viewPathPrefix = selectedType?.viewPathPrefix || '';
+    
+    // First check if test is already completed
+    const isTestCompleted = row.completed === "YES" || 
+                           row.completed === "yes" || 
+                           row.completed === true || 
+                           row.completed === 1 ||
+                           row.completed_at;
+    
+    if (isTestCompleted) {
+      // Test is completed, navigate directly
+      navigate(`${viewPathPrefix}/${row.id}`);
+      return;
+    }
+    
+    // Check content completion based on type
+    let needsCompletion = false;
+    let completionMessage = "";
+    let contentType = "";
+    
+    if (selectedChooseTitle === "TopicTest") {
+      needsCompletion = row.topic_completed === "NO" || 
+                       row.topic_completed === "no" || 
+                       row.topic_completed === false || 
+                       row.topic_completed === 0 ||
+                       !row.topic_completed_at;
+      
+      if (needsCompletion) {
+        completionMessage = "You need to complete the topic content before taking this test.";
+        contentType = "Topic";
+      }
+    } else if (selectedChooseTitle === "SubTopicTest") {
+      needsCompletion = row.sub_topic_completed === "NO" || 
+                       row.sub_topic_completed === "no" || 
+                       row.sub_topic_completed === false || 
+                       row.sub_topic_completed === 0 ||
+                       !row.sub_topic_completed_at;
+      
+      if (needsCompletion) {
+        completionMessage = "You need to complete the subtopic content before taking this test.";
+        contentType = "SubTopic";
+      }
+    }
+    
+    if (needsCompletion) {
+      // Show completion dialog
+      setPendingNavigation({
+        path: `${viewPathPrefix}/${row.id}`,
+        testName: row.test_name || row.name,
+        contentType: contentType,
+        message: completionMessage
+      });
+      setShowCompletionDialog(true);
+    } else {
+      // Navigate directly
+      navigate(`${viewPathPrefix}/${row.id}`);
+    }
+  };
+
   useEffect(() => {
     const fetching = async () => {
       try {
@@ -152,16 +344,38 @@ const MyCurrentCourseAssignment = () => {
           setValue("subject_id", String(dataList[0].id));
         }
 
-        setValue("choose_title", filters.choose_title);
-        setDropdownLoading(false);
+        // Set choose_title to default value
+        setValue("choose_title", "TopicContent");
       } catch {
         toast.error("Failed to fetch subjects");
+      } finally {
+        // Always set loading to false regardless of success or error
         setDropdownLoading(false);
       }
     };
 
     fetching();
   }, []); // empty deps - run once on mount
+
+  // Handle analytics button clicks
+  useEffect(() => {
+    const handleAnalyticsClick = (e) => {
+      const button = e.target.closest('[data-analytics]');
+      if (button) {
+        e.stopPropagation();
+        try {
+          const analyticsData = JSON.parse(button.getAttribute('data-analytics'));
+          setSelectedTestRecord(analyticsData);
+          setShowTestModal(true);
+        } catch (error) {
+          console.error('Error parsing analytics data:', error);
+        }
+      }
+    };
+
+    document.addEventListener('click', handleAnalyticsClick);
+    return () => document.removeEventListener('click', handleAnalyticsClick);
+  }, [setSelectedTestRecord, setShowTestModal]);
 
   const isFilterSelected = filters.subject_id && filters.choose_title;
 
@@ -181,25 +395,57 @@ const MyCurrentCourseAssignment = () => {
       label: "🔧 Action",
       render: (row) => {
         const selectedType = chooseTitle.find((col) => col.id === filters.choose_title);
+        const hasTests = row.test_track_record && row.test_track_record.total_tests > 0;
+        
         return (
-          <Tooltip title="View Details" arrow>
-            <IconButton
-              onClick={() => navigate(`${viewPathPrefix}/${row.id}`)}
-              sx={{
-                background: selectedType?.gradient || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: 'white',
-                width: 36,
-                height: 36,
-                '&:hover': {
-                  transform: 'scale(1.1)',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
-                },
-                transition: 'all 0.3s ease'
-              }}
-            >
-              {selectedType?.id.includes('Test') ? <Quiz sx={{ fontSize: 18 }} /> : <Visibility sx={{ fontSize: 18 }} />}
-            </IconButton>
-          </Tooltip>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Tooltip title="View Content" arrow>
+              <IconButton
+                onClick={() => handleViewClick(row)}
+                sx={{
+                  background: selectedType?.gradient || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  width: 36,
+                  height: 36,
+                  '&:hover': {
+                    transform: 'scale(1.1)',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+                  },
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                <Visibility sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            
+            {hasTests && (
+              <Tooltip title="View Test Details" arrow>
+                <IconButton
+                  onClick={() => {
+                    setSelectedTestRecord({
+                      ...row.test_track_record,
+                      contentName: row.name || row.sub_topic_name || 'Content',
+                      contentType: filters.choose_title
+                    });
+                    setShowTestModal(true);
+                  }}
+                  sx={{
+                    background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
+                    color: 'white',
+                    width: 36,
+                    height: 36,
+                    '&:hover': {
+                      transform: 'scale(1.1)',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+                    },
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  <Quiz sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
         );
       },
     });
@@ -428,6 +674,516 @@ const MyCurrentCourseAssignment = () => {
           </CardContent>
         </Card>
       </Fade>
+
+      {/* Test Details Modal */}
+      <Dialog 
+        open={showTestModal} 
+        onClose={() => setShowTestModal(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Avatar sx={{ 
+                background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
+                width: 40,
+                height: 40
+              }}>
+                <Quiz sx={{ fontSize: 20 }} />
+              </Avatar>
+              <Box>
+                <Typography variant="h6" fontWeight={600}>
+                  📊 Test Track Record
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {selectedTestRecord?.contentName} - {selectedTestRecord?.contentType}
+                </Typography>
+              </Box>
+            </Box>
+            <IconButton onClick={() => setShowTestModal(false)}>
+              <Close />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent>
+          {selectedTestRecord && selectedTestRecord.contentType === 'SubTopicTest' && (
+            <Box>
+              {/* Overview Stats Cards */}
+              <Grid container spacing={3} sx={{ mb: 4 }}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card sx={{ textAlign: 'center', background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)', color: 'white' }}>
+                    <CardContent>
+                      <Typography variant="h4" fontWeight={700}>
+                        {selectedTestRecord.total_attempts}
+                      </Typography>
+                      <Typography variant="body2">
+                        Total Attempts
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card sx={{ textAlign: 'center', background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)', color: 'white' }}>
+                    <CardContent>
+                      <Typography variant="h4" fontWeight={700}>
+                        {selectedTestRecord.best_score}%
+                      </Typography>
+                      <Typography variant="body2">
+                        Best Score
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card sx={{ textAlign: 'center', background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)', color: 'white' }}>
+                    <CardContent>
+                      <Typography variant="h4" fontWeight={700}>
+                        {selectedTestRecord.latest_score}%
+                      </Typography>
+                      <Typography variant="body2">
+                        Latest Score
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card sx={{ textAlign: 'center', background: 'linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%)', color: 'white' }}>
+                    <CardContent>
+                      <Typography variant="h4" fontWeight={700}>
+                        {selectedTestRecord.average_score}%
+                      </Typography>
+                      <Typography variant="body2">
+                        Average Score
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+
+              {/* Performance Analytics */}
+              {selectedTestRecord.performance_analytics && (
+                <Grid container spacing={3} sx={{ mb: 4 }}>
+                  <Grid item xs={12} md={6}>
+                    <Card sx={{ p: 3 }}>
+                      <Typography variant="h6" fontWeight={600} sx={{ mb: 2, color: 'success.main' }}>
+                        💪 Strong Areas
+                      </Typography>
+                      {selectedTestRecord.performance_analytics.strong_areas?.map((area, index) => (
+                        <Box key={index} sx={{ mb: 2, p: 2, bgcolor: 'success.50', borderRadius: 2 }}>
+                          <Typography variant="body2" fontWeight={600}>
+                            Question {area.question_id}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Correct: {area.correct_count} times | Mastery: {area.mastery_level}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Card sx={{ p: 3 }}>
+                      <Typography variant="h6" fontWeight={600} sx={{ mb: 2, color: 'warning.main' }}>
+                        📚 Areas for Improvement
+                      </Typography>
+                      {selectedTestRecord.performance_analytics.weak_areas?.map((area, index) => (
+                        <Box key={index} sx={{ mb: 2, p: 2, bgcolor: 'warning.50', borderRadius: 2 }}>
+                          <Typography variant="body2" fontWeight={600}>
+                            Question {area.question_id}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Incorrect: {area.incorrect_count} times | Difficulty: {area.difficulty_level}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Card>
+                  </Grid>
+                </Grid>
+              )}
+
+              {/* Attempt History */}
+              <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+                📈 Attempt History
+              </Typography>
+              
+              <Grid container spacing={2}>
+                {selectedTestRecord.attempt_history?.map((attempt, index) => (
+                  <Grid item xs={12} md={6} lg={4} key={index}>
+                    <Card sx={{ border: '1px solid', borderColor: 'divider' }}>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                          <Typography variant="h6" fontWeight={600}>
+                            Attempt #{attempt.attempt_number}
+                          </Typography>
+                          <Chip 
+                            label={`${attempt.score_percentage}%`}
+                            sx={{ 
+                              bgcolor: attempt.score_percentage >= 70 ? 'success.main' : 
+                                      attempt.score_percentage >= 50 ? 'warning.main' : 'error.main',
+                              color: 'white'
+                            }}
+                          />
+                        </Box>
+                        
+                        <Grid container spacing={2} sx={{ mb: 2 }}>
+                          <Grid item xs={4}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h6" fontWeight={600} color="success.main">
+                                {attempt.correct_answers}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Correct
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={4}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h6" fontWeight={600} color="error.main">
+                                {attempt.incorrect_answers}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Incorrect
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={4}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h6" fontWeight={600} color="warning.main">
+                                {attempt.unanswered}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Unanswered
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        </Grid>
+
+                        <Divider sx={{ my: 2 }} />
+
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Time Spent
+                          </Typography>
+                          <Typography variant="caption" fontWeight={600}>
+                            {Math.floor(attempt.total_time_spent_seconds / 60)}m {attempt.total_time_spent_seconds % 60}s
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Avg Time/Question
+                          </Typography>
+                          <Typography variant="caption" fontWeight={600}>
+                            {attempt.average_time_per_question.toFixed(1)}s
+                          </Typography>
+                        </Box>
+                        {attempt.improvement_from_previous !== 0 && (
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              Improvement
+                            </Typography>
+                            <Typography 
+                              variant="caption" 
+                              fontWeight={600}
+                              color={attempt.improvement_from_previous > 0 ? 'success.main' : 'error.main'}
+                            >
+                              {attempt.improvement_from_previous > 0 ? '+' : ''}{attempt.improvement_from_previous}%
+                            </Typography>
+                          </Box>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          )}
+          
+          {/* Fallback for old test_track_record format */}
+          {selectedTestRecord && selectedTestRecord.contentType !== 'SubTopicTest' && (
+            <Box>
+              {/* Original test track record display */}
+              <Grid container spacing={3} sx={{ mb: 4 }}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card sx={{ textAlign: 'center', background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)', color: 'white' }}>
+                    <CardContent>
+                      <Typography variant="h4" fontWeight={700}>
+                        {selectedTestRecord.total_tests}
+                      </Typography>
+                      <Typography variant="body2">
+                        Total Tests
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card sx={{ textAlign: 'center', background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)', color: 'white' }}>
+                    <CardContent>
+                      <Typography variant="h4" fontWeight={700}>
+                        {selectedTestRecord.attempted_tests}
+                      </Typography>
+                      <Typography variant="body2">
+                        Attempted
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card sx={{ textAlign: 'center', background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)', color: 'white' }}>
+                    <CardContent>
+                      <Typography variant="h4" fontWeight={700}>
+                        {selectedTestRecord.completed_tests}
+                      </Typography>
+                      <Typography variant="body2">
+                        Completed
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card sx={{ textAlign: 'center', background: 'linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%)', color: 'white' }}>
+                    <CardContent>
+                      <Typography variant="h4" fontWeight={700}>
+                        {selectedTestRecord.overall_score}%
+                      </Typography>
+                      <Typography variant="body2">
+                        Overall Score
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+
+              {/* Progress Bar */}
+              <Box sx={{ mb: 4 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2" fontWeight={600}>
+                    Test Completion Progress
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {selectedTestRecord.completed_tests}/{selectedTestRecord.total_tests}
+                  </Typography>
+                </Box>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={(selectedTestRecord.completed_tests / selectedTestRecord.total_tests) * 100}
+                  sx={{ 
+                    height: 8, 
+                    borderRadius: 4,
+                    backgroundColor: 'rgba(0,0,0,0.1)',
+                    '& .MuiLinearProgress-bar': {
+                      background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)'
+                    }
+                  }}
+                />
+              </Box>
+
+              <Divider sx={{ my: 3 }} />
+
+              {/* Individual Test Details */}
+              <Typography variant="h6" fontWeight={600} sx={{ mb: 3 }}>
+                📝 Individual Test Details
+              </Typography>
+              
+              <Grid container spacing={2}>
+                {selectedTestRecord.test_details?.map((test, index) => (
+                  <Grid item xs={12} key={test.test_id}>
+                    <Card sx={{ 
+                      border: '1px solid',
+                      borderColor: test.is_completed ? 'success.main' : 'warning.main',
+                      borderRadius: 2
+                    }}>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
+                              {test.test_name}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                              <Chip 
+                                icon={test.is_completed ? <CheckCircle /> : <Cancel />}
+                                label={test.is_completed ? 'Completed' : 'In Progress'}
+                                color={test.is_completed ? 'success' : 'warning'}
+                                size="small"
+                              />
+                              <Chip 
+                                label={`Score: ${test.score}%`}
+                                color={test.score >= 70 ? 'success' : test.score >= 50 ? 'warning' : 'error'}
+                                size="small"
+                              />
+                              <Chip 
+                                label={`Attempts: ${test.attempts}`}
+                                color="info"
+                                size="small"
+                              />
+                            </Box>
+                          </Box>
+                          <Box sx={{ textAlign: 'right' }}>
+                            <Typography variant="h6" fontWeight={700} color={test.score >= 70 ? 'success.main' : 'warning.main'}>
+                              {test.score}%
+                            </Typography>
+                          </Box>
+                        </Box>
+
+                        <Grid container spacing={2}>
+                          <Grid item xs={6} sm={3}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h6" fontWeight={600} color="primary.main">
+                                {test.total_questions}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Total Questions
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={6} sm={3}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h6" fontWeight={600} color="success.main">
+                                {test.correct_answers}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Correct
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={6} sm={3}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h6" fontWeight={600} color="error.main">
+                                {test.incorrect_answers}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Incorrect
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={6} sm={3}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h6" fontWeight={600} color="warning.main">
+                                {test.unanswered}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Unanswered
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        </Grid>
+
+                        {test.last_attempted && (
+                          <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <AccessTime fontSize="small" color="action" />
+                            <Typography variant="caption" color="text.secondary">
+                              Last attempted: {new Date(test.last_attempted).toLocaleString()}
+                            </Typography>
+                          </Box>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+
+              {(!selectedTestRecord.test_details || selectedTestRecord.test_details.length === 0) && (
+                <Paper sx={{ p: 4, textAlign: 'center', bgcolor: 'grey.50' }}>
+                  <Quiz sx={{ fontSize: 48, color: 'grey.400', mb: 2 }} />
+                  <Typography variant="h6" color="text.secondary">
+                    No test details available
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Test details will appear here once tests are attempted.
+                  </Typography>
+                </Paper>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        
+        <DialogActions>
+          <Button 
+            onClick={() => setShowTestModal(false)}
+            variant="contained"
+            sx={{ px: 4 }}
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Completion Check Dialog */}
+      <Dialog 
+        open={showCompletionDialog} 
+        onClose={() => setShowCompletionDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Avatar sx={{ 
+              background: pendingNavigation?.contentType === 'Topic' 
+                ? 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)'
+                : 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)',
+              width: 40,
+              height: 40
+            }}>
+              <Assignment sx={{ fontSize: 20 }} />
+            </Avatar>
+            <Box>
+              <Typography variant="h6" fontWeight={600}>
+                📚 Complete {pendingNavigation?.contentType} First
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {pendingNavigation?.testName}
+              </Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            {pendingNavigation?.message}
+          </Typography>
+          
+          <Box sx={{ 
+            p: 2, 
+            borderRadius: 2, 
+            bgcolor: pendingNavigation?.contentType === 'Topic' ? 'warning.50' : 'success.50',
+            border: '1px solid',
+            borderColor: pendingNavigation?.contentType === 'Topic' ? 'warning.200' : 'success.200'
+          }}>
+            <Typography variant="body2" 
+              color={pendingNavigation?.contentType === 'Topic' ? 'warning.main' : 'success.main'} 
+              fontWeight={600}
+            >
+              📝 Test: {pendingNavigation?.testName}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              This test will be available after completing the {pendingNavigation?.contentType?.toLowerCase()} content.
+            </Typography>
+          </Box>
+        </DialogContent>
+        
+        <DialogActions sx={{ p: 3, gap: 2 }}>
+          <Button 
+            onClick={() => setShowCompletionDialog(false)}
+            variant="outlined"
+          >
+            Cancel
+          </Button>
+          {/* <Button 
+            onClick={() => {
+              setShowCompletionDialog(false);
+              // Navigate to content page to complete first
+              const contentPath = pendingNavigation?.contentType === 'Topic' 
+                ? `/student/topic/content/view/${pendingNavigation?.path?.split('/').pop()}`
+                : `/student/subtopic/content/view/${pendingNavigation?.path?.split('/').pop()}`;
+              navigate(contentPath);
+            }}
+            variant="contained"
+            sx={{ px: 4 }}
+          >
+            Go to {pendingNavigation?.contentType} Content
+          </Button> */}
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

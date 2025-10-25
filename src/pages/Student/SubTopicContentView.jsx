@@ -1,4 +1,4 @@
-import { Container, Grid, Box, Typography, Card, CardContent, Avatar, Chip, Fade, IconButton, Tooltip } from '@mui/material';
+import { Container, Grid, Box, Typography, Card, CardContent, Avatar, Chip, Fade, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 import { ArrowBack, PlayCircleOutline, School, Assignment, Visibility, TrendingUp } from '@mui/icons-material';
 import VideoLessonHeader from '../Videos/VideoLessonHeader';
 import MediaRenderer from '../Videos/MediaRenderer';
@@ -13,6 +13,9 @@ const SubTopicContentView = () => {
     const navigate = useNavigate();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+    const [pendingTestNavigation, setPendingTestNavigation] = useState(null);
+    const [markingCompleted, setMarkingCompleted] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -29,6 +32,67 @@ const SubTopicContentView = () => {
         fetchData();
     }, [sub_topic_id]);
 
+    // Handle test click with completion check
+    const handleTestClick = (testId, testName) => {
+        if (data?.is_completed === 0) {
+            setPendingTestNavigation({ testId, testName });
+            setShowCompletionDialog(true);
+        } else {
+            // Navigate directly if content is already completed
+            navigate(`/student/subtopic/test/${testId}`);
+        }
+    };
+
+    // Mark content as completed
+    const markAsCompleted = async () => {
+        setMarkingCompleted(true);
+        try {
+            const response = await api.post('/student/mark/content/completed', {
+                model_type: 'SubTopicContent',
+                model_id: parseInt(sub_topic_id)
+            });
+
+            if (response.data.success) {
+                toast.success(response.data.message || 'Content marked as completed successfully!');
+                
+                // Update local data
+                setData(prev => ({
+                    ...prev,
+                    is_completed: 1,
+                    completed_at: response.data.data?.completed_at || new Date().toISOString()
+                }));
+
+                // Navigate to test if there was a pending navigation
+                if (pendingTestNavigation) {
+                    navigate(`/student/subtopic/test/${pendingTestNavigation.testId}`);
+                }
+            }
+        } catch (error) {
+            console.error('Mark as completed error:', error);
+            
+            if (error.response?.status === 422) {
+                const errors = error.response.data.errors;
+                if (errors) {
+                    const errorMessages = Object.values(errors).flat();
+                    toast.error(errorMessages.join(', '));
+                } else {
+                    toast.error(error.response.data.message || 'Validation error occurred.');
+                }
+            } else if (error.response?.status === 400) {
+                toast.error(error.response.data.message || 'Invalid model type provided.');
+            } else if (error.response?.status === 404) {
+                toast.error(error.response.data.message || 'SubTopic not found.');
+            } else if (error.response?.status === 500) {
+                toast.error(error.response.data.message || 'An error occurred while marking content as completed.');
+            } else {
+                toast.error('Failed to mark content as completed. Please try again.');
+            }
+        } finally {
+            setMarkingCompleted(false);
+            setShowCompletionDialog(false);
+            setPendingTestNavigation(null);
+        }
+    };
 
     // Calculate stats
     const mediaCount = data?.media?.length || 0;
@@ -76,7 +140,7 @@ const SubTopicContentView = () => {
                                 
                                 <Box sx={{ flex: 1 }}>
                                     <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-                                        📚 {loading ? 'Loading...' : data?.topic_name || 'Sub Topic Content'}
+                                        📚 {loading ? 'Loading...' : data?.sub_topic_name || 'Sub Topic Content'}
                                     </Typography>
                                     <Typography variant="body1" sx={{ opacity: 0.9 }}>
                                         Explore course content and enhance your learning experience
@@ -157,11 +221,84 @@ const SubTopicContentView = () => {
                     <Grid item xs={12} lg={4}>
                         <Fade in timeout={1400}>
                             <Box>
-                                <TestList relatedData={data?.sub_topic_test || []} slugUrl='subtopic' loading={loading} />
+                                <TestList 
+                                    relatedData={data?.sub_topic_test || []} 
+                                    slugUrl='subtopic' 
+                                    loading={loading}
+                                    onTestClick={handleTestClick}
+                                />
                             </Box>
                         </Fade>
                     </Grid>
                 </Grid>
+
+                {/* Completion Confirmation Dialog */}
+                <Dialog 
+                    open={showCompletionDialog} 
+                    onClose={() => setShowCompletionDialog(false)}
+                    maxWidth="sm"
+                    fullWidth
+                >
+                    <DialogTitle>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Avatar sx={{ 
+                                background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)',
+                                width: 40,
+                                height: 40
+                            }}>
+                                <Assignment sx={{ fontSize: 20 }} />
+                            </Avatar>
+                            <Box>
+                                <Typography variant="h6" fontWeight={600}>
+                                    📑 Complete SubTopic First
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    {data?.sub_topic_name}
+                                </Typography>
+                            </Box>
+                        </Box>
+                    </DialogTitle>
+                    
+                    <DialogContent>
+                        <Typography variant="body1" sx={{ mb: 2 }}>
+                            You need to complete this subtopic content before taking the test. 
+                            Would you like to mark this subtopic as completed now?
+                        </Typography>
+                        
+                        <Box sx={{ 
+                            p: 2, 
+                            borderRadius: 2, 
+                            bgcolor: 'success.50',
+                            border: '1px solid',
+                            borderColor: 'success.200'
+                        }}>
+                            <Typography variant="body2" color="success.main" fontWeight={600}>
+                                📝 Test: {pendingTestNavigation?.testName}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                This test will be available after completing the subtopic.
+                            </Typography>
+                        </Box>
+                    </DialogContent>
+                    
+                    <DialogActions sx={{ p: 3, gap: 2 }}>
+                        <Button 
+                            onClick={() => setShowCompletionDialog(false)}
+                            variant="outlined"
+                            disabled={markingCompleted}
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={markAsCompleted}
+                            variant="contained"
+                            disabled={markingCompleted}
+                            sx={{ px: 4 }}
+                        >
+                            {markingCompleted ? 'Marking Complete...' : 'Mark as Completed'}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
         </Container>
     );
 };

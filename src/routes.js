@@ -22,6 +22,8 @@ import Dashboard from "./pages/Student/Dashboard";
 import MyCurrentCourseAssignment from "./pages/Student/MyCurrentCourseAssignment";
 import StudentTest from "./pages/Student/StudentTest";
 import SubTopicContentView from "./pages/Student/SubTopicContentView";
+import SubTopicTest from "./pages/Student/SubTopicTest";
+import TopicTest from "./pages/Student/TopicTest";
 import TopicContentView from "./pages/Student/TopicContentView";
 import StudentPannel from "./pages/StudentPannel";
 import VideoLessonsPage from "./pages/VideoLessonsPage";
@@ -182,7 +184,9 @@ const AppRoutes = () => {
        
         <Route path="videos" element={<VideoLessonsPage />} />
         <Route path="topic/content/view/:topic_id" element={<TopicContentView />} />
+        <Route path="topic/test/:test_id" element={<TopicTest />} />
         <Route path="subtopic/content/view/:sub_topic_id" element={<SubTopicContentView />} />
+        <Route path="subtopic/test/:sub_topic_test_id" element={<SubTopicTest />} />
         <Route path="my-course-video-page" element={<MyCourseVideoPage />} />
         
         <Route path="add-student" element={<AddStudent />} />
