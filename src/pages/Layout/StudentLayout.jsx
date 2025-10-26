@@ -45,26 +45,13 @@ const StudentLayout = () => {
     const location = useLocation();
     const [openMenus, setOpenMenus] = useState({});
     const [loading, setLoading] = useState(true);  // loader state
+    const [userData, setUserData] = useState(null); // user data from localStorage
     const name = process.env.REACT_APP_STUDENT_PREFIX; //getting the prefix from the environment variable
 
     const handleLogout = () => {
         logout();
         navigate("/login");
     };//logout 
-
-    const handleToggle = (label) => {
-        setOpenMenus((prev) => ({
-            ...prev,
-            [label]: !prev[label],
-        }));
-    };
-
-    // Simulate page load finished by hiding loader after mount
-    useEffect(() => {
-        // You can customize this: here loader disappears after 1 second
-        const timer = setTimeout(() => setLoading(false), 1000);
-        return () => clearTimeout(timer);
-    }, [location.pathname]); // reset loader when route changes if needed
 
     const menuItems = [
         {
@@ -122,6 +109,51 @@ const StudentLayout = () => {
             gradient: "linear-gradient(135deg, #ff5722 0%, #d84315 100%)",
         },
     ];
+
+    const handleToggle = (label) => {
+        setOpenMenus((prev) => ({
+            ...prev,
+            [label]: !prev[label],
+        }));
+    };
+
+    // Load user data from localStorage
+    useEffect(() => {
+        const storedUserData = localStorage.getItem('userData');
+        if (storedUserData) {
+            try {
+                const parsedData = JSON.parse(storedUserData);
+                setUserData(parsedData);
+            } catch (error) {
+                console.error('Error parsing user data from localStorage:', error);
+            }
+        }
+    }, []);
+
+    // Auto-open parent menus based on current route and simulate page load
+    useEffect(() => {
+        // Auto-open parent menus if child route is active
+        const currentPath = location.pathname;
+        const newOpenMenus = {};
+        
+        menuItems.forEach(item => {
+            if (item.children) {
+                const hasActiveChild = item.children.some(child => child.path === currentPath);
+                if (hasActiveChild) {
+                    newOpenMenus[item.label] = true;
+                }
+            }
+        });
+        
+        // Only update if there are changes to avoid unnecessary re-renders
+        if (Object.keys(newOpenMenus).length > 0) {
+            setOpenMenus(prev => ({ ...prev, ...newOpenMenus }));
+        }
+        
+        // Hide loader after 1 second
+        const timer = setTimeout(() => setLoading(false), 1000);
+        return () => clearTimeout(timer);
+    }, [location.pathname]); // reset when route changes
 
     return (
         <Box sx={{ display: "flex" }}>
@@ -195,14 +227,26 @@ const StudentLayout = () => {
                                 borderRadius: "50%",
                                 p: 1
                             }}>
-                                <AccountCircle sx={{ color: "#fff", fontSize: 28 }} />
+                                {userData?.full_name ? (
+                                    <Avatar sx={{ 
+                                        width: 32, 
+                                        height: 32, 
+                                        fontSize: '14px', 
+                                        fontWeight: 700,
+                                        bgcolor: 'rgba(255,255,255,0.3)'
+                                    }}>
+                                        {userData.full_name.charAt(0).toUpperCase()}
+                                    </Avatar>
+                                ) : (
+                                    <AccountCircle sx={{ color: "#fff", fontSize: 28 }} />
+                                )}
                             </Box>
                             <Box sx={{ textAlign: 'right' }}>
-                                <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>
-                                    Student Portal
+                                <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600, fontSize: '14px' }}>
+                                    {userData?.full_name || 'Student Portal'}
                                 </Typography>
-                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                                    Welcome back!
+                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px' }}>
+                                    {userData?.email || 'Welcome back!'}
                                 </Typography>
                             </Box>
                         </Box>
@@ -273,22 +317,48 @@ const StudentLayout = () => {
                         mx: 'auto',
                         mb: 2,
                         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        boxShadow: '0 8px 25px rgba(102, 126, 234, 0.3)'
+                        boxShadow: '0 8px 25px rgba(102, 126, 234, 0.3)',
+                        fontSize: '24px',
+                        fontWeight: 700
                     }}>
-                        <School sx={{ fontSize: 30, color: 'white' }} />
+                        {userData?.full_name ? userData.full_name.charAt(0).toUpperCase() : <School sx={{ fontSize: 30, color: 'white' }} />}
                     </Avatar>
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: '#2c3e50', mb: 0.5 }}>
-                        Student Panel
-                    </Typography>
-                    <Chip 
-                        label="Learning Hub" 
-                        size="small" 
-                        sx={{ 
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            color: 'white',
-                            fontWeight: 600
-                        }} 
-                    />
+                    
+                    {userData ? (
+                        <>
+                            <Typography variant="h6" sx={{ fontWeight: 700, color: '#2c3e50', mb: 0.5, fontSize: '16px' }}>
+                                {userData.full_name}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: '#6c757d', mb: 1, display: 'block', fontSize: '12px' }}>
+                                {userData.email}
+                            </Typography>
+                            <Chip 
+                                label={userData.role || "Student"} 
+                                size="small" 
+                                sx={{ 
+                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    color: 'white',
+                                    fontWeight: 600,
+                                    fontSize: '11px'
+                                }} 
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <Typography variant="h6" sx={{ fontWeight: 700, color: '#2c3e50', mb: 0.5 }}>
+                                Student Panel
+                            </Typography>
+                            <Chip 
+                                label="Learning Hub" 
+                                size="small" 
+                                sx={{ 
+                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    color: 'white',
+                                    fontWeight: 600
+                                }} 
+                            />
+                        </>
+                    )}
                 </Box>
                 
                 <Divider sx={{ mx: 2, mb: 2 }} />

@@ -103,6 +103,7 @@ const Login = () => {
 
       localStorage.setItem("token", access_token);
       localStorage.setItem("role", role);
+      localStorage.setItem('userData', JSON.stringify(res.data.data));
 
       toast.success(` ${role} login successful!`);
       navigate(`/${role}/dashboard`);

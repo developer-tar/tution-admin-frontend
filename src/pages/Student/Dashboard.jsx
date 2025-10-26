@@ -3,6 +3,7 @@ import {
   Box,
   Typography,
   Grid,
+  Button,
   ToggleButton,
   ToggleButtonGroup,
   LinearProgress,
@@ -52,6 +53,7 @@ import {
 } from "chart.js";
 import { Bar, Line, Pie } from "react-chartjs-2";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import logout from "../../logout";
 
@@ -271,6 +273,8 @@ const PerformanceChart = ({ title, subject, data, loading }) => {
 };
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  
   // State management
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -281,17 +285,21 @@ const Dashboard = () => {
   const [performanceLoading, setPerformanceLoading] = useState(false);
 
   // API Functions
-  const fetchDashboardData = async () => {
+  const fetchSubjectDashboard = async (subjectId) => {
     try {
-      const response = await api.get('student/dashboard');
+      setLoading(true);
+      const response = await api.post('student/dashboard/subject', {
+        subject_id: subjectId
+      });
       
       if (response.data.success) {
         setDashboardData(response.data.data);
+        setError(null);
       } else {
-        throw new Error(response.data.message || 'Failed to fetch dashboard data');
+        throw new Error(response.data.message || 'Failed to fetch subject dashboard data');
       }
     } catch (err) {
-      console.error('Error fetching dashboard data:', err);
+      console.error('Error fetching subject dashboard data:', err);
       
       if (err.response?.status === 401) {
         toast.error('Session expired. Please login again.');
@@ -299,13 +307,22 @@ const Dashboard = () => {
         return;
       }
       
-      if (err.response?.status === 404) {
-        setError('No dashboard data found. Please contact support.');
-        return;
+      if (err.response?.status === 422) {
+        const errors = err.response?.data?.errors;
+        if (errors?.subject_id) {
+          toast.error(errors.subject_id[0]);
+        } else {
+          toast.error(err.response?.data?.message || 'Invalid subject data');
+        }
+      } else if (err.response?.status === 500) {
+        toast.error('Server error occurred. Please try again later.');
+      } else {
+        toast.error('Failed to load subject dashboard data');
       }
       
-      setError(err.response?.data?.message || 'Failed to fetch dashboard data');
-      toast.error('Failed to load dashboard data. Please try again.');
+      setError('Failed to load subject dashboard data');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -316,7 +333,7 @@ const Dashboard = () => {
       if (response.data.success) {
         const subjects = response.data.data.subjects || [];
         setSubjectsData(subjects);
-        
+        console.log('33333333333333333333333333333333333',subjectsData);
         // Auto-select first subject for performance chart
         if (subjects.length > 0 && !selectedSubject) {
           setSelectedSubject(subjects[0].id);
@@ -375,10 +392,7 @@ const Dashboard = () => {
   useEffect(() => {
     const loadInitialData = async () => {
       setLoading(true);
-      await Promise.all([
-        fetchDashboardData(),
-        fetchAssignedSubjects()
-      ]);
+      await fetchAssignedSubjects();
       setLoading(false);
     };
     
@@ -387,6 +401,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (selectedSubject) {
+      fetchSubjectDashboard(selectedSubject);
       fetchWeeklyPerformance(selectedSubject);
     }
   }, [selectedSubject]);
@@ -511,16 +526,16 @@ const Dashboard = () => {
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard 
-            title="Weekly Progress" 
+            title="Content Progress" 
             value={
               loading ? 'Loading...' : 
-              (dashboardData?.current_week_progress?.progress_percentage !== undefined && dashboardData?.current_week_progress?.progress_percentage !== null) 
-                ? `${Math.round(dashboardData.current_week_progress.progress_percentage)}%` 
+              (dashboardData?.subject_breakdown?.content_completion_percentage !== undefined) 
+                ? `${Math.round(dashboardData.subject_breakdown.content_completion_percentage)}%` 
                 : '0%'
             }
             subtitle={
               loading ? 'Loading...' : 
-              dashboardData?.current_week_progress?.status || 'No current week data'
+              dashboardData?.current_week_info?.week_number || 'No current week'
             }
             icon={<TrendingUp />}
             gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
@@ -532,14 +547,14 @@ const Dashboard = () => {
             title="Topics Completed" 
             value={
               loading ? 'Loading...' : 
-              dashboardData?.topic_completion 
-                ? `${dashboardData.topic_completion.completed_topics || 0}/${dashboardData.topic_completion.total_topics || 0}` 
+              dashboardData?.subject_breakdown 
+                ? `${dashboardData.subject_breakdown.completed_topics || 0}/${dashboardData.subject_breakdown.total_topics || 0}` 
                 : '0/0'
             }
             subtitle={
               loading ? 'Loading...' : 
-              dashboardData?.topic_completion?.completion_percentage !== undefined 
-                ? `${Math.round(dashboardData.topic_completion.completion_percentage)}% Complete` 
+              dashboardData?.subject_breakdown?.content_completion_percentage !== undefined 
+                ? `${Math.round(dashboardData.subject_breakdown.content_completion_percentage)}% Complete` 
                 : '0% Complete'
             }
             icon={<CheckCircle />}
@@ -549,18 +564,18 @@ const Dashboard = () => {
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard 
-            title="Current Week Tests" 
+            title="Tests Progress" 
             value={
               loading ? 'Loading...' : 
-              dashboardData?.current_week_progress 
-                ? `${dashboardData.current_week_progress.tests_completed || 0}/${dashboardData.current_week_progress.total_tests || 0}` 
+              dashboardData?.subject_breakdown 
+                ? `${dashboardData.subject_breakdown.completed_topic_tests || 0}/${dashboardData.subject_breakdown.total_topic_tests || 0}` 
                 : '0/0'
             }
             subtitle={
               loading ? 'Loading...' : 
-              dashboardData?.current_week_progress?.average_score !== undefined 
-                ? `Avg: ${Math.round(dashboardData.current_week_progress.average_score)}%` 
-                : 'No tests completed'
+              dashboardData?.subject_breakdown?.test_completion_percentage !== undefined 
+                ? `${Math.round(dashboardData.subject_breakdown.test_completion_percentage)}% Complete` 
+                : '0% Complete'
             }
             icon={<Assignment />}
             gradient="linear-gradient(135deg, #FF9800 0%, #F57C00 100%)"
@@ -569,14 +584,14 @@ const Dashboard = () => {
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard 
-            title="Upcoming Tests" 
+            title="Total Assignments" 
             value={
               loading ? 'Loading...' : 
-              String(dashboardData?.upcoming_tests?.count || 0)
+              String(dashboardData?.summary?.total_assignments || 0)
             }
             subtitle={
               loading ? 'Loading...' : 
-              dashboardData?.upcoming_tests?.description || 'No upcoming tests'
+              dashboardData?.current_week_info?.course_name || 'No course assigned'
             }
             icon={<Schedule />}
             gradient="linear-gradient(135deg, #E91E63 0%, #C2185B 100%)"
@@ -584,6 +599,38 @@ const Dashboard = () => {
           />
         </Grid>
       </Grid>
+
+      {/* Start Course Assignment Button */}
+      <Box sx={{ mb: 4, textAlign: 'center' }}>
+        <Button
+          variant="contained"
+          size="large"
+          onClick={() => navigate('/student/my-current-assignment')}
+          sx={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            px: 4,
+            py: 1.5,
+            borderRadius: '12px',
+            fontSize: '16px',
+            fontWeight: 600,
+            textTransform: 'none',
+            boxShadow: '0 8px 25px rgba(102, 126, 234, 0.3)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+              transform: 'translateY(-2px)',
+              boxShadow: '0 12px 35px rgba(102, 126, 234, 0.4)',
+            },
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5
+          }}
+        >
+          <Assignment sx={{ fontSize: 24 }} />
+          📚 Start Course Assignment
+        </Button>
+      </Box>
 
       <Grid container spacing={3}>
         {/* Performance Chart */}
@@ -602,12 +649,7 @@ const Dashboard = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <School fontSize="small" />
                       {subject.name}
-                      <Chip 
-                        label={`${subject.completion_percentage}%`}
-                        size="small"
-                        color={getPerformanceColor(subject.completion_percentage)}
-                        sx={{ ml: 1 }}
-                      />
+                    
                     </Box>
                   </MenuItem>
                 ))}

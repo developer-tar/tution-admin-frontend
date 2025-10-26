@@ -58,6 +58,10 @@ import MyCourseTest from "./pages/Student/Homework/MyCourseTest";
 //videos route
 import MyCourseVideo from "./pages/Student/Video/MyCourseVideo";
 import MyCourseView from "./pages/Student/Video/MyCourseView";
+
+// 404 Not Found Page
+import NotFound from "./pages/NotFound";
+
 // ============ AUTH GUARDS ============
 
 // General Protected Route
@@ -242,8 +246,8 @@ const AppRoutes = () => {
         <Route path="my-course-video-page" element={<MyCourseVideoPage />} />
       </Route>
 
-      {/* FALLBACK - unknown route */}
-      <Route path="*" element={<RedirectByRole />} />
+      {/* FALLBACK - 404 Not Found */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };

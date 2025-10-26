@@ -547,31 +547,88 @@ const MyStudentList = () => {
       <Card 
         sx={{ 
           mb: 4,
-          background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+          borderRadius: '20px',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+          boxShadow: '0 15px 40px rgba(102, 126, 234, 0.3)',
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+            backdropFilter: 'blur(10px)',
+          }
         }}
       >
-        <CardContent sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+        {/* Floating Decorative Elements */}
+        <Box
+          sx={{
+            position: 'absolute',
+            top: -30,
+            right: -30,
+            width: 100,
+            height: 100,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.1)',
+            animation: 'float 6s ease-in-out infinite',
+            '@keyframes float': {
+              '0%, 100%': { transform: 'translateY(0px) rotate(0deg)' },
+              '50%': { transform: 'translateY(-15px) rotate(180deg)' }
+            }
+          }}
+        />
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: -20,
+            left: -20,
+            width: 60,
+            height: 60,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.08)',
+            animation: 'float 4s ease-in-out infinite reverse',
+          }}
+        />
+
+        <CardContent sx={{ p: 4, position: 'relative', zIndex: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
             <Box 
               sx={{ 
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                borderRadius: '50%',
-                p: 1.5,
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)',
+                borderRadius: '16px',
+                p: 2,
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.2)',
               }}
             >
-              <span style={{ fontSize: '24px' }} role="img" aria-label="course">📚</span>
+              <span style={{ fontSize: '32px' }} role="img" aria-label="course">📚</span>
             </Box>
             <Box>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-                Assign Course to Students
+              <Typography variant="h4" sx={{ 
+                fontWeight: 800, 
+                mb: 1,
+                fontSize: { xs: '1.5rem', md: '2rem' },
+                textShadow: '0 4px 8px rgba(0,0,0,0.3)',
+                letterSpacing: '-0.5px'
+              }}>
+                ✨ Assign Course to Students
               </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '14px' }}>
-                Select a course and assign it to multiple students
+              <Typography variant="body1" sx={{ 
+                opacity: 0.9, 
+                fontSize: '16px',
+                fontWeight: 500,
+                textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              }}>
+                🎯 Select a course and assign it to multiple students instantly
               </Typography>
             </Box>
           </Box>
@@ -750,33 +807,89 @@ const MyStudentList = () => {
       <Box 
         sx={{ 
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          borderRadius: 3,
-          p: 3,
-          mb: 3,
+          borderRadius: '20px',
+          p: 4,
+          mb: 4,
           color: 'white',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+          boxShadow: '0 15px 40px rgba(102, 126, 234, 0.3)',
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+            backdropFilter: 'blur(10px)',
+          }
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        {/* Floating Decorative Elements */}
+        <Box
+          sx={{
+            position: 'absolute',
+            top: -25,
+            right: -25,
+            width: 80,
+            height: 80,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.1)',
+            animation: 'float 5s ease-in-out infinite',
+            '@keyframes float': {
+              '0%, 100%': { transform: 'translateY(0px) rotate(0deg)' },
+              '50%': { transform: 'translateY(-12px) rotate(180deg)' }
+            }
+          }}
+        />
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: -15,
+            left: -15,
+            width: 50,
+            height: 50,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.08)',
+            animation: 'float 3s ease-in-out infinite reverse',
+          }}
+        />
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
             <Box 
               sx={{ 
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                borderRadius: '50%',
-                p: 1.5,
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)',
+                borderRadius: '16px',
+                p: 2,
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.2)',
               }}
             >
-              <span style={{ fontSize: '24px' }} role="img" aria-label="students">👨‍🎓</span>
+              <span style={{ fontSize: '32px' }} role="img" aria-label="students">👨‍🎓</span>
             </Box>
             <Box>
-              <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
-                My Student List
+              <Typography variant="h3" sx={{ 
+                fontWeight: 800, 
+                mb: 1,
+                fontSize: { xs: '1.8rem', md: '2.2rem' },
+                textShadow: '0 4px 8px rgba(0,0,0,0.3)',
+                letterSpacing: '-0.5px'
+              }}>
+                📋 My Student List
               </Typography>
-              <Typography variant="body1" sx={{ opacity: 0.9, fontSize: '14px' }}>
-                Manage and monitor your students' progress
+              <Typography variant="body1" sx={{ 
+                opacity: 0.9, 
+                fontSize: '16px',
+                fontWeight: 500,
+                textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              }}>
+                🚀 Manage and monitor your students' progress with ease
               </Typography>
             </Box>
           </Box>

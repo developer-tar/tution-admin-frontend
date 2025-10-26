@@ -27,7 +27,8 @@ import {
   ListItemIcon,
   Toolbar,
   Typography,
-  Button
+  Button,
+  Avatar
 } from "@mui/material";
 import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -40,6 +41,7 @@ const ParentLayout = () => {
   const location = useLocation();
   const [openMenus, setOpenMenus] = useState({});
   const [loading, setLoading] = useState(true);  // loader state
+  const [userData, setUserData] = useState(null); // user data from localStorage
   
   const handleLogout = () => {
     logout();
@@ -94,6 +96,19 @@ const ParentLayout = () => {
       icon: <Settings />,
     },
   ];
+
+  // Load user data from localStorage
+  useEffect(() => {
+    const storedUserData = localStorage.getItem('userData');
+    if (storedUserData) {
+      try {
+        const parsedData = JSON.parse(storedUserData);
+        setUserData(parsedData);
+      } catch (error) {
+        console.error('Error parsing user data from localStorage:', error);
+      }
+    }
+  }, []);
 
   // Simulate page load finished by hiding loader after mount
   useEffect(() => {
@@ -191,7 +206,19 @@ const ParentLayout = () => {
                     justifyContent: 'center'
                   }}
                 >
-                  <AccountCircle sx={{ color: "#fff", fontSize: 28 }} />
+                  {userData?.full_name ? (
+                    <Avatar sx={{ 
+                      width: 32, 
+                      height: 32, 
+                      fontSize: '14px', 
+                      fontWeight: 700,
+                      bgcolor: 'rgba(255,255,255,0.3)'
+                    }}>
+                      {userData.full_name.charAt(0).toUpperCase()}
+                    </Avatar>
+                  ) : (
+                    <AccountCircle sx={{ color: "#fff", fontSize: 28 }} />
+                  )}
                 </Box>
                 <Box sx={{ textAlign: 'right', display: { xs: 'none', sm: 'block' } }}>
                   <Typography 
@@ -202,7 +229,7 @@ const ParentLayout = () => {
                       fontSize: '14px'
                     }}
                   >
-                    Parent Portal
+                    {userData?.full_name || 'Parent Portal'}
                   </Typography>
                   <Typography 
                     variant="caption" 
@@ -211,7 +238,7 @@ const ParentLayout = () => {
                       fontSize: '11px'
                     }}
                   >
-                    Welcome back!
+                    {userData?.email || 'Welcome back!'}
                   </Typography>
                 </Box>
               </Box>
