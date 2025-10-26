@@ -5,6 +5,7 @@ import VideoFilterForm from "./MyCourseVideo/VideoFilterForm";
 import VideoTable from "./MyCourseVideo/VideoTable";
 
 const MyCourseVideoPage = () => {
+  console.log('dddd')
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       <MyCourseHeader />
