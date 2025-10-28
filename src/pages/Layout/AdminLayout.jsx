@@ -44,7 +44,7 @@ const AdminLayout = () => {
   // Admin logout function
   const handleLogout = () => {
     // Remove admin-role from localStorage
-    localStorage.removeItem('admin-role');
+    localStorage.removeItem('role');
     localStorage.removeItem('token'); // Also remove token if exists
     navigate("/login");
   };

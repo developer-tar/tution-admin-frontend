@@ -57,7 +57,14 @@ const ParentLayout = () => {
 
   // Helper function to check if parent menu should be highlighted
   const isParentActive = (item) => {
-    if (item.path && location.pathname === item.path) return true;
+    if (item.path) {
+      // Normalize both paths by removing trailing slash for comparison
+      const currentPath = location.pathname.replace(/\/$/, '');
+      const itemPath = item.path.replace(/\/$/, '');
+      
+      // Check if normalized paths match
+      if (currentPath === itemPath) return true;
+    }
     if (item.children) {
       return item.children.some(child => location.pathname === child.path);
     }
@@ -68,7 +75,7 @@ const ParentLayout = () => {
   const menuItems = [
     {
       label: "Dashboard",
-      path: `/${name}/dashboard`,
+      path: `/${name}`,
       icon: <Dashboard />,
     },
     {

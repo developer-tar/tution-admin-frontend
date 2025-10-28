@@ -100,13 +100,13 @@ const Login = () => {
       const res = await api.post('login', formData);
 
       const { access_token, role } = res.data.data;
-
+      const roleModify = role.toLowerCase();
       localStorage.setItem("token", access_token);
-      localStorage.setItem("role", role);
+      localStorage.setItem("role", roleModify);
       localStorage.setItem('userData', JSON.stringify(res.data.data));
 
-      toast.success(` ${role} login successful!`);
-      navigate(`/${role}/dashboard`);
+      toast.success(` ${roleModify} login successful!`);
+      navigate(`/${roleModify}/`);
 
     } catch (error) {
       const errMsg = error.response?.data?.message || "Login failed!";

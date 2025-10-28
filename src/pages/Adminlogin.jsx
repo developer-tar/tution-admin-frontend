@@ -56,11 +56,11 @@ const AdminLogin = () => {
 
       const { access_token, role } = res.data.data;
 
-      localStorage.setItem("admin-token", access_token);
-      localStorage.setItem("admin-role", role);
+      localStorage.setItem("token", access_token);
+      localStorage.setItem("role", role.toLowerCase());
 
       toast.success("Admin login successful!");
-      navigate("/admin/dashboard");
+      navigate("/admin/course-list");
     } catch (error) {
       const errMsg = error.response?.data?.message || "Login failed!";
       toast.error(errMsg);

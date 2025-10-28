@@ -67,17 +67,18 @@ import NotFound from "./pages/NotFound";
 // General Protected Route
 const RequireAuth = ({ children }) => {
   const token = localStorage.getItem("token");
+  console.log(token,children)
   return token ? children : <Navigate to="/login" />;
 };
 
 // Admin Protected Route
 const RequireAdmin = ({ children }) => {
-  const token = localStorage.getItem("admin-token");
-  const role = localStorage.getItem("admin-role");
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
 
-  return token && role?.toLowerCase() === "admin"
+  return token && role === "admin"
     ? children
-    : <Navigate to="/admin-login" />;
+    : <Navigate to="/login" />;
 };
 
 // Role-Based Route (student, tutor, parent)
@@ -85,7 +86,7 @@ const RequireRole = ({ children, allowedRoles }) => {
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
   if (!token) return <Navigate to="/login" />;
-  return allowedRoles.includes(role?.toLowerCase())
+  return allowedRoles.includes(role)
     ? children
     : <Navigate to="/login" />;
 };
@@ -93,7 +94,7 @@ const RequireRole = ({ children, allowedRoles }) => {
 // Guest Route - blocks access if already logged in
 const GuestRoute = ({ children }) => {
   const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role")?.toLowerCase();
+  const role = localStorage.getItem("role");
 
   if (token) {
     switch (role) {
@@ -104,7 +105,7 @@ const GuestRoute = ({ children }) => {
       case "tutor":
         return <Navigate to="/tutor" />;
       case "admin":
-        return <Navigate to="/admin/dashboard" />;
+        return <Navigate to="/admin/course-list" />;
       default:
         return <Navigate to="/" />;
     }
@@ -117,15 +118,16 @@ const GuestRoute = ({ children }) => {
 // Redirect users to their main dashboard
 const RedirectByRole = () => {
   const role = localStorage.getItem("role");
-  switch (role?.toLowerCase()) {
+  switch (role) {
     case "student":
       return <Navigate to="/student" />;
     case "parent":
-      return <Navigate to="/parent/" />;
+      return <Navigate to="/parent" />;
     case "tutor":
       return <Navigate to="/tutor" />;
-    case "admin":
-      return <Navigate to="/admin/dashboard" />;
+    case "Admin":
+      // return <Navigate to="/admin/dashboard" />;
+      return <Navigate to="/admin/course-list" />;
     default:
       return <Navigate to="/login" />;
   }
@@ -202,7 +204,7 @@ const AppRoutes = () => {
       </Route>
 
       {/* PARENT ROUTES */}
-      <Route path="/parent/" element={
+      <Route path="/parent" element={
         <RequireRole allowedRoles={["parent"]}>
           <ParentLayout />
         </RequireRole>
@@ -234,8 +236,11 @@ const AppRoutes = () => {
         <Route index element={<Dashboard />} />
       </Route>
 
-      {/* GENERAL AUTH ROUTES (DEFAULT LAYOUT) */}
-      <Route path="/" element={
+      {/* ROOT ROUTE - REDIRECT BY ROLE */}
+      <Route path="/" element={<RedirectByRole />} />
+
+      {/* GENERAL AUTH ROUTES (DEFAULT LAYOUT) - FOR BACKWARD COMPATIBILITY */}
+      <Route path="/general" element={
         <RequireAuth>
           <Layout />
         </RequireAuth>
