@@ -33,6 +33,9 @@ import TimeSlots from "./pages/Course/CourseTimeSlot";
 import MockExamCategory from "./pages/MockExam/MockExamCategory";
 import MockExam from "./pages/MockExam/MockExam";
 
+// Master Form imports
+import MasterForm from "./pages/MasterForm/MasterForm";
+
 //============ START PARENT ROUTING ============
 // student routes
 import AddStudent from "./pages/Parent/Student/AddStudent";
@@ -173,6 +176,7 @@ const AppRoutes = () => {
         <Route path="course-report" element={<CourseReport />} />
         <Route path="mock-exam-categories" element={<MockExamCategory />} />
         <Route path="mock-exams" element={<MockExam />} />
+        <Route path="master-forms" element={<MasterForm />} />
       </Route>
 
       {/* STUDENT ROUTES */}

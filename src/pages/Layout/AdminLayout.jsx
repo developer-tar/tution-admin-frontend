@@ -29,6 +29,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import AddIcon from '@mui/icons-material/Add';
 import ListIcon from '@mui/icons-material/List';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
+import StorageIcon from '@mui/icons-material/Storage';
 import { Logout, AccountCircle } from "@mui/icons-material";
 import CapitalizeFirstLetter from "../../CapitalizeFirstLetter"; 
 
@@ -109,6 +110,7 @@ const AdminLayout = () => {
         { label: "Mock Exams", path: "/admin/mock-exams", icon: <QuizIcon /> },
       ],
     },
+    { label: "Master Forms", path: "/admin/master-forms", icon: <StorageIcon /> },
     { label: "Reports", path: `/${name}/course-report`, icon: <BarChartIcon /> },
   ];
 
