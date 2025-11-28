@@ -14,7 +14,9 @@ import {
   CardContent,
   Paper,
   Chip,
-  Avatar
+  Avatar,
+  CircularProgress,
+  Link
 } from "@mui/material";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -27,7 +29,7 @@ import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import api from "../../api";
 import { button, icon } from "../style";
 
@@ -48,8 +50,8 @@ const gradientButtonStyle = {
   transition: 'all 0.3s ease'
 };
 
-// ✅ Yup validation schema
-const schema = yup.object().shape({
+// ✅ Yup validation schema - files optional for edit mode
+const createSchema = (isEditMode) => yup.object().shape({
   academicYear: yup.string().required("Academic year is required"),
   courseAssignmentId: yup
     .string()
@@ -63,9 +65,13 @@ const schema = yup.object().shape({
   subTopic: yup.string().nullable(),
   files: yup
     .array()
-    .min(1, "At least one file is required")
+    .when([], {
+      is: () => !isEditMode,
+      then: (schema) => schema.min(1, "At least one file is required"),
+      otherwise: (schema) => schema
+    })
     .test("fileTypes", "Some files have unsupported formats", (files) => {
-      if (!files || files.length === 0) return false;
+      if (!files || files.length === 0) return true; // Allow empty for edit mode
       const supportedFormats = [
         "video/mp4",
         "video/mov", 
@@ -78,17 +84,27 @@ const schema = yup.object().shape({
       ];
       return files.every(file => supportedFormats.includes(file.type));
     })
-    .test("fileSizes", "Some files are too large", (files) => {
+    .test("fileSizes", "Some files are too large (max 50MB each)", (files) => {
       if (!files) return true;
-      return files.every(file => file.size <= 512000 * 1024); // 500MB each
+      return files.every(file => file.size <= 50 * 1024 * 1024); // 50MB each
+    })
+    .test("maxFiles", "Maximum 10 files allowed", (files) => {
+      if (!files) return true;
+      return files.length <= 10;
     }),
 });
 
 const CourseContent = () => {
+  const { type, id } = useParams();
   const navigate = useNavigate();
+  const isEditMode = !!id;
+  const isSubtopic = type === 'subtopic';
   const [academicCourses, setAcademicCourses] = useState([]);
   const [courseAssignments, setCourseAssignments] = useState([]);
   const [subjects, setSubjects] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [fetchingContent, setFetchingContent] = useState(false);
+  const [existingFiles, setExistingFiles] = useState([]);
 
   const {
     control,
@@ -98,7 +114,7 @@ const CourseContent = () => {
     setValue,
     formState: { errors },
   } = useForm({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(createSchema(isEditMode)),
     defaultValues: {
       academicYear: "",
       courseAssignmentId: "",
@@ -155,33 +171,154 @@ const CourseContent = () => {
     setValue("files", updatedFiles);
   };
 
+  // Fetch topic/subtopic data for edit mode
+  useEffect(() => {
+    if (isEditMode && id) {
+      const fetchContentData = async () => {
+        setFetchingContent(true);
+        try {
+          const endpoint = isSubtopic
+            ? `admin/assign/topic/subtopic/subtopic/${id}`
+            : `admin/assign/topic/subtopic/${id}`;
+          
+          const response = await api.get(endpoint);
+          if (response.data.success) {
+            const contentData = response.data.data;
+            
+            // Set form values
+            setValue("courseAssignmentId", contentData.course_assigment_id || "");
+            setValue("subjectId", contentData.subject_id || "");
+            setValue("topic", contentData.topic_name || "");
+            if (isSubtopic && contentData.subtopic_name) {
+              setValue("subTopic", contentData.subtopic_name);
+            }
+            
+            // Set academic year from course assignment
+            if (contentData.course_assigment_id) {
+              // Fetch assignment to get academic year
+              try {
+                const assignmentRes = await api.get(`admin/assign/assignment/${contentData.course_assigment_id}`);
+                if (assignmentRes.data.success) {
+                  const assignment = assignmentRes.data.data;
+                  // Get academic year from course
+                  if (assignment.acdemic_course_id) {
+                    const courseRes = await api.get(`admin/ca_records`);
+                    const course = courseRes.data.data?.find(c => c.id === assignment.acdemic_course_id);
+                    if (course) {
+                      setValue("academicYear", course.id);
+                    }
+                  }
+                }
+              } catch (err) {
+                console.error("Error fetching assignment:", err);
+              }
+            }
+            
+            // Set existing files
+            if (contentData.content_upload && Array.isArray(contentData.content_upload)) {
+              setExistingFiles(contentData.content_upload);
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching content:', err);
+          if (err.response?.status === 404) {
+            toast.error(isSubtopic ? 'Subtopic not found' : 'Topic not found');
+            navigate('/admin/topic/subtopic-list');
+          } else {
+            toast.error('Failed to load content data');
+          }
+        } finally {
+          setFetchingContent(false);
+        }
+      };
+      fetchContentData();
+    }
+  }, [id, isEditMode, isSubtopic, setValue, navigate]);
+
   const onSubmit = async (formData) => {
+    setLoading(true);
     const data = new FormData();
     data.append("course_assigment_id", formData.courseAssignmentId);
     data.append("subject_id", formData.subjectId);
     data.append("topic_name", formData.topic);
     data.append("subtopic_name", formData.subTopic || "");
     
-    // Append all files with proper naming
-    formData.files.forEach((file, index) => {
-      data.append(`content_upload[${index}]`, file);
-    });
+    // Append all files with proper naming (if new files provided, ALL old files will be deleted)
+    // Use content_upload[] format as per API documentation
+    if (formData.files && formData.files.length > 0) {
+      formData.files.forEach((file) => {
+        data.append('content_upload[]', file);
+      });
+    }
 
     try {
-      await api.post("admin/assign/topic/subtopic", data);
-      toast.success("Content uploaded successfully!");
-      reset(); // clear form
+      let endpoint;
+      if (isEditMode) {
+        if (isSubtopic) {
+          endpoint = `admin/assign/topic/subtopic/subtopic/${id}`;
+        } else {
+          endpoint = `admin/assign/topic/subtopic/${id}`;
+        }
+        await api.put(endpoint, data);
+        toast.success("Content updated successfully!");
+      } else {
+        endpoint = "admin/assign/topic/subtopic";
+        await api.post(endpoint, data);
+        toast.success("Content uploaded successfully!");
+        reset();
+      }
+      
       // Redirect to topic/subtopic list page
       navigate("/admin/topic/subtopic-list");
     } catch (error) {
+      console.error('Content save error:', error.response || error);
+      
       if (error.response?.status === 422) {
-        const backendErrors = error.response.data.errors;
-        Object.values(backendErrors).flat().forEach((msg) => toast.error(msg));
+        const errors = error.response.data.errors;
+        if (errors) {
+          Object.entries(errors).forEach(([field, messages]) => {
+            const message = Array.isArray(messages) ? messages[0] : messages;
+            toast.error(`${field}: ${message}`);
+          });
+        } else {
+          toast.error(error.response.data?.message || 'Validation error occurred');
+        }
+      } else if (error.response?.status === 404) {
+        toast.error(isSubtopic ? 'Subtopic not found' : 'Topic not found');
+        if (isEditMode) {
+          navigate('/admin/topic/subtopic-list');
+        }
+      } else if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        localStorage.removeItem('token');
+        window.location.href = '/login';
       } else {
-        toast.error("Failed to upload content");
+        toast.error(isEditMode ? "Failed to update content" : "Failed to upload content");
       }
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (fetchingContent) {
+    return (
+      <Box sx={{ 
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        p: 3,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center'
+      }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress size={60} />
+          <Typography variant="h6" sx={{ mt: 2 }}>
+            Loading content data...
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ 
@@ -205,11 +342,16 @@ const CourseContent = () => {
         }}>
           <CloudUploadIcon sx={{ fontSize: 20, color: 'white' }} />
           <Typography variant="h6" sx={{ fontWeight: 600, color: 'white' }}>
-            Upload Content
+            {isEditMode ? (isSubtopic ? 'Edit Subtopic Content' : 'Edit Topic Content') : 'Upload Content'}
           </Typography>
         </Box>
         <Typography variant="body2" sx={{ color: '#5a6c7d', fontSize: '13px', maxWidth: 350 }}>
-          Upload videos, PDFs, and images for course topics and subtopics
+          {isEditMode 
+            ? (isSubtopic 
+                ? 'Update videos, PDFs, and images for this subtopic'
+                : 'Update videos, PDFs, and images for this topic')
+            : 'Upload videos, PDFs, and images for course topics and subtopics'
+          }
         </Typography>
       </Box>
 
@@ -472,6 +614,67 @@ const CourseContent = () => {
                 </Paper>
               </Grid>
 
+              {/* Existing Files Section (Edit Mode) */}
+              {isEditMode && existingFiles.length > 0 && (
+                <Grid item xs={12}>
+                  <Paper sx={{ 
+                    p: 3, 
+                    borderRadius: 3,
+                    background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+                    border: '1px solid rgba(33, 150, 243, 0.2)'
+                  }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: '#263238' }}>
+                      Current Files ({existingFiles.length})
+                    </Typography>
+                    <Typography variant="caption" sx={{ display: 'block', mb: 2, color: '#666' }}>
+                      Note: Uploading new files will replace all existing files
+                    </Typography>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexWrap: 'wrap', 
+                      gap: 2,
+                      maxHeight: '300px',
+                      overflowY: 'auto'
+                    }}>
+                      {existingFiles.map((fileUrl, index) => {
+                        const fileName = fileUrl.split('/').pop() || `File ${index + 1}`;
+                        const isVideo = fileUrl.match(/\.(mp4|mov|avi|wmv)$/i);
+                        const isPdf = fileUrl.match(/\.pdf$/i);
+                        const isImage = fileUrl.match(/\.(jpg|jpeg|png)$/i);
+                        
+                        return (
+                          <Card key={index} sx={{ 
+                            p: 2, 
+                            minWidth: 200,
+                            backgroundColor: 'white',
+                            borderRadius: 2,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                          }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                              {isVideo && <VideoLibraryIcon color="primary" />}
+                              {isPdf && <PictureAsPdfIcon color="error" />}
+                              {isImage && <ImageIcon color="success" />}
+                              {!isVideo && !isPdf && !isImage && <AttachFileIcon />}
+                              <Typography variant="body2" sx={{ fontWeight: 500, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {fileName}
+                              </Typography>
+                            </Box>
+                            <Link 
+                              href={fileUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              sx={{ fontSize: '0.75rem', textDecoration: 'none' }}
+                            >
+                              View/Download
+                            </Link>
+                          </Card>
+                        );
+                      })}
+                    </Box>
+                  </Paper>
+                </Grid>
+              )}
+
               {/* File Upload Section */}
               <Grid item xs={12}>
                 <Paper sx={{ 
@@ -490,10 +693,15 @@ const CourseContent = () => {
                       <CloudUploadIcon sx={{ fontSize: 32 }} />
                     </Avatar>
                     <Typography variant="h6" sx={{ fontWeight: 600, color: '#263238' }}>
-                      Upload Course Content
+                      {isEditMode ? 'Upload New Files (Replaces Existing)' : 'Upload Course Content'}
                     </Typography>
                     <Typography variant="body2" sx={{ color: '#666', mb: 2 }}>
-                      Supported formats: MP4, MOV, AVI, WMV, PDF, JPG, JPEG, PNG (Max: 500MB)
+                      Supported formats: MP4, MOV, AVI, WMV, PDF, JPG, JPEG, PNG (Max: 50MB per file, 10 files max)
+                      {isEditMode && existingFiles.length > 0 && (
+                        <Box component="span" sx={{ display: 'block', mt: 1, color: 'warning.main', fontWeight: 600 }}>
+                          ⚠️ Uploading new files will delete all existing files
+                        </Box>
+                      )}
                     </Typography>
                     
                     <Button 
@@ -662,16 +870,24 @@ const CourseContent = () => {
                   <Button 
                     type="submit" 
                     size="large"
+                    disabled={loading || fetchingContent}
                     sx={{
                       ...gradientButtonStyle,
                       px: 6,
                       py: 2,
                       fontSize: '16px',
-                      minWidth: 200
+                      minWidth: 200,
+                      '&:disabled': {
+                        opacity: 0.6,
+                      }
                     }}
-                    startIcon={<CloudUploadIcon />}
+                    startIcon={loading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : <CloudUploadIcon />}
+                    endIcon={!loading && <ArrowForwardIcon />}
                   >
-                    Upload Content
+                    {loading 
+                      ? (isEditMode ? 'Updating...' : 'Uploading...')
+                      : (isEditMode ? 'Update Content' : 'Upload Content')
+                    }
                   </Button>
                 </Box>
               </Grid>

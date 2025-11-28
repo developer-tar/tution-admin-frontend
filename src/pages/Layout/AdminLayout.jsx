@@ -17,6 +17,10 @@ import {
 import { 
   ExpandLess, 
   ExpandMore,
+  People as PeopleIcon,
+  PersonAdd as PersonAddIcon,
+  Edit as EditIcon,
+  ReceiptLong as ReceiptLongIcon
 } from "@mui/icons-material";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import SchoolIcon from '@mui/icons-material/School';
@@ -59,12 +63,40 @@ const AdminLayout = () => {
     });
   };
 
-  // Helper function to check if parent menu should be highlighted
-  const isParentActive = (item) => {
-    if (item.path && location.pathname === item.path) return true;
+  // Helper function to check if menu item should be highlighted
+  const isMenuActive = (item) => {
+    const currentPath = location.pathname;
+    
+    // Handle items with children
     if (item.children) {
-      return item.children.some(child => location.pathname === child.path);
+      // Check if any child path matches
+      const hasActiveChild = item.children.some(child => currentPath === child.path);
+      if (hasActiveChild) return true;
+      
+      // Special handling for Students - active for all student-related URLs
+      if (item.label === "Students" && currentPath.includes("/student")) {
+        return true;
+      }
     }
+    
+    // Handle leaf items
+    if (item.path) {
+      if (currentPath === item.path) return true;
+      
+      // Special handling for Billing - active for main billing list and specific parent billing
+      if (item.label === "Billing" && (currentPath === "/admin/billing" || currentPath.includes("/billing"))) {
+        return true;
+      }
+      
+      // Special handling for Parents - active for parent list AND individual parent billing pages
+      if (item.label === "Parents" && (
+        currentPath.startsWith("/admin/parents") || 
+        currentPath.match(/^\/admin\/parent\/\d+\/billing$/)
+      )) {
+        return true;
+      }
+    }
+    
     return false;
   };
 
@@ -110,6 +142,15 @@ const AdminLayout = () => {
         { label: "Mock Exams", path: "/admin/mock-exams", icon: <QuizIcon /> },
       ],
     },
+    {
+      label: "Students",
+      icon: <PeopleIcon />,
+      children: [
+        { label: "Student List", path: "/admin/students", icon: <ListIcon /> },
+      ],
+    },
+    { label: "Parents", path: "/admin/parents", icon: <PeopleIcon /> },
+    { label: "Billing", path: "/admin/billing", icon: <ReceiptLongIcon /> },
     { label: "Master Forms", path: "/admin/master-forms", icon: <StorageIcon /> },
     { label: "Reports", path: `/${name}/course-report`, icon: <BarChartIcon /> },
   ];
@@ -312,12 +353,12 @@ const AdminLayout = () => {
                         mx: 1,
                         borderRadius: 2,
                         mb: 0.5,
-                        background: (openMenus[item.label] || isParentActive(item))
+                        background: (openMenus[item.label] || isMenuActive(item))
                           ? "linear-gradient(90deg, #667eea 0%, #764ba2 100%)" 
                           : "transparent",
-                        color: (openMenus[item.label] || isParentActive(item)) ? "#fff" : "#495057",
+                        color: (openMenus[item.label] || isMenuActive(item)) ? "#fff" : "#495057",
                         "&:hover": {
-                          background: (openMenus[item.label] || isParentActive(item))
+                          background: (openMenus[item.label] || isMenuActive(item))
                             ? "linear-gradient(90deg, #667eea 0%, #764ba2 100%)" 
                             : "rgba(102, 126, 234, 0.1)",
                           transform: "translateX(4px)",
@@ -326,7 +367,7 @@ const AdminLayout = () => {
                       }}
                     >
                       <ListItemIcon sx={{ 
-                        color: (openMenus[item.label] || isParentActive(item)) ? "#fff" : "#667eea",
+                        color: (openMenus[item.label] || isMenuActive(item)) ? "#fff" : "#667eea",
                         minWidth: 40 
                       }}>
                         {item.icon}
@@ -335,12 +376,12 @@ const AdminLayout = () => {
                         primary={item.label} 
                         sx={{ 
                           "& .MuiTypography-root": { 
-                            fontWeight: (openMenus[item.label] || isParentActive(item)) ? 600 : 500,
+                            fontWeight: (openMenus[item.label] || isMenuActive(item)) ? 600 : 500,
                             fontSize: "14px"
                           } 
                         }} 
                       />
-                      {(openMenus[item.label] || isParentActive(item)) ? 
+                      {(openMenus[item.label] || isMenuActive(item)) ? 
                         <ExpandLess sx={{ color: "#fff" }} /> : 
                         <ExpandMore sx={{ color: "#667eea" }} />
                       }
@@ -395,12 +436,12 @@ const AdminLayout = () => {
                       mx: 1,
                       borderRadius: 2,
                       mb: 0.5,
-                      background: location.pathname === item.path 
+                      background: isMenuActive(item) 
                         ? "linear-gradient(90deg, #667eea 0%, #764ba2 100%)" 
                         : "transparent",
-                      color: location.pathname === item.path ? "#fff" : "#495057",
+                      color: isMenuActive(item) ? "#fff" : "#495057",
                       "&:hover": {
-                        background: location.pathname === item.path 
+                        background: isMenuActive(item) 
                           ? "linear-gradient(90deg, #667eea 0%, #764ba2 100%)" 
                           : "rgba(102, 126, 234, 0.1)",
                         transform: "translateX(4px)",
@@ -410,7 +451,7 @@ const AdminLayout = () => {
                     onClick={() => navigate(item.path)}
                   >
                     <ListItemIcon sx={{ 
-                      color: location.pathname === item.path ? "#fff" : "#667eea",
+                      color: isMenuActive(item) ? "#fff" : "#667eea",
                       minWidth: 40 
                     }}>
                       {item.icon}
@@ -419,7 +460,7 @@ const AdminLayout = () => {
                       primary={item.label} 
                       sx={{ 
                         "& .MuiTypography-root": { 
-                          fontWeight: location.pathname === item.path ? 600 : 500,
+                          fontWeight: isMenuActive(item) ? 600 : 500,
                           fontSize: "14px"
                         } 
                       }} 

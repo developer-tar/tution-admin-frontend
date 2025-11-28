@@ -9,9 +9,21 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const adminToken = localStorage.getItem("admin-token");
   const userToken = localStorage.getItem("token");
+  
+  // Check for parent data in userData
+  let parentToken = null;
+  const userData = localStorage.getItem("userData");
+  if (userData) {
+    try {
+      const parsedData = JSON.parse(userData);
+      parentToken = parsedData.access_token;
+    } catch (error) {
+      console.error('Error parsing userData for token:', error);
+    }
+  }
 
-  // Prioritize admin-token, fallback to user token if not found
-  const token = adminToken || userToken;
+  // Prioritize admin-token, then user token, then parent token
+  const token = adminToken || userToken || parentToken;
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

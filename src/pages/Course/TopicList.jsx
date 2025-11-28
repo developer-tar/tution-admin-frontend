@@ -4,7 +4,7 @@ import {
   Dialog, DialogTitle, DialogContent, Grid, Divider,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, MenuItem, Skeleton, Card, CardContent, Avatar,
-  IconButton
+  IconButton, Tooltip, DialogActions, CircularProgress
 } from '@mui/material';
 import { 
   Topic as TopicIcon, 
@@ -14,9 +14,12 @@ import {
   CloudUpload as UploadIcon,
   FilterList as FilterIcon,
   Refresh as RefreshIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import api from '../../api';
 
 // Helper function to get media icon based on type
@@ -77,6 +80,8 @@ const TopicSubtopicList = () => {
   const [loading, setLoading] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [mediaViewer, setMediaViewer] = useState({ open: false, url: '', type: '', title: '' });
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, topic: null, isSubtopic: false });
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     fetchTopicSubtopics(false);
@@ -146,6 +151,85 @@ const TopicSubtopicList = () => {
 
   const closeMediaViewer = () => {
     setMediaViewer({ open: false, url: '', type: '', title: '' });
+  };
+
+  const handleEditTopic = (topic) => {
+    const topicId = topic.topic_id || topic.id || topic.ID;
+    if (!topicId) {
+      console.error('Topic object missing ID field:', topic);
+      toast.error('Cannot edit: Topic ID not found');
+      return;
+    }
+    console.log('🔵 Edit topic clicked, ID:', topicId);
+    navigate(`/admin/course-content/topic/${topicId}`);
+  };
+
+  const handleEditSubtopic = (subtopic, topicId) => {
+    const subtopicId = subtopic.id || subtopic.subtopic_id || subtopic.ID;
+    if (!subtopicId) {
+      console.error('Subtopic object missing ID field:', subtopic);
+      toast.error('Cannot edit: Subtopic ID not found');
+      return;
+    }
+    console.log('🔵 Edit subtopic clicked, ID:', subtopicId);
+    navigate(`/admin/course-content/subtopic/${subtopicId}`);
+  };
+
+  const handleDeleteClick = (item, isSubtopic = false) => {
+    setDeleteDialog({ open: true, topic: item, isSubtopic });
+  };
+
+  const handleDeleteConfirm = async () => {
+    const { topic, isSubtopic } = deleteDialog;
+    if (!topic) return;
+
+    const itemId = isSubtopic 
+      ? (topic.id || topic.subtopic_id || topic.ID)
+      : (topic.topic_id || topic.id || topic.ID);
+    
+    if (!itemId) {
+      toast.error(`Cannot delete: ${isSubtopic ? 'Subtopic' : 'Topic'} ID not found`);
+      setDeleteDialog({ open: false, topic: null, isSubtopic: false });
+      return;
+    }
+
+    setDeletingId(itemId);
+    console.log(`🗑️ Attempting to delete ${isSubtopic ? 'subtopic' : 'topic'} ID:`, itemId);
+    
+    try {
+      const endpoint = isSubtopic
+        ? `admin/assign/topic/subtopic/subtopic/${itemId}`
+        : `admin/assign/topic/subtopic/${itemId}`;
+      
+      const response = await api.delete(endpoint);
+      console.log('✅ Delete response:', response.data);
+      
+      if (response.data.success) {
+        toast.success(response.data.message || `${isSubtopic ? 'Subtopic' : 'Topic'} deleted successfully`);
+        setDeleteDialog({ open: false, topic: null, isSubtopic: false });
+        fetchTopicSubtopics(true);
+      }
+    } catch (err) {
+      console.error(`❌ Error deleting ${isSubtopic ? 'subtopic' : 'topic'}:`, err);
+      if (err.response?.status === 422) {
+        toast.error(err.response.data.error || `Cannot delete ${isSubtopic ? 'subtopic' : 'topic'}`);
+      } else if (err.response?.status === 404) {
+        toast.error(`${isSubtopic ? 'Subtopic' : 'Topic'} not found`);
+        fetchTopicSubtopics(true);
+      } else if (err.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      } else {
+        toast.error(err.response?.data?.error || `Failed to delete ${isSubtopic ? 'subtopic' : 'topic'}`);
+      }
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialog({ open: false, topic: null, isSubtopic: false });
   };
 
   return (
@@ -367,7 +451,8 @@ const TopicSubtopicList = () => {
                   <TableCell sx={{ fontWeight: 600, color: '#495057' }}>Subject</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#495057' }}>Subtopic Count</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#495057' }}>Subtopic Details</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#495057' }}>Action</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#495057' }}>Media</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#495057' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -476,7 +561,7 @@ const TopicSubtopicList = () => {
                         const hasSubtopicMedia = item.subtopic?.some(sub => sub.media?.length > 0);
                         const hasAnyMedia = hasTopicMedia || hasSubtopicMedia;
                         
-                        return hasAnyMedia && (
+                        return hasAnyMedia ? (
                           <Button 
                             variant="contained" 
                             size="small" 
@@ -493,8 +578,57 @@ const TopicSubtopicList = () => {
                           >
                             View Media
                           </Button>
+                        ) : (
+                          <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                            No media
+                          </Typography>
                         );
                       })()}
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                        <Tooltip title="Edit Topic">
+                          <IconButton
+                            size="medium"
+                            color="primary"
+                            onClick={() => handleEditTopic(item)}
+                            sx={{
+                              border: '1px solid',
+                              borderColor: 'primary.main',
+                              '&:hover': { 
+                                backgroundColor: 'rgba(25, 118, 210, 0.1)',
+                                transform: 'scale(1.1)'
+                              },
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete Topic">
+                          <IconButton
+                            size="medium"
+                            color="error"
+                            onClick={() => handleDeleteClick(item, false)}
+                            disabled={deletingId === (item.topic_id || item.id || item.ID)}
+                            sx={{
+                              border: '1px solid',
+                              borderColor: 'error.main',
+                              '&:hover': { 
+                                backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                                transform: 'scale(1.1)'
+                              },
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {deletingId === (item.topic_id || item.id || item.ID) ? (
+                              <CircularProgress size={20} />
+                            ) : (
+                              <DeleteIcon />
+                            )}
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -673,28 +807,73 @@ const TopicSubtopicList = () => {
               boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
             }}>
               <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                  <Avatar sx={{ 
-                    background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
-                    width: 40,
-                    height: 40
-                  }}>
-                    <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>
-                      {i + 1}
-                    </Typography>
-                  </Avatar>
-                  <Box>
-                    <Typography variant="h6" fontWeight={600}>
-                      {sub.name}
-                    </Typography>
-                    <Chip 
-                      label={`ID: ${sub.id}`} 
-                      size="small" 
-                      variant="outlined"
-                      sx={{ mt: 0.5 }}
-                    />
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Avatar sx={{ 
+                        background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)',
+                        width: 40,
+                        height: 40
+                      }}>
+                        <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>
+                          {i + 1}
+                        </Typography>
+                      </Avatar>
+                      <Box>
+                        <Typography variant="h6" fontWeight={600}>
+                          {sub.name}
+                        </Typography>
+                        <Chip 
+                          label={`ID: ${sub.id}`} 
+                          size="small" 
+                          variant="outlined"
+                          sx={{ mt: 0.5 }}
+                        />
+                      </Box>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <Tooltip title="Edit Subtopic">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => handleEditSubtopic(sub, selectedTopic?.topic_id)}
+                          sx={{
+                            border: '1px solid',
+                            borderColor: 'primary.main',
+                            '&:hover': { 
+                              backgroundColor: 'rgba(25, 118, 210, 0.1)',
+                              transform: 'scale(1.1)'
+                            },
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete Subtopic">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDeleteClick(sub, true)}
+                          disabled={deletingId === (sub.id || sub.subtopic_id || sub.ID)}
+                          sx={{
+                            border: '1px solid',
+                            borderColor: 'error.main',
+                            '&:hover': { 
+                              backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                              transform: 'scale(1.1)'
+                            },
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {deletingId === (sub.id || sub.subtopic_id || sub.ID) ? (
+                            <CircularProgress size={16} />
+                          ) : (
+                            <DeleteIcon fontSize="small" />
+                          )}
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </Box>
-                </Box>
 
                 <Grid container spacing={3}>
                   {sub.media?.length > 0 ? (
@@ -993,6 +1172,106 @@ const TopicSubtopicList = () => {
             </Box>
           )}
         </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={handleDeleteCancel}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1.5,
+          color: 'error.main',
+          pb: 1
+        }}>
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 40,
+            height: 40,
+            borderRadius: '50%',
+            backgroundColor: 'error.light',
+            color: 'error.main',
+            fontSize: '20px'
+          }}>
+            ⚠️
+          </Box>
+          Confirm Delete
+        </DialogTitle>
+        <DialogContent sx={{ pb: 2 }}>
+          <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.6 }}>
+            Are you sure you want to delete this {deleteDialog.isSubtopic ? 'subtopic' : 'topic'}? This action cannot be undone.
+          </Typography>
+          {deleteDialog.topic && (
+            <Box sx={{ 
+              p: 2, 
+              backgroundColor: 'grey.50', 
+              borderRadius: 1, 
+              border: '1px solid', 
+              borderColor: 'grey.300' 
+            }}>
+              <Typography variant="subtitle1" fontWeight={600}>
+                <strong>{deleteDialog.isSubtopic ? 'Subtopic' : 'Topic'}:</strong> {deleteDialog.topic.name || deleteDialog.topic.topic_name || deleteDialog.topic.subtopic_name || 'N/A'}
+              </Typography>
+              {(deleteDialog.topic.topic_id || deleteDialog.topic.id) && (
+                <Typography variant="body2" color="text.secondary">
+                  <strong>ID:</strong> {deleteDialog.topic.topic_id || deleteDialog.topic.id}
+                </Typography>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 1, gap: 1.5 }}>
+          <Button 
+            onClick={handleDeleteCancel}
+            variant="outlined"
+            color="inherit"
+            size="large"
+            sx={{ 
+              minWidth: 100,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 500
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteConfirm}
+            variant="contained"
+            color="error"
+            size="large"
+            disabled={deletingId === (deleteDialog.topic?.topic_id || deleteDialog.topic?.id || deleteDialog.topic?.subtopic_id || deleteDialog.topic?.ID)}
+            autoFocus
+            sx={{ 
+              minWidth: 100,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+            }}
+          >
+            {deletingId === (deleteDialog.topic?.topic_id || deleteDialog.topic?.id || deleteDialog.topic?.subtopic_id || deleteDialog.topic?.ID) ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <CircularProgress size={16} sx={{ color: 'white' }} />
+                Deleting...
+              </Box>
+            ) : (
+              `Delete ${deleteDialog.isSubtopic ? 'Subtopic' : 'Topic'}`
+            )}
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );

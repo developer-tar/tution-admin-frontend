@@ -36,6 +36,18 @@ import MockExam from "./pages/MockExam/MockExam";
 // Master Form imports
 import MasterForm from "./pages/MasterForm/MasterForm";
 
+// Admin Parent Management
+import ParentList from "./pages/Admin/ParentList";
+import ParentBilling from "./pages/Admin/ParentBilling";
+
+// Admin Student Management
+import StudentList from "./pages/Admin/Student/StudentList";
+import StudentForm from "./pages/Admin/Student/StudentForm";
+import StudentDetails from "./pages/Admin/Student/StudentDetails";
+
+// Parent Billing
+import Billing from "./pages/Parent/Billing/Billing";
+
 //============ START PARENT ROUTING ============
 // student routes
 import AddStudent from "./pages/Parent/Student/AddStudent";
@@ -164,10 +176,10 @@ const AppRoutes = () => {
         </RequireAdmin>
       }>
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="course" element={<Course />} />
-        <Route path="course-assignment" element={<CourseAssignment />} />
-        <Route path="course-content" element={<CourseContent />} />
-        <Route path="course-test" element={<CourseTest />} />
+        <Route path="course/:id?" element={<Course />} />
+        <Route path="course-assignment/:id?" element={<CourseAssignment />} />
+        <Route path="course-content/:type?/:id?" element={<CourseContent />} />
+        <Route path="course-test/:id?" element={<CourseTest />} />
         <Route path="course-list" element={<CourseList />} />
         <Route path="timeslot" element={<TimeSlots />} />
         <Route path="assignment-list" element={<CourseAssignmentList />} />
@@ -177,6 +189,17 @@ const AppRoutes = () => {
         <Route path="mock-exam-categories" element={<MockExamCategory />} />
         <Route path="mock-exams" element={<MockExam />} />
         <Route path="master-forms" element={<MasterForm />} />
+        
+        {/* Admin Student Management Routes */}
+        <Route path="students" element={<StudentList />} />
+        <Route path="student/add" element={<StudentForm />} />
+        <Route path="student/:id/edit" element={<StudentForm />} />
+        <Route path="student/:id" element={<StudentDetails />} />
+        
+        {/* Admin Parent Management Routes */}
+        <Route path="parents" element={<ParentList />} />
+        <Route path="billing" element={<ParentList />} /> {/* Reusing ParentList as entry point for Billing */}
+        <Route path="parent/:parentId/billing" element={<ParentBilling />} />
       </Route>
 
       {/* STUDENT ROUTES */}
@@ -219,6 +242,9 @@ const AppRoutes = () => {
         <Route path="edit-student/:studentId" element={<EditStudent />} />
         <Route path="my-student-list" element={<MyStudentList />} />
         <Route path="change-password" element={<ChangePassword />} />
+
+        {/* Billing Routes */}
+        <Route path="billing" element={<Billing />} />
 
         { /* parent student progress routes */}
         <Route path="end-of-report" element={<EndOfReport />} />

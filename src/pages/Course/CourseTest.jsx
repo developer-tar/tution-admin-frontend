@@ -3,7 +3,8 @@ import {
   Box, Grid, Typography, TextField, Button, MenuItem, Select,
   InputLabel, FormControl, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Card, CardContent, Avatar, Chip,
-  Accordion, AccordionSummary, AccordionDetails, Divider, IconButton
+  Accordion, AccordionSummary, AccordionDetails, Divider, IconButton,
+  CircularProgress
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -21,7 +22,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import Papa from 'papaparse';
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api';
 import { button, icon } from '../style';
 
@@ -55,13 +56,17 @@ const validationSchema = yup.object().shape({
 });
 
 const CourseTest = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
+  const isEditMode = !!id;
   const [dropdownData, setDropdownData] = useState({
     academicCourses: [], subjects: [], courseAssigments: [], topics: [], subtopics: []
   });
+  const [loading, setLoading] = useState(false);
+  const [fetchingTest, setFetchingTest] = useState(false);
 
   const {
-    register, handleSubmit, control, watch, reset,
+    register, handleSubmit, control, watch, reset, setValue,
     formState: { errors }
   } = useForm({
     defaultValues: {
@@ -110,6 +115,83 @@ const CourseTest = () => {
     }
   }, [watchAll.topicId]);
 
+  // Fetch test data for edit mode
+  useEffect(() => {
+    if (isEditMode && id) {
+      const fetchTestData = async () => {
+        setFetchingTest(true);
+        try {
+          const response = await api.get(`admin/assign/test/${id}`);
+          if (response.data.success) {
+            const testData = response.data.data;
+            
+            // Set basic fields
+            setValue('topicId', testData.topic_id || '');
+            setValue('subtopicId', testData.subtopic_id || '');
+            
+            // Transform API response to form format
+            if (testData.questions && Array.isArray(testData.questions)) {
+              const transformedQuestions = testData.questions.map((question, idx) => ({
+                question: question || '',
+                options: testData.options && testData.options[idx] 
+                  ? testData.options[idx] 
+                  : ['', '', '', ''],
+                answer: testData.answers && testData.answers[idx] 
+                  ? testData.answers[idx] 
+                  : '',
+                duration: testData.duration_in_sec && testData.duration_in_sec[idx] 
+                  ? String(testData.duration_in_sec[idx]) 
+                  : '30'
+              }));
+              
+              // Replace questions array
+              reset({
+                topicId: testData.topic_id || '',
+                subtopicId: testData.subtopic_id || '',
+                questions: transformedQuestions
+              }, { keepDefaultValues: false });
+            }
+            
+            // Fetch related data to populate dropdowns
+            if (testData.topic_id) {
+              // Fetch topic details to get subject and assignment
+              try {
+                const topicRes = await api.get(`admin/assign/topic/subtopic/${testData.topic_id}`);
+                if (topicRes.data.success) {
+                  const topicData = topicRes.data.data;
+                  setValue('subjectId', topicData.subject_id || '');
+                  setValue('courseAssigmentId', topicData.course_assigment_id || '');
+                  
+                  // Fetch assignment to get academic course
+                  if (topicData.course_assigment_id) {
+                    const assignmentRes = await api.get(`admin/assign/assignment/${topicData.course_assigment_id}`);
+                    if (assignmentRes.data.success) {
+                      const assignment = assignmentRes.data.data;
+                      setValue('academicCourseId', assignment.acdemic_course_id || '');
+                    }
+                  }
+                }
+              } catch (err) {
+                console.error('Error fetching topic details:', err);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching test:', err);
+          if (err.response?.status === 404) {
+            toast.error('Test not found');
+            navigate('/admin/test-list');
+          } else {
+            toast.error('Failed to load test data');
+          }
+        } finally {
+          setFetchingTest(false);
+        }
+      };
+      fetchTestData();
+    }
+  }, [id, isEditMode, setValue, reset, navigate]);
+
   const handleCSVUpload = (e) => {
     const file = e.target.files[0];
     if (!file || !file.name.endsWith('.csv')) {
@@ -152,30 +234,126 @@ const CourseTest = () => {
   };
 
   const onSubmit = async (data) => {
-    const formData = new FormData();
-    formData.append('topic_id', data.topicId);
-    formData.append('subtopic_id', data.subtopicId);
+    setLoading(true);
+    
+    // Prepare request body according to API documentation
+    // For update (PUT): use JSON format
+    // For create (POST): use FormData (existing implementation)
+    const isUpdate = isEditMode;
+    
+    let requestData;
+    let config = {};
+    
+    if (isUpdate) {
+      // Update: Use JSON format as per API documentation
+      const questions = data.questions.map(q => q.question);
+      const options = data.questions.map(q => q.options);
+      const answers = data.questions.map(q => q.answer);
+      const duration_in_sec = data.questions.map(q => parseInt(q.duration) || 30);
+      
+      requestData = {
+        topic_id: data.topicId || undefined,
+        subtopic_id: data.subtopicId || undefined,
+        questions: questions.length > 0 ? questions : undefined,
+        options: options.length > 0 ? options : undefined,
+        answers: answers.length > 0 ? answers : undefined,
+        duration_in_sec: duration_in_sec.length > 0 ? duration_in_sec : undefined
+      };
+      
+      // Remove undefined fields
+      Object.keys(requestData).forEach(key => {
+        if (requestData[key] === undefined) {
+          delete requestData[key];
+        }
+      });
+      
+      config = {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      };
+    } else {
+      // Create: Use FormData (existing implementation)
+      const formData = new FormData();
+      formData.append('topic_id', data.topicId);
+      formData.append('subtopic_id', data.subtopicId);
 
-    data.questions.forEach((q, i) => {
-      formData.append(`questions[${i}]`, q.question);
-      q.options.forEach((opt, j) => formData.append(`options[${i}][${j}]`, opt));
-      formData.append(`answers[${i}]`, q.answer);
-      formData.append(`duration_in_sec[${i}]`, q.duration);
-    });
+      data.questions.forEach((q, i) => {
+        formData.append(`questions[${i}]`, q.question);
+        q.options.forEach((opt, j) => formData.append(`options[${i}][${j}]`, opt));
+        formData.append(`answers[${i}]`, q.answer);
+        formData.append(`duration_in_sec[${i}]`, q.duration);
+      });
+      
+      requestData = formData;
+    }
 
     try {
-      await api.post('admin/assign/test', formData);
-      toast.success('Test created successfully!');
-      reset({ academicCourseId: '', subjectId: '', courseAssigmentId: '', topicId: '', subtopicId: '', questions: [defaultQuestion] });
+      const endpoint = isEditMode 
+        ? `admin/assign/test/${id}` 
+        : 'admin/assign/test';
+      const method = isEditMode ? 'put' : 'post';
+
+      await api[method](endpoint, requestData, config);
+      toast.success(isEditMode ? 'Test updated successfully!' : 'Test created successfully!');
       
-      // Navigate to test list page after successful creation
-      setTimeout(() => {
+      if (isEditMode) {
         navigate('/admin/test-list');
-      }, 1500); // Small delay to show success message
+      } else {
+        reset({ academicCourseId: '', subjectId: '', courseAssigmentId: '', topicId: '', subtopicId: '', questions: [defaultQuestion] });
+        setTimeout(() => {
+          navigate('/admin/test-list');
+        }, 1500);
+      }
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Submission failed');
+      console.error('Test save error:', err.response || err);
+      
+      if (err.response?.status === 422) {
+        const errors = err.response.data.errors;
+        if (errors) {
+          Object.entries(errors).forEach(([field, messages]) => {
+            const message = Array.isArray(messages) ? messages[0] : messages;
+            toast.error(`${field}: ${message}`);
+          });
+        } else {
+          toast.error(err.response.data?.message || 'Validation error occurred');
+        }
+      } else if (err.response?.status === 404) {
+        toast.error('Test not found');
+        if (isEditMode) {
+          navigate('/admin/test-list');
+        }
+      } else if (err.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      } else {
+        toast.error(err?.response?.data?.message || (isEditMode ? 'Failed to update test' : 'Submission failed'));
+      }
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (fetchingTest) {
+    return (
+      <Box sx={{ 
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        minHeight: '100vh',
+        p: 3,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center'
+      }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress size={60} />
+          <Typography variant="h6" sx={{ mt: 2 }}>
+            Loading test data...
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ 
@@ -206,10 +384,13 @@ const CourseTest = () => {
               WebkitTextFillColor: 'transparent',
               mb: 0.5
             }}>
-              Course Test Creator
+              {isEditMode ? 'Edit Course Test' : 'Course Test Creator'}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Create engaging tests with multiple choice questions
+              {isEditMode 
+                ? 'Update test questions and settings'
+                : 'Create engaging tests with multiple choice questions'
+              }
             </Typography>
           </Box>
         </Box>
@@ -644,7 +825,9 @@ What is the capital of Japan?,Beijing,Seoul,Tokyo,Bangkok,Tokyo,20`;
             type="submit" 
             variant="contained"
             size="large"
-            startIcon={<CheckCircleIcon />}
+            disabled={loading || fetchingTest}
+            startIcon={loading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : <CheckCircleIcon />}
+            endIcon={!loading && <ArrowForwardIcon />}
             sx={{
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               borderRadius: 4,
@@ -659,12 +842,18 @@ What is the capital of Japan?,Beijing,Seoul,Tokyo,Bangkok,Tokyo,20`;
                 transform: 'translateY(-3px)',
                 boxShadow: '0 16px 45px rgba(102, 126, 234, 0.5)'
               },
+              '&:disabled': {
+                opacity: 0.6,
+              },
               '&:active': {
                 transform: 'translateY(-1px)'
               }
             }}
           >
-            Create Test
+            {loading 
+              ? (isEditMode ? 'Updating...' : 'Creating...')
+              : (isEditMode ? 'Update Test' : 'Create Test')
+            }
           </Button>
         </Box>
       </form>

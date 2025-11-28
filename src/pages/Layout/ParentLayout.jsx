@@ -12,7 +12,8 @@ import {
   People,
   TrendingUp,
   Logout,
-  AccountCircle
+  AccountCircle,
+  ReceiptLong
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -96,6 +97,11 @@ const ParentLayout = () => {
         { label: "Finished Test", path: `/${name}/finished-test`, icon: <Quiz /> },
         { label: "Test Scores", path: `/${name}/test-scores`, icon: <Assessment /> },
       ],
+    },
+    {
+      label: "Billing",
+      path: `/${name}/billing`,
+      icon: <ReceiptLong />,
     },
     {
       label: "Setting",

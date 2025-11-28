@@ -4,7 +4,7 @@ import {
   TableContainer, TableHead, TableRow, Chip, Divider, Grid,
   MenuItem, FormControl, InputLabel, Select, Button, Skeleton,
   Card, CardContent, Avatar, IconButton, Badge, Dialog,
-  DialogTitle, DialogContent, DialogActions
+  DialogTitle, DialogContent, DialogActions, Tooltip, CircularProgress
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -16,6 +16,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CloseIcon from '@mui/icons-material/Close';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import SchoolIcon from '@mui/icons-material/School';
 import TopicIcon from '@mui/icons-material/Topic';
 import TimerIcon from '@mui/icons-material/Timer';
@@ -44,6 +46,8 @@ const TestList = () => {
   const [loading, setLoading] = useState(false);
   const [selectedTest, setSelectedTest] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, test: null });
+  const [deletingTestId, setDeletingTestId] = useState(null);
 
   useEffect(() => {
     fetchTests(false);
@@ -135,6 +139,67 @@ const TestList = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEdit = (test) => {
+    const testId = test.id || test.test_id || test.ID;
+    if (!testId) {
+      console.error('Test object missing ID field:', test);
+      toast.error('Cannot edit: Test ID not found');
+      return;
+    }
+    console.log('🔵 Edit test clicked, ID:', testId);
+    navigate(`/admin/course-test/${testId}`);
+  };
+
+  const handleDeleteClick = (test) => {
+    setDeleteDialog({ open: true, test });
+  };
+
+  const handleDeleteConfirm = async () => {
+    const test = deleteDialog.test;
+    if (!test) return;
+
+    const testId = test.id || test.test_id || test.ID;
+    if (!testId) {
+      toast.error('Cannot delete: Test ID not found');
+      setDeleteDialog({ open: false, test: null });
+      return;
+    }
+
+    setDeletingTestId(testId);
+    console.log('🗑️ Attempting to delete test ID:', testId);
+    
+    try {
+      const response = await api.delete(`admin/assign/test/${testId}`);
+      console.log('✅ Delete test response:', response.data);
+      
+      if (response.data.success) {
+        toast.success(response.data.message || 'Test deleted successfully');
+        setDeleteDialog({ open: false, test: null });
+        fetchTests(true);
+      }
+    } catch (err) {
+      console.error('❌ Error deleting test:', err);
+      if (err.response?.status === 422) {
+        toast.error(err.response.data.error || 'Cannot delete test');
+      } else if (err.response?.status === 404) {
+        toast.error('Test not found');
+        fetchTests(true);
+      } else if (err.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      } else {
+        toast.error(err.response?.data?.error || 'Failed to delete test');
+      }
+    } finally {
+      setDeletingTestId(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialog({ open: false, test: null });
   };
 
   return (
@@ -555,32 +620,77 @@ const TestList = () => {
                         </Badge>
                       </TableCell>
                       <TableCell sx={{ textAlign: 'center' }}>
-                        <Button
-                          variant="contained"
-                          size="small"
-                          startIcon={<VisibilityIcon />}
-                          onClick={() => {
-                            setSelectedTest(test);
-                            setModalOpen(true);
-                          }}
-                          sx={{
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            borderRadius: 2,
-                            px: 2,
-                            py: 0.5,
-                            textTransform: 'none',
-                            fontWeight: 600,
-                            fontSize: '12px',
-                            boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)',
-                            '&:hover': {
-                              background: 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)',
-                              transform: 'translateY(-1px)',
-                              boxShadow: '0 6px 20px rgba(102, 126, 234, 0.4)'
-                            }
-                          }}
-                        >
-                          View
-                        </Button>
+                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', alignItems: 'center' }}>
+                          <Tooltip title="View Details">
+                            <Button
+                              variant="contained"
+                              size="small"
+                              startIcon={<VisibilityIcon />}
+                              onClick={() => {
+                                setSelectedTest(test);
+                                setModalOpen(true);
+                              }}
+                              sx={{
+                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                borderRadius: 2,
+                                px: 2,
+                                py: 0.5,
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                fontSize: '12px',
+                                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)',
+                                '&:hover': {
+                                  background: 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)',
+                                  transform: 'translateY(-1px)',
+                                  boxShadow: '0 6px 20px rgba(102, 126, 234, 0.4)'
+                                }
+                              }}
+                            >
+                              View
+                            </Button>
+                          </Tooltip>
+                          <Tooltip title="Edit Test">
+                            <IconButton
+                              size="medium"
+                              color="primary"
+                              onClick={() => handleEdit(test)}
+                              sx={{
+                                border: '1px solid',
+                                borderColor: 'primary.main',
+                                '&:hover': { 
+                                  backgroundColor: 'rgba(25, 118, 210, 0.1)',
+                                  transform: 'scale(1.1)'
+                                },
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete Test">
+                            <IconButton
+                              size="medium"
+                              color="error"
+                              onClick={() => handleDeleteClick(test)}
+                              disabled={deletingTestId === (test.id || test.test_id || test.ID)}
+                              sx={{
+                                border: '1px solid',
+                                borderColor: 'error.main',
+                                '&:hover': { 
+                                  backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                                  transform: 'scale(1.1)'
+                                },
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              {deletingTestId === (test.id || test.test_id || test.ID) ? (
+                                <CircularProgress size={20} />
+                              ) : (
+                                <DeleteIcon />
+                              )}
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -909,21 +1019,146 @@ const TestList = () => {
         <DialogActions sx={{ p: 3, background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)' }}>
           <Button 
             onClick={() => setModalOpen(false)}
-            variant="contained"
+            variant="outlined"
             sx={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               borderRadius: 3,
               px: 4,
               py: 1.5,
               textTransform: 'none',
               fontWeight: 600,
-              '&:hover': {
-                background: 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)',
-                transform: 'translateY(-1px)'
-              }
             }}
           >
             Close
+          </Button>
+          {selectedTest && (
+            <Button
+              variant="contained"
+              startIcon={<EditIcon />}
+              onClick={() => {
+                const testId = selectedTest.id || selectedTest.test_id || selectedTest.ID;
+                if (testId) {
+                  setModalOpen(false);
+                  navigate(`/admin/course-test/${testId}`);
+                } else {
+                  toast.error('Cannot edit: Test ID not found');
+                }
+              }}
+              sx={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: 3,
+                px: 4,
+                py: 1.5,
+                textTransform: 'none',
+                fontWeight: 600,
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)',
+                  transform: 'translateY(-1px)'
+                }
+              }}
+            >
+              Edit Test
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={handleDeleteCancel}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1.5,
+          color: 'error.main',
+          pb: 1
+        }}>
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 40,
+            height: 40,
+            borderRadius: '50%',
+            backgroundColor: 'error.light',
+            color: 'error.main',
+            fontSize: '20px'
+          }}>
+            ⚠️
+          </Box>
+          Confirm Delete
+        </DialogTitle>
+        <DialogContent sx={{ pb: 2 }}>
+          <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.6 }}>
+            Are you sure you want to delete this test? This action cannot be undone.
+          </Typography>
+          {deleteDialog.test && (
+            <Box sx={{ 
+              p: 2, 
+              backgroundColor: 'grey.50', 
+              borderRadius: 1, 
+              border: '1px solid', 
+              borderColor: 'grey.300' 
+            }}>
+              <Typography variant="subtitle1" fontWeight={600}>
+                <strong>Test:</strong> {deleteDialog.test.test_name || 'N/A'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Topic:</strong> {deleteDialog.test.topic_name || 'N/A'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Questions:</strong> {deleteDialog.test.questions?.length || 0}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 1, gap: 1.5 }}>
+          <Button 
+            onClick={handleDeleteCancel}
+            variant="outlined"
+            color="inherit"
+            size="large"
+            sx={{ 
+              minWidth: 100,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 500
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteConfirm}
+            variant="contained"
+            color="error"
+            size="large"
+            disabled={deletingTestId === (deleteDialog.test?.id || deleteDialog.test?.test_id || deleteDialog.test?.ID)}
+            autoFocus
+            sx={{ 
+              minWidth: 100,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+            }}
+          >
+            {deletingTestId === (deleteDialog.test?.id || deleteDialog.test?.test_id || deleteDialog.test?.ID) ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <CircularProgress size={16} sx={{ color: 'white' }} />
+                Deleting...
+              </Box>
+            ) : (
+              'Delete Test'
+            )}
           </Button>
         </DialogActions>
       </Dialog>
