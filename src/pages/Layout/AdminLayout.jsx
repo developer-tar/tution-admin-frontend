@@ -94,7 +94,7 @@ const AdminLayout = () => {
         currentPath.match(/^\/admin\/parent\/\d+\/billing$/)
       )) {
         return true;
-      }
+    }
     }
     
     return false;

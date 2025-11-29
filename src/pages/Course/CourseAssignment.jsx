@@ -310,8 +310,8 @@ const CourseAssignment = () => {
     } else {
       // Create: Use FormData (existing implementation)
       // Use week_ids[] format as per API documentation
-      const formData = new FormData();
-      formData.append("acdemic_course_id", data.acdemic_course_id);
+    const formData = new FormData();
+    formData.append("acdemic_course_id", data.acdemic_course_id);
       data.week_ids.forEach((weekId) => formData.append('week_ids[]', weekId));
       requestData = formData;
     }

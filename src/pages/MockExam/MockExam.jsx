@@ -418,24 +418,24 @@ const MockExam = () => {
       if (editingExam) {
         // For edit mode, check if image is provided
         const hasImage = data.mock_exam_image && data.mock_exam_image instanceof File;
-        
+      
         if (hasImage) {
           // Use FormData when image is provided
           const formData = new FormData();
           formData.append('_method', 'PUT'); // Method spoofing for Laravel/PHP
-          formData.append('name', data.name);
-          formData.append('description', data.description);
-          formData.append('category_id', data.category_id);
-          formData.append('format_id', data.format);
-          formData.append('price', data.price);
-          formData.append('currency', data.currency);
-          formData.append('duration_minutes', data.duration_minutes);
-          
-          if (data.school_id && data.school_id !== '' && !isNaN(data.school_id)) {
-            formData.append('school_id', data.school_id);
-          }
-          
-          formData.append('mock_exam_image', data.mock_exam_image);
+      formData.append('name', data.name);
+      formData.append('description', data.description);
+      formData.append('category_id', data.category_id);
+      formData.append('format_id', data.format);
+      formData.append('price', data.price);
+      formData.append('currency', data.currency);
+      formData.append('duration_minutes', data.duration_minutes);
+      
+      if (data.school_id && data.school_id !== '' && !isNaN(data.school_id)) {
+        formData.append('school_id', data.school_id);
+      }
+
+        formData.append('mock_exam_image', data.mock_exam_image);
           
           // Add questions data
           if (data.questions && data.questions.length > 0) {
@@ -483,23 +483,23 @@ const MockExam = () => {
             }
             
             // Add questions data
-            data.questions.forEach((question, index) => {
-              formData.append(`questions[${index}]`, question.question);
-              formData.append(`options[${index}][1]`, question.options[1]);
-              formData.append(`options[${index}][2]`, question.options[2]);
-              formData.append(`options[${index}][3]`, question.options[3]);
-              formData.append(`options[${index}][4]`, question.options[4]);
-              formData.append(`answers[${index}]`, question.answer);
-              formData.append(`duration_in_sec[${index}]`, question.duration_in_sec);
-              formData.append(`marks[${index}]`, question.marks);
-            });
-            
-            // Debug FormData
+      data.questions.forEach((question, index) => {
+        formData.append(`questions[${index}]`, question.question);
+        formData.append(`options[${index}][1]`, question.options[1]);
+        formData.append(`options[${index}][2]`, question.options[2]);
+        formData.append(`options[${index}][3]`, question.options[3]);
+        formData.append(`options[${index}][4]`, question.options[4]);
+        formData.append(`answers[${index}]`, question.answer);
+        formData.append(`duration_in_sec[${index}]`, question.duration_in_sec);
+        formData.append(`marks[${index}]`, question.marks);
+      });
+
+      // Debug FormData
             console.log('Update FormData contents (no image):');
-            for (let [key, value] of formData.entries()) {
-              console.log(key, value);
-            }
-            
+      for (let [key, value] of formData.entries()) {
+        console.log(key, value);
+      }
+
             // Use POST with _method=PUT for multipart/form-data updates
             const response = await api.post(`admin/mock-exam/${editingExam.id}`, formData);
             console.log('Update response:', response);
@@ -515,7 +515,7 @@ const MockExam = () => {
               currency: data.currency,
               duration_minutes: data.duration_minutes
             };
-            
+
             if (data.school_id && data.school_id !== '' && !isNaN(data.school_id)) {
               updateData.school_id = data.school_id;
             }
@@ -527,7 +527,7 @@ const MockExam = () => {
                 'Content-Type': 'application/json'
               }
             });
-            console.log('Update response:', response);
+        console.log('Update response:', response);
             toast.success(response.data.message || 'Exam updated successfully');
           }
         }
@@ -593,8 +593,8 @@ const MockExam = () => {
         localStorage.removeItem('token');
         window.location.href = '/login';
       } else {
-        toast.error(error.response?.data?.message || 'Failed to save exam');
-      }
+      toast.error(error.response?.data?.message || 'Failed to save exam');
+    }
     }
   };
 
@@ -641,7 +641,7 @@ const MockExam = () => {
       if (response.data.success) {
         toast.success(response.data.message || 'Exam deleted successfully');
         setDeleteDialog({ open: false, exam: null });
-        fetchExams();
+      fetchExams();
       } else {
         toast.error(response.data.message || 'Failed to delete exam');
       }
@@ -767,11 +767,11 @@ const MockExam = () => {
             };
           })
         : [{
-            question: '',
-            options: { 1: '', 2: '', 3: '', 4: '' },
-            answer: '',
-            duration_in_sec: '',
-            marks: 1
+          question: '',
+          options: { 1: '', 2: '', 3: '', 4: '' },
+          answer: '',
+          duration_in_sec: '',
+          marks: 1
           }];
       
       // Determine format value - prefer format_id, fallback to format string
@@ -997,8 +997,8 @@ const MockExam = () => {
           }}>
             <QuizIcon sx={{ fontSize: 28, color: 'white' }} />
             <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
-              Mock Exams
-            </Typography>
+        Mock Exams
+      </Typography>
           </Box>
           <Typography variant="body2" sx={{ color: '#5a6c7d', fontSize: '14px', maxWidth: 400 }}>
             Create and manage comprehensive mock exams with multiple choice questions
@@ -1056,8 +1056,8 @@ const MockExam = () => {
                 </Box>
               } 
             />
-          </Tabs>
-        </Box>
+        </Tabs>
+      </Box>
       </Card>
 
       {/* Tab Panel 0 - List View */}
@@ -1090,7 +1090,7 @@ const MockExam = () => {
                 </Typography>
               </Box>
               <Grid container spacing={3}>
-                <Grid item xs={12} md={3}>
+              <Grid item xs={12} md={3}>
                   <Paper sx={{ 
                     p: 2, 
                     borderRadius: 2,
@@ -1103,76 +1103,76 @@ const MockExam = () => {
                         Category
                       </Typography>
                     </Box>
-                    <FormControl fullWidth>
-                      <InputLabel>Filter by Category</InputLabel>
-                      <Select
-                        value={filters.category_id}
-                        onChange={(e) => setFilters({ ...filters, category_id: e.target.value })}
-                        label="Filter by Category"
+                <FormControl fullWidth>
+                  <InputLabel>Filter by Category</InputLabel>
+                  <Select
+                    value={filters.category_id}
+                    onChange={(e) => setFilters({ ...filters, category_id: e.target.value })}
+                    label="Filter by Category"
                         sx={{
                           borderRadius: 2,
                           backgroundColor: 'white',
                           '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
                           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                         }}
+                  >
+                    <MenuItem value="">All Categories</MenuItem>
+                    {flattenCategories(categories).map((cat, index) => (
+                      <MenuItem 
+                        key={cat.id} 
+                        value={cat.id}
+                        sx={{ 
+                          fontWeight: cat.level === 0 ? 700 : cat.level === 1 ? 500 : 400,
+                          fontSize: cat.level === 0 ? '1rem' : '0.9rem',
+                          color: cat.level === 0 ? '#1565c0' : cat.level === 1 ? '#1976d2' : '#666',
+                          backgroundColor: cat.level === 0 ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+                          fontFamily: 'monospace',
+                          lineHeight: 1.8,
+                          py: 1.5,
+                          px: 2,
+                          my: cat.level === 0 ? 1 : 0.5,
+                          mx: 1,
+                          borderRadius: cat.level === 0 ? 2 : 1,
+                          borderLeft: cat.level > 0 ? `3px solid ${cat.level === 1 ? '#1976d2' : '#90caf9'}` : 'none',
+                          '&:hover': {
+                            backgroundColor: cat.level === 0 
+                              ? 'rgba(25, 118, 210, 0.12)' 
+                              : 'rgba(25, 118, 210, 0.06)',
+                          },
+                          // Add spacing between parent and children
+                          ...(cat.level === 0 && index > 0 ? { mt: 2 } : {}),
+                        }}
                       >
-                        <MenuItem value="">All Categories</MenuItem>
-                        {flattenCategories(categories).map((cat, index) => (
-                          <MenuItem 
-                            key={cat.id} 
-                            value={cat.id}
-                            sx={{ 
-                              fontWeight: cat.level === 0 ? 700 : cat.level === 1 ? 500 : 400,
-                              fontSize: cat.level === 0 ? '1rem' : '0.9rem',
-                              color: cat.level === 0 ? '#1565c0' : cat.level === 1 ? '#1976d2' : '#666',
-                              backgroundColor: cat.level === 0 ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
-                              fontFamily: 'monospace',
-                              lineHeight: 1.8,
-                              py: 1.5,
-                              px: 2,
-                              my: cat.level === 0 ? 1 : 0.5,
-                              mx: 1,
-                              borderRadius: cat.level === 0 ? 2 : 1,
-                              borderLeft: cat.level > 0 ? `3px solid ${cat.level === 1 ? '#1976d2' : '#90caf9'}` : 'none',
-                              '&:hover': {
-                                backgroundColor: cat.level === 0 
-                                  ? 'rgba(25, 118, 210, 0.12)' 
-                                  : 'rgba(25, 118, 210, 0.06)',
-                              },
-                              // Add spacing between parent and children
-                              ...(cat.level === 0 && index > 0 ? { mt: 2 } : {}),
-                            }}
-                          >
-                            <Box sx={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: 1,
-                              width: '100%'
-                            }}>
-                              {cat.level === 0 && (
-                                <Box sx={{
-                                  width: 6,
-                                  height: 6,
-                                  borderRadius: '50%',
-                                  bgcolor: 'primary.main',
-                                  flexShrink: 0
-                                }} />
-                              )}
-                              <span style={{ 
-                                whiteSpace: 'pre',
-                                fontFamily: 'monospace',
-                                fontSize: cat.level === 0 ? '1rem' : '0.9rem'
-                              }}>
-                                {cat.name}
-                              </span>
-                            </Box>
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 1,
+                          width: '100%'
+                        }}>
+                          {cat.level === 0 && (
+                            <Box sx={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: '50%',
+                              bgcolor: 'primary.main',
+                              flexShrink: 0
+                            }} />
+                          )}
+                          <span style={{ 
+                            whiteSpace: 'pre',
+                            fontFamily: 'monospace',
+                            fontSize: cat.level === 0 ? '1rem' : '0.9rem'
+                          }}>
+                            {cat.name}
+                          </span>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
                   </Paper>
-                </Grid>
-                <Grid item xs={12} md={3}>
+              </Grid>
+              <Grid item xs={12} md={3}>
                   <Paper sx={{ 
                     p: 2, 
                     borderRadius: 2,
@@ -1185,34 +1185,34 @@ const MockExam = () => {
                         Format
                       </Typography>
                     </Box>
-                    <FormControl fullWidth>
-                      <InputLabel>Filter by Format</InputLabel>
-                      <Select
-                        value={filters.format}
-                        onChange={(e) => setFilters({ ...filters, format: e.target.value })}
-                        label="Filter by Format"
+                <FormControl fullWidth>
+                  <InputLabel>Filter by Format</InputLabel>
+                  <Select
+                    value={filters.format}
+                    onChange={(e) => setFilters({ ...filters, format: e.target.value })}
+                    label="Filter by Format"
                         sx={{
                           borderRadius: 2,
                           backgroundColor: 'white',
                           '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
                           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                         }}
-                      >
-                        <MenuItem value="">All Formats</MenuItem>
-                        {formats.map((format) => (
-                          <MenuItem key={format.id} value={format.id}>
-                            {format.name}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                  >
+                    <MenuItem value="">All Formats</MenuItem>
+                    {formats.map((format) => (
+                      <MenuItem key={format.id} value={format.id}>
+                        {format.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
                   </Paper>
-                </Grid>
-                <Grid item xs={12} md={3}>
-                  <Button
-                    variant="outlined"
-                    onClick={() => fetchExams(true)}
-                    fullWidth
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <Button
+                  variant="outlined"
+                  onClick={() => fetchExams(true)}
+                  fullWidth
                     sx={{
                       height: 56,
                       borderRadius: 2,
@@ -1231,15 +1231,15 @@ const MockExam = () => {
                       },
                       transition: 'all 0.3s ease'
                     }}
-                  >
-                    Apply Filters
-                  </Button>
-                </Grid>
-                <Grid item xs={12} md={3}>
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={handleCreate}
+                >
+                  Apply Filters
+                </Button>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={handleCreate}
                     sx={{
                       ...gradientButtonStyle,
                       height: 56,
@@ -1252,12 +1252,12 @@ const MockExam = () => {
                       },
                       transition: 'all 0.3s ease'
                     }}
-                    fullWidth
-                  >
-                    Create Exam
-                  </Button>
-                </Grid>
+                  fullWidth
+                >
+                  Create Exam
+                </Button>
               </Grid>
+            </Grid>
             </CardContent>
           </Card>
 
@@ -1358,11 +1358,11 @@ const MockExam = () => {
                             )}
                             <Box sx={{ flex: 1, minWidth: 0 }}>
                               <Typography variant="body1" fontWeight={600} sx={{ color: '#263238', mb: 0.5 }}>
-                                {exam.name}
-                              </Typography>
+                            {exam.name}
+                          </Typography>
                               <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
                                 {exam.description?.substring(0, 60)}...
-                              </Typography>
+                          </Typography>
                             </Box>
                           </Box>
                         </TableCell>
@@ -1380,9 +1380,9 @@ const MockExam = () => {
                         </TableCell>
                         <TableCell>
                           {exam.format_name || exam.format ? (
-                            <Chip 
+                          <Chip 
                               label={exam.format_name || exam.format || 'N/A'} 
-                              size="small" 
+                            size="small" 
                               sx={{
                                 background: 'linear-gradient(45deg, #667eea, #764ba2)',
                                 color: 'white',
@@ -1447,7 +1447,7 @@ const MockExam = () => {
                             <Tooltip title="View Details">
                               <IconButton
                                 size="medium"
-                                onClick={() => handleView(exam.id)}
+                            onClick={() => handleView(exam.id)}
                                 sx={{
                                   border: '1px solid',
                                   borderColor: 'info.main',
@@ -1458,14 +1458,14 @@ const MockExam = () => {
                                   },
                                   transition: 'all 0.2s'
                                 }}
-                              >
-                                <ViewIcon />
-                              </IconButton>
+                          >
+                            <ViewIcon />
+                          </IconButton>
                             </Tooltip>
                             <Tooltip title="Edit Exam">
                               <IconButton
                                 size="medium"
-                                onClick={() => handleEdit(exam)}
+                            onClick={() => handleEdit(exam)}
                                 sx={{
                                   border: '1px solid',
                                   borderColor: 'primary.main',
@@ -1476,8 +1476,8 @@ const MockExam = () => {
                                   },
                                   transition: 'all 0.2s'
                                 }}
-                              >
-                                <EditIcon />
+                          >
+                            <EditIcon />
                               </IconButton>
                             </Tooltip>
                             <Tooltip title={isExamActive(exam) ? 'Deactivate' : 'Activate'}>
@@ -1526,7 +1526,7 @@ const MockExam = () => {
                                 {deletingExamId === exam.id ? (
                                   <CircularProgress size={20} />
                                 ) : (
-                                  <DeleteIcon />
+                            <DeleteIcon />
                                 )}
                               </IconButton>
                             </Tooltip>
@@ -1579,8 +1579,8 @@ const MockExam = () => {
                 </Box>
                 <Box>
                   <Typography variant="h4" sx={{ fontWeight: 700, color: 'white', mb: 0.5 }}>
-                    {editingExam ? 'Edit Mock Exam' : 'Create Mock Exam'}
-                  </Typography>
+            {editingExam ? 'Edit Mock Exam' : 'Create Mock Exam'}
+          </Typography>
                   <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
                     {editingExam ? 'Update exam details and questions' : 'Fill in the form below to create a new mock exam'}
                   </Typography>
@@ -1610,18 +1610,18 @@ const MockExam = () => {
                   Basic Exam Information
                 </Typography>
                 <Grid container spacing={3}>
-                  {/* Basic Exam Info */}
+              {/* Basic Exam Info */}
                   <Grid item xs={12} sm={6} data-field-container="name">
-                    <Controller
-                      name="name"
-                      control={control}
-                      render={({ field }) => (
-                        <TextField
-                          {...field}
-                          fullWidth
-                          label="Exam Name"
-                          error={!!errors.name}
-                          helperText={errors.name?.message}
+                <Controller
+                  name="name"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      label="Exam Name"
+                      error={!!errors.name}
+                      helperText={errors.name?.message}
                           sx={{
                             '& .MuiOutlinedInput-root': {
                               borderRadius: 2,
@@ -1630,29 +1630,29 @@ const MockExam = () => {
                               },
                             }
                           }}
-                        />
-                      )}
                     />
-                  </Grid>
+                  )}
+                />
+              </Grid>
               
                   <Grid item xs={12} sm={6} data-field-container="category_id">
-                    <Controller
-                      name="category_id"
-                      control={control}
-                      render={({ field }) => (
-                        <FormControl fullWidth error={!!errors.category_id}>
-                          <InputLabel>Category</InputLabel>
-                          <Select
-                            {...field}
-                            value={field.value || ''}
-                            label="Category"
+                <Controller
+                  name="category_id"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControl fullWidth error={!!errors.category_id}>
+                      <InputLabel>Category</InputLabel>
+                      <Select
+                        {...field}
+                        value={field.value || ''}
+                        label="Category"
                             sx={{
                               borderRadius: 2,
                               '&:hover .MuiOutlinedInput-notchedOutline': {
                                 borderColor: '#667eea',
                               },
                             }}
-                          >
+                      >
                         {flattenCategories(categories).map((cat, index) => (
                           <MenuItem 
                             key={cat.id} 
@@ -1779,7 +1779,7 @@ const MockExam = () => {
                     <FormControl fullWidth error={!!errors.school_id}>
                       <InputLabel>School (Optional)</InputLabel>
                       <Select
-                        {...field}
+                      {...field}
                         value={field.value || ''}
                         label="School (Optional)"
                       >
@@ -1832,47 +1832,47 @@ const MockExam = () => {
                           Exam Image (Optional)
                         </Typography>
                       </Box>
-                      <Controller
-                        name="mock_exam_image"
-                        control={control}
-                        render={({ field: { onChange, value, ...field } }) => (
-                          <Box>
-                            <Box sx={{ 
-                              border: '2px dashed',
+                <Controller
+                  name="mock_exam_image"
+                  control={control}
+                  render={({ field: { onChange, value, ...field } }) => (
+                    <Box>
+                      <Box sx={{ 
+                        border: '2px dashed',
                               borderColor: errors.mock_exam_image ? 'error.main' : '#ff9800',
                               borderRadius: 3,
                               p: 4,
-                              textAlign: 'center',
+                        textAlign: 'center',
                               background: 'white',
                               boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                              '&:hover': {
+                        '&:hover': {
                                 borderColor: '#f57c00',
                                 bgcolor: 'rgba(255, 152, 0, 0.04)',
                                 transform: 'translateY(-2px)',
                                 boxShadow: '0 8px 20px rgba(255, 152, 0, 0.15)'
-                              },
-                              transition: 'all 0.3s ease'
-                            }}>
-                              <input
-                                {...field}
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => {
-                                  const file = e.target.files[0];
+                        },
+                        transition: 'all 0.3s ease'
+                      }}>
+                        <input
+                          {...field}
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files[0];
                                   if (file) {
-                                    onChange(file);
+                            onChange(file);
                                     setExistingImageUrl(null); // Clear existing image when new one is selected
                                   }
-                                }}
-                                style={{ display: 'none' }}
-                                id="mock-exam-image-upload"
-                              />
-                              <label htmlFor="mock-exam-image-upload">
-                                <Button
+                          }}
+                          style={{ display: 'none' }}
+                          id="mock-exam-image-upload"
+                        />
+                        <label htmlFor="mock-exam-image-upload">
+                          <Button
                                   variant="contained"
-                                  component="span"
-                                  startIcon={<CloudUploadIcon />}
-                                  sx={{
+                            component="span"
+                            startIcon={<CloudUploadIcon />}
+                            sx={{
                                     background: 'linear-gradient(45deg, #ff9800, #f57c00)',
                                     color: 'white',
                                     px: 4,
@@ -1880,17 +1880,17 @@ const MockExam = () => {
                                     borderRadius: 2,
                                     fontWeight: 600,
                                     boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
-                                    '&:hover': {
+                              '&:hover': {
                                       background: 'linear-gradient(45deg, #f57c00, #e65100)',
                                       transform: 'translateY(-2px)',
                                       boxShadow: '0 6px 16px rgba(255, 152, 0, 0.4)'
                                     },
                                     transition: 'all 0.3s ease'
-                                  }}
-                                >
+                            }}
+                          >
                                   {existingImageUrl ? 'Change Image' : 'Choose Image'}
-                                </Button>
-                              </label>
+                          </Button>
+                        </label>
                               {/* Show existing image if in edit mode and no new file selected */}
                               {existingImageUrl && !value && (
                                 <Box sx={{ mt: 3 }}>
@@ -1934,13 +1934,13 @@ const MockExam = () => {
                                 </Box>
                               )}
                               {/* Show new file preview if a new file is selected */}
-                              {value && (
+                        {value && (
                                 <Box sx={{ mt: 3 }}>
-                                  <Box sx={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center',
-                                    mb: 2 
+                            <Box sx={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center',
+                              mb: 2 
                                   }}>
                                     <Box sx={{
                                       position: 'relative',
@@ -1949,17 +1949,17 @@ const MockExam = () => {
                                       boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
                                       border: '3px solid',
                                       borderColor: '#4caf50'
-                                    }}>
-                                      <img
-                                        src={URL.createObjectURL(value)}
-                                        alt="Preview"
-                                        style={{
+                            }}>
+                              <img
+                                src={URL.createObjectURL(value)}
+                                alt="Preview"
+                                style={{
                                           maxWidth: '250px',
                                           maxHeight: '180px',
                                           display: 'block'
-                                        }}
-                                      />
-                                    </Box>
+                                }}
+                              />
+                            </Box>
                                   </Box>
                                   <Chip
                                     label={`✅ ${value.name} (${(value.size / 1024 / 1024).toFixed(2)} MB)`}
@@ -1971,10 +1971,10 @@ const MockExam = () => {
                                     }}
                                   />
                                   <Box>
-                                    <Button
-                                      size="small"
+                            <Button
+                              size="small"
                                       variant="outlined"
-                                      color="error"
+                              color="error"
                                       onClick={() => {
                                         onChange(null);
                                         // Restore existing image if available
@@ -1987,26 +1987,26 @@ const MockExam = () => {
                                         borderRadius: 2,
                                         borderWidth: 2
                                       }}
-                                    >
+                            >
                                       Remove New Image
-                                    </Button>
+                            </Button>
                                   </Box>
-                                </Box>
-                              )}
-                              <Typography variant="body2" color="text.secondary" mt={2} sx={{ fontSize: '0.875rem' }}>
-                                Upload an image for your exam (Max: 10MB, Formats: JPG, PNG, GIF, etc.)
-                              </Typography>
-                              {errors.mock_exam_image && (
-                                <Typography color="error" fontSize={14} mt={2} sx={{ fontWeight: 500 }}>
-                                  {errors.mock_exam_image.message}
-                                </Typography>
-                              )}
-                            </Box>
                           </Box>
                         )}
-                      />
+                              <Typography variant="body2" color="text.secondary" mt={2} sx={{ fontSize: '0.875rem' }}>
+                          Upload an image for your exam (Max: 10MB, Formats: JPG, PNG, GIF, etc.)
+                        </Typography>
+                      {errors.mock_exam_image && (
+                                <Typography color="error" fontSize={14} mt={2} sx={{ fontWeight: 500 }}>
+                          {errors.mock_exam_image.message}
+                        </Typography>
+                      )}
+                            </Box>
+                    </Box>
+                  )}
+                />
                     </Paper>
-                  </Grid>
+              </Grid>
 
               {/* CSV Upload Section */}
               <Grid item xs={12}>
@@ -2138,15 +2138,15 @@ What is 2+2?,3,4,5,6,4,20,1`;
               </Grid>
 
                   {/* Enhanced CSV Format Preview */}
-                  <Grid item xs={12}>
+              <Grid item xs={12}>
                     <Card sx={{ 
-                      mt: 2, 
+                  mt: 2, 
                       borderRadius: 3,
                       boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
                       background: 'rgba(255,255,255,0.95)',
-                      border: '1px solid',
+                  border: '1px solid',
                       borderColor: 'rgba(2, 136, 209, 0.2)'
-                    }}>
+                }}>
                       <CardContent sx={{ p: 3 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
                           <Box sx={{
@@ -2154,8 +2154,8 @@ What is 2+2?,3,4,5,6,4,20,1`;
                             height: 40,
                             borderRadius: '50%',
                             background: 'linear-gradient(135deg, #0288d1 0%, #1565c0 100%)',
-                            display: 'flex',
-                            alignItems: 'center',
+                    display: 'flex', 
+                    alignItems: 'center', 
                             justifyContent: 'center',
                             boxShadow: '0 4px 12px rgba(2, 136, 209, 0.3)'
                           }}>
@@ -2163,31 +2163,31 @@ What is 2+2?,3,4,5,6,4,20,1`;
                           </Box>
                           <Typography variant="h6" sx={{ 
                             color: '#263238',
-                            fontWeight: 600
-                          }}>
+                    fontWeight: 600
+                  }}>
                             CSV Format Preview
-                          </Typography>
+                  </Typography>
                         </Box>
                         <TableContainer component={Paper} sx={{ 
                           borderRadius: 3, 
                           overflow: 'hidden',
                           boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                         }}>
-                          <Table size="small">
-                            <TableHead>
+                    <Table size="small">
+                      <TableHead>
                               <TableRow sx={{ background: 'linear-gradient(135deg, #0288d1 0%, #1565c0 100%)' }}>
-                                {['question', 'option1', 'option2', 'option3', 'option4', 'answer', 'duration_in_sec', 'marks'].map(header => (
-                                  <TableCell key={header} sx={{ 
-                                    color: 'white', 
-                                    fontWeight: 600,
-                                    fontSize: '0.875rem'
-                                  }}>
-                                    {header}
-                                  </TableCell>
-                                ))}
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
+                          {['question', 'option1', 'option2', 'option3', 'option4', 'answer', 'duration_in_sec', 'marks'].map(header => (
+                            <TableCell key={header} sx={{ 
+                              color: 'white', 
+                              fontWeight: 600,
+                              fontSize: '0.875rem'
+                            }}>
+                              {header}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
                               <TableRow sx={{ '&:hover': { bgcolor: 'rgba(2, 136, 209, 0.05)' }, transition: 'all 0.2s' }}>
                                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem', fontWeight: 500 }}>What is the capital of France?</TableCell>
                                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>Paris</TableCell>
@@ -2205,7 +2205,7 @@ What is 2+2?,3,4,5,6,4,20,1`;
                                 </TableCell>
                                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>30</TableCell>
                                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>1</TableCell>
-                              </TableRow>
+                        </TableRow>
                               <TableRow sx={{ '&:hover': { bgcolor: 'rgba(2, 136, 209, 0.05)' }, transition: 'all 0.2s' }}>
                                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem', fontWeight: 500 }}>What is 2+2?</TableCell>
                                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>3</TableCell>
@@ -2223,13 +2223,13 @@ What is 2+2?,3,4,5,6,4,20,1`;
                                 </TableCell>
                                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>30</TableCell>
                                 <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>1</TableCell>
-                              </TableRow>
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                       </CardContent>
                     </Card>
-                  </Grid>
+              </Grid>
 
               {/* Questions Section */}
               {fields.map((field, idx) => (
@@ -2461,37 +2461,37 @@ What is 2+2?,3,4,5,6,4,20,1`;
                 </React.Fragment>
               ))}
 
-                  <Grid item xs={12}>
+              <Grid item xs={12}>
                     <Box sx={{ textAlign: 'center', mt: 3 }}>
-                      <Button
-                        onClick={addQuestion}
-                        startIcon={<AddIcon />}
+                  <Button
+                    onClick={addQuestion}
+                    startIcon={<AddIcon />}
                         variant="contained"
-                        size="large"
-                        sx={{
+                    size="large"
+                    sx={{
                           background: 'linear-gradient(45deg, #4caf50, #2e7d32)',
                           color: 'white',
                           px: 5,
-                          py: 1.5,
-                          borderRadius: 3,
+                      py: 1.5,
+                      borderRadius: 3,
                           fontWeight: 600,
                           fontSize: '1rem',
                           boxShadow: '0 4px 15px rgba(76, 175, 80, 0.3)',
-                          '&:hover': {
+                      '&:hover': {
                             background: 'linear-gradient(45deg, #2e7d32, #1b5e20)',
                             transform: 'translateY(-2px)',
                             boxShadow: '0 6px 20px rgba(76, 175, 80, 0.4)'
-                          },
+                      },
                           transition: 'all 0.3s ease'
-                        }}
-                      >
-                        ➕ Add Another Question
-                      </Button>
-                    </Box>
-                  </Grid>
+                    }}
+                  >
+                    ➕ Add Another Question
+                  </Button>
+                </Box>
+              </Grid>
 
                   {/* Question Validation Errors - Only show question-related errors here */}
-                  <Grid item xs={12}>
+              <Grid item xs={12}>
                     {errors?.questions && formatQuestionErrors(errors).length > 0 && (
                       <Card 
                         data-question-errors
@@ -2531,18 +2531,18 @@ What is 2+2?,3,4,5,6,4,20,1`;
                           ))}
                         </List>
                       </Card>
-                    )}
-                  </Grid>
+                )}
+              </Grid>
                 </Grid>
               </CardContent>
             </Card>
 
             {/* Submit Button Section */}
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-              <Button
-                type="submit"
-                variant="contained"
-                size="large"
+                <Button
+                  type="submit"
+                  variant="contained"
+                  size="large"
                 sx={{
                   ...gradientButtonStyle,
                   minWidth: 200,
@@ -2557,10 +2557,10 @@ What is 2+2?,3,4,5,6,4,20,1`;
                   },
                   transition: 'all 0.3s ease'
                 }}
-                onClick={() => console.log('Submit button clicked!', errors)}
-              >
-                {editingExam ? 'Update Exam' : 'Create Exam'}
-              </Button>
+                  onClick={() => console.log('Submit button clicked!', errors)}
+                >
+                  {editingExam ? 'Update Exam' : 'Create Exam'}
+                </Button>
             </Box>
           </form>
         </Box>
@@ -2605,7 +2605,7 @@ What is 2+2?,3,4,5,6,4,20,1`;
             <Box>
               <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
                 {viewingExam?.name}
-              </Typography>
+          </Typography>
               <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
                 Exam Questions & Details
               </Typography>
@@ -2716,7 +2716,7 @@ What is 2+2?,3,4,5,6,4,20,1`;
                       <Box sx={{ flex: 1 }}>
                         <Typography variant="h6" fontWeight={600} sx={{ color: '#263238', mb: 1 }}>
                           {question.question_text}
-                        </Typography>
+                  </Typography>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                           <Chip 
                             label={`${question.marks} marks`} 
@@ -2738,21 +2738,21 @@ What is 2+2?,3,4,5,6,4,20,1`;
                           />
                         </Box>
                       </Box>
-                    </Box>
+                  </Box>
 
                     <Grid container spacing={2}>
-                      {question.options?.map((option, optIndex) => (
-                        <Grid item xs={12} sm={6} key={option.id}>
-                          <Box sx={{
+                    {question.options?.map((option, optIndex) => (
+                      <Grid item xs={12} sm={6} key={option.id}>
+                        <Box sx={{
                             p: 2,
                             border: '2px solid',
-                            borderColor: option.option_text === question.correct_answer ? '#4caf50' : '#e0e0e0',
+                          borderColor: option.option_text === question.correct_answer ? '#4caf50' : '#e0e0e0',
                             borderRadius: 2,
                             background: option.option_text === question.correct_answer 
                               ? 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)' 
                               : '#f9f9f9',
-                            display: 'flex',
-                            alignItems: 'center',
+                          display: 'flex',
+                          alignItems: 'center',
                             gap: 2,
                             transition: 'all 0.2s ease',
                             '&:hover': {
@@ -2777,16 +2777,16 @@ What is 2+2?,3,4,5,6,4,20,1`;
                             }}>
                               {String.fromCharCode(65 + optIndex)}
                             </Box>
-                            <Typography 
+                          <Typography 
                               variant="body1" 
-                              sx={{ 
-                                fontWeight: option.option_text === question.correct_answer ? 600 : 400,
+                            sx={{ 
+                              fontWeight: option.option_text === question.correct_answer ? 600 : 400,
                                 color: option.option_text === question.correct_answer ? '#2e7d32' : 'text.primary',
                                 flex: 1
-                              }}
-                            >
-                              {option.option_text}
-                            </Typography>
+                            }}
+                          >
+                            {option.option_text}
+                          </Typography>
                             {option.option_text === question.correct_answer && (
                               <Box sx={{
                                 width: 24,
@@ -2803,10 +2803,10 @@ What is 2+2?,3,4,5,6,4,20,1`;
                                 ✓
                               </Box>
                             )}
-                          </Box>
-                        </Grid>
-                      ))}
-                    </Grid>
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
                   </CardContent>
                 </Card>
               ))}

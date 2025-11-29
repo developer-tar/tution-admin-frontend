@@ -575,21 +575,21 @@ export default function Course() {
                   control={control}
                   rules={{ required: "Academic Year is required" }}
                   render={({ field }) => (
-                    <TextField
-                      select
-                      fullWidth
-                      label="Academic Year"
+                <TextField
+                  select
+                  fullWidth
+                  label="Academic Year"
                       {...field}
                       value={field.value || ""}
-                      error={!!errors.acdemic_year_id}
-                      helperText={errors.acdemic_year_id?.message}
-                    >
-                      {academicYears.map((y) => (
-                        <MenuItem key={y.id} value={y.id}>
-                          {y.start_end_year}
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                  error={!!errors.acdemic_year_id}
+                  helperText={errors.acdemic_year_id?.message}
+                >
+                  {academicYears.map((y) => (
+                    <MenuItem key={y.id} value={y.id}>
+                      {y.start_end_year}
+                    </MenuItem>
+                  ))}
+                </TextField>
                   )}
                 />
               </Grid>

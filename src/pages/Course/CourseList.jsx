@@ -240,13 +240,24 @@ const CourseList = () => {
       const response = await api.delete(`admin/assign/course/${courseId}`);
       console.log('✅ Delete API response:', response.data);
       
-      if (response.data.success) {
-        toast.success(response.data.message || 'Course deleted successfully');
+      // Helper function to validate message (not just a status code)
+      const getValidMessage = (message, defaultMsg) => {
+        if (!message || typeof message !== 'string') return defaultMsg;
+        const trimmed = message.trim();
+        // Check if message is just a number (like "200") or empty
+        if (trimmed === '' || /^\d+$/.test(trimmed)) return defaultMsg;
+        return trimmed;
+      };
+      
+      if (response.data.success || response.status === 200) {
+        const message = getValidMessage(response.data.message, 'Course deleted successfully');
+        toast.success(message);
         setDeleteDialog({ open: false, course: null });
         fetchCourses(page, searchQuery);
       } else {
         console.warn('⚠️ Delete response not successful:', response.data);
-        toast.error(response.data.message || 'Failed to delete course');
+        const errorMessage = getValidMessage(response.data.message, 'Failed to delete course');
+        toast.error(errorMessage);
       }
     } catch (err) {
       console.error('❌ Error deleting course:', err);
@@ -291,7 +302,7 @@ const CourseList = () => {
     
     // Log only course ID and status
     console.log('🔄 Toggle Status - Course ID:', courseId, '| Status:', statusValue, '| Action:', action);
-    
+
     setTogglingCourseId(courseId);
     
     try {
