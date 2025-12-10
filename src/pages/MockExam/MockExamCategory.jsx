@@ -376,7 +376,7 @@ const MockExamCategory = () => {
   return (
     <Box p={3}>
       <Typography variant="h5" mb={3} fontWeight={700}>
-        Mock Exam Categories
+       Categories
       </Typography>
 
       {/* Tabs */}

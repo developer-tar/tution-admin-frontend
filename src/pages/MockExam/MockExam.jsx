@@ -58,37 +58,157 @@ import api from '../../api';
 
 // Validation schema
 const examSchema = yup.object().shape({
-  name: yup.string().required('Exam name is required').min(5, 'Name must be at least 5 characters'),
-  description: yup.string().required('Description is required').min(20, 'Description must be at least 20 characters'),
-  category_id: yup.number().required('Category is required'),
-  format: yup.number().required('Format is required'),
-  price: yup.number().required('Price is required').min(0, 'Price must be positive'),
-  currency: yup.string().required('Currency is required'),
-  duration_minutes: yup.number().required('Duration is required').min(1, 'Duration must be at least 1 minute'),
-  school_id: yup.number().nullable().transform((value, originalValue) => {
-    return originalValue === '' ? null : value;
-  }),
-  mock_exam_image: yup.mixed().nullable().test('fileSize', 'Image size must not exceed 10MB', (value) => {
-    if (!value) return true; // Allow empty
-    return value.size <= 10 * 1024 * 1024; // 10MB in bytes
-  }).test('fileType', 'The uploaded file must be an image', (value) => {
-    if (!value) return true; // Allow empty
-    return value.type.startsWith('image/');
-  }),
-  questions: yup.array().min(1, 'At least one question is required').of(
-    yup.object().shape({
-      question: yup.string().required('Question is required').min(10, 'Question must be at least 10 characters'),
-      options: yup.object().shape({
-        1: yup.string().required('Option 1 is required'),
-        2: yup.string().required('Option 2 is required'),
-        3: yup.string().required('Option 3 is required'),
-        4: yup.string().required('Option 4 is required')
-      }),
-      answer: yup.string().required('Answer is required'),
-      duration_in_sec: yup.number().required('Duration is required').min(1, 'Duration must be at least 1 second'),
-      marks: yup.number().required('Marks is required').min(1, 'Marks must be at least 1')
+  name: yup.string()
+    .required('Mock exam name is required')
+    .min(5, 'Name must be at least 5 characters')
+    .max(255, 'Name must not exceed 255 characters'),
+  description: yup.string()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === '' ? null : value;
+    }),
+  category_id: yup.number()
+    .required('Category is required')
+    .integer('Category must be an integer')
+    .transform((value, originalValue) => {
+      // Convert empty string to undefined to trigger required validation
+      return originalValue === '' ? undefined : value;
     })
-  )
+    .typeError('Category must be selected'),
+  format: yup.number()
+    .required('Format is required')
+    .integer('Format must be an integer')
+    .transform((value, originalValue) => {
+      // Convert empty string to undefined to trigger required validation
+      return originalValue === '' ? undefined : value;
+    })
+    .typeError('Format must be selected'),
+  price: yup.number()
+    .required('Price is required')
+    .min(0, 'Price must be at least 0')
+    .typeError('Price must be a number'),
+  currency: yup.string()
+    .nullable()
+    .length(1, 'Currency must be exactly 1 character')
+    .oneOf(['€', '$', '£'], 'Currency must be one of: €, $, £')
+    .transform((value, originalValue) => {
+      return originalValue === '' ? null : value;
+    }),
+  duration_minutes: yup.number()
+    .nullable()
+    .integer('Duration must be an integer')
+    .min(1, 'Duration must be at least 1 minute')
+    .transform((value, originalValue) => {
+      return originalValue === '' ? null : value;
+    })
+    .typeError('Duration must be a number'),
+  school_id: yup.number()
+    .nullable()
+    .integer('School ID must be an integer')
+    .transform((value, originalValue) => {
+      return originalValue === '' ? null : value;
+    })
+    .typeError('School ID must be a number'),
+  mock_exam_image: yup.mixed()
+    .nullable()
+    .test('fileSize', 'Mock exam image size must not exceed 10MB', (value) => {
+      if (!value) return true; // Allow empty
+      return value.size <= 10 * 1024 * 1024; // 10MB in bytes
+    })
+    .test('fileType', 'The uploaded file must be an image', (value) => {
+      if (!value) return true; // Allow empty
+      return value.type.startsWith('image/');
+    }),
+  questions: yup.array()
+    .min(1, 'At least one question is required')
+    .of(
+      yup.object().shape({
+        question: yup.string()
+          .required('Each question is required')
+          .min(10, 'Each question must be at least 10 characters')
+          .max(500, 'Each question must not exceed 500 characters'),
+        options: yup.object()
+          .test('minOptions', 'Each question must have at least two options', function(value) {
+            if (!value) return false;
+            const optionValues = Object.values(value).filter(opt => opt && opt.trim() !== '');
+            return optionValues.length >= 2;
+          })
+          .test('optionLength', 'Each option must be between 1 and 255 characters', function(value) {
+            if (!value) return false;
+            for (const opt of Object.values(value)) {
+              if (opt && opt.trim() !== '') {
+                if (opt.length < 1 || opt.length > 255) {
+                  return this.createError({ message: 'Each option must be between 1 and 255 characters' });
+                }
+              }
+            }
+            return true;
+          })
+          .test('nonEmptyOptions', 'Each option must be a non-empty string', function(value) {
+            if (!value) return false;
+            for (const [key, opt] of Object.entries(value)) {
+              if (opt && opt.trim() !== '') {
+                // Option is provided and non-empty, which is valid
+                continue;
+              }
+            }
+            return true;
+          })
+          .shape({
+            1: yup.string().nullable().transform((v) => v === '' ? null : v),
+            2: yup.string().nullable().transform((v) => v === '' ? null : v),
+            3: yup.string().nullable().transform((v) => v === '' ? null : v),
+            4: yup.string().nullable().transform((v) => v === '' ? null : v)
+          }),
+        answer: yup.string()
+          .required('Each question must have one answer')
+          .min(1, 'Answer must be at least 1 character')
+          .max(255, 'Answer must not exceed 255 characters')
+          .test('answerInOptions', 'The answer must match one of the options', function(value) {
+            const { options } = this.parent;
+            if (!options || !value) return true; // Let required validation handle empty
+            const optionValues = Object.values(options)
+              .filter(opt => opt && opt.trim() !== '')
+              .map(opt => opt.trim());
+            return optionValues.includes(value.trim());
+          }),
+        duration_in_sec: yup.number()
+          .required('Each question must have a duration')
+          .integer('Duration must be a number')
+          .min(1, 'Duration must be at least 1 second')
+          .typeError('Duration must be a number'),
+        marks: yup.number()
+          .nullable()
+          .integer('Marks must be a number')
+          .min(1, 'Marks must be at least 1')
+          .transform((value, originalValue) => {
+            return originalValue === '' ? null : value;
+          })
+          .typeError('Marks must be a number')
+      })
+    )
+    .test('arrayCountsMatch', 'The number of questions, options, answers, and durations must match', function(questions) {
+      if (!questions || questions.length === 0) return true;
+      
+      const questionCount = questions.length;
+      const counts = {
+        questions: questionCount,
+        options: questions.filter(q => q.options && Object.values(q.options).some(opt => opt && opt.trim() !== '')).length,
+        answers: questions.filter(q => q.answer && q.answer.trim() !== '').length,
+        durations: questions.filter(q => q.duration_in_sec != null).length,
+        marks: questions.filter(q => q.marks != null).length
+      };
+      
+      // Check if all arrays have same count (required arrays)
+      const requiredMatch = counts.options === questionCount && 
+                           counts.answers === questionCount && 
+                           counts.durations === questionCount;
+      
+      // If marks are provided, they must also match the count
+      const marksMatch = counts.marks === 0 || counts.marks === questionCount;
+      
+      return requiredMatch && marksMatch;
+    })
 });
 
 const gradientButtonStyle = {
@@ -172,6 +292,7 @@ const MockExam = () => {
   const [formats, setFormats] = useState([]);
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingExam, setEditingExam] = useState(null);
   const [tabValue, setTabValue] = useState(0);
@@ -195,19 +316,19 @@ const MockExam = () => {
     resolver: yupResolver(examSchema),
     defaultValues: {
       name: '',
-      description: '',
+      description: null,
       category_id: '',
       format: '',
       price: '',
-      currency: '€',
-      duration_minutes: '',
-      school_id: '',
+      currency: null,
+      duration_minutes: null,
+      school_id: null,
       questions: [{
         question: '',
         options: { 1: '', 2: '', 3: '', 4: '' },
         answer: '',
         duration_in_sec: '',
-        marks: 1
+        marks: null
       }]
     }
   });
@@ -412,42 +533,83 @@ const MockExam = () => {
 
   // Create or update exam
   const onSubmit = async (data) => {
+    // Prevent double submission
+    if (isSubmitting) {
+      console.log('Form submission already in progress, ignoring duplicate request');
+      return;
+    }
+
     console.log('Form submitted with data:', data);
+    setIsSubmitting(true);
     
     try {
       if (editingExam) {
-        // For edit mode, check if image is provided
+        // For edit mode, UpdateMockExamRequest uses 'sometimes' validation
+        // Only send fields that are present (following 'sometimes' pattern)
         const hasImage = data.mock_exam_image && data.mock_exam_image instanceof File;
-      
-        if (hasImage) {
-          // Use FormData when image is provided
+        const hasQuestions = data.questions && data.questions.length > 0;
+        
+        // Use FormData if image or questions are present, otherwise use JSON
+        if (hasImage || hasQuestions) {
           const formData = new FormData();
           formData.append('_method', 'PUT'); // Method spoofing for Laravel/PHP
-      formData.append('name', data.name);
-      formData.append('description', data.description);
-      formData.append('category_id', data.category_id);
-      formData.append('format_id', data.format);
-      formData.append('price', data.price);
-      formData.append('currency', data.currency);
-      formData.append('duration_minutes', data.duration_minutes);
-      
-      if (data.school_id && data.school_id !== '' && !isNaN(data.school_id)) {
-        formData.append('school_id', data.school_id);
-      }
-
-        formData.append('mock_exam_image', data.mock_exam_image);
           
-          // Add questions data
-          if (data.questions && data.questions.length > 0) {
+          // Only append fields that have values (following 'sometimes' pattern)
+          if (data.name) {
+            formData.append('name', data.name);
+          }
+          
+          if (data.description !== null && data.description !== undefined) {
+            formData.append('description', data.description || '');
+          }
+          
+          if (data.category_id) {
+            formData.append('category_id', Number(data.category_id));
+          }
+          
+          if (data.format) {
+            formData.append('format_id', Number(data.format));
+          }
+          
+          if (data.price !== null && data.price !== undefined) {
+            formData.append('price', data.price);
+          }
+          
+          if (data.currency && data.currency !== '') {
+            formData.append('currency', data.currency);
+          }
+          
+          if (data.duration_minutes != null) {
+            formData.append('duration_minutes', data.duration_minutes);
+          }
+          
+          if (data.school_id && data.school_id !== '' && !isNaN(data.school_id)) {
+            formData.append('school_id', data.school_id);
+          }
+          
+          if (hasImage) {
+            formData.append('mock_exam_image', data.mock_exam_image);
+          }
+          
+          // Add questions data if present (backend update doesn't validate, but accepts if sent)
+          if (hasQuestions) {
             data.questions.forEach((question, index) => {
               formData.append(`questions[${index}]`, question.question);
-              formData.append(`options[${index}][1]`, question.options[1]);
-              formData.append(`options[${index}][2]`, question.options[2]);
-              formData.append(`options[${index}][3]`, question.options[3]);
-              formData.append(`options[${index}][4]`, question.options[4]);
+              
+              // Convert options object to array format (backend expects array)
+              const optionValues = Object.values(question.options)
+                .filter(opt => opt && opt.trim() !== '');
+              
+              optionValues.forEach((optionValue, optIndex) => {
+                formData.append(`options[${index}][${optIndex}]`, optionValue);
+              });
+              
               formData.append(`answers[${index}]`, question.answer);
               formData.append(`duration_in_sec[${index}]`, question.duration_in_sec);
-              formData.append(`marks[${index}]`, question.marks);
+              
+              if (question.marks != null) {
+                formData.append(`marks[${index}]`, question.marks);
+              }
             });
           }
           
@@ -462,82 +624,59 @@ const MockExam = () => {
           console.log('Update response:', response);
           toast.success(response.data.message || 'Exam updated successfully');
         } else {
-          // Use FormData even without image if questions are present (FormData is needed for nested arrays)
-          // Otherwise use JSON
-          const hasQuestions = data.questions && data.questions.length > 0;
+          // Use JSON when no image and no questions (cleaner for simple updates)
+          const updateData = {};
           
-          if (hasQuestions) {
-            // Use FormData when questions are present (even without image)
-            const formData = new FormData();
-            formData.append('_method', 'PUT'); // Method spoofing for Laravel/PHP
-            formData.append('name', data.name);
-            formData.append('description', data.description);
-            formData.append('category_id', data.category_id);
-            formData.append('format_id', data.format);
-            formData.append('price', data.price);
-            formData.append('currency', data.currency);
-            formData.append('duration_minutes', data.duration_minutes);
-            
-            if (data.school_id && data.school_id !== '' && !isNaN(data.school_id)) {
-              formData.append('school_id', data.school_id);
-            }
-            
-            // Add questions data
-      data.questions.forEach((question, index) => {
-        formData.append(`questions[${index}]`, question.question);
-        formData.append(`options[${index}][1]`, question.options[1]);
-        formData.append(`options[${index}][2]`, question.options[2]);
-        formData.append(`options[${index}][3]`, question.options[3]);
-        formData.append(`options[${index}][4]`, question.options[4]);
-        formData.append(`answers[${index}]`, question.answer);
-        formData.append(`duration_in_sec[${index}]`, question.duration_in_sec);
-        formData.append(`marks[${index}]`, question.marks);
-      });
-
-      // Debug FormData
-            console.log('Update FormData contents (no image):');
-      for (let [key, value] of formData.entries()) {
-        console.log(key, value);
-      }
-
-            // Use POST with _method=PUT for multipart/form-data updates
-            const response = await api.post(`admin/mock-exam/${editingExam.id}`, formData);
-            console.log('Update response:', response);
-            toast.success(response.data.message || 'Exam updated successfully');
-          } else {
-            // Use JSON when no image and no questions
-            const updateData = {
-              name: data.name,
-              description: data.description,
-              category_id: data.category_id,
-              format_id: data.format,
-              price: data.price,
-              currency: data.currency,
-              duration_minutes: data.duration_minutes
-            };
-
-            if (data.school_id && data.school_id !== '' && !isNaN(data.school_id)) {
-              updateData.school_id = data.school_id;
-            }
-            
-            console.log('Update JSON payload:', updateData);
-            
-            const response = await api.put(`admin/mock-exam/${editingExam.id}`, updateData, {
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            });
-        console.log('Update response:', response);
-            toast.success(response.data.message || 'Exam updated successfully');
+          // Only include fields that have values (following 'sometimes' pattern)
+          if (data.name) {
+            updateData.name = data.name;
           }
+          
+          if (data.description !== null && data.description !== undefined) {
+            updateData.description = data.description || null;
+          }
+          
+          if (data.category_id) {
+            updateData.category_id = Number(data.category_id);
+          }
+          
+          if (data.format) {
+            updateData.format_id = Number(data.format);
+          }
+          
+          if (data.price !== null && data.price !== undefined) {
+            updateData.price = data.price;
+          }
+          
+          if (data.currency && data.currency !== '') {
+            updateData.currency = data.currency;
+          }
+          
+          if (data.duration_minutes != null) {
+            updateData.duration_minutes = data.duration_minutes;
+          }
+          
+          if (data.school_id && data.school_id !== '' && !isNaN(data.school_id)) {
+            updateData.school_id = data.school_id;
+          }
+          
+          console.log('Update JSON payload:', updateData);
+          
+          const response = await api.put(`admin/mock-exam/${editingExam.id}`, updateData, {
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          console.log('Update response:', response);
+          toast.success(response.data.message || 'Exam updated successfully');
         }
       } else {
         // For create mode, always use FormData
         const formData = new FormData();
         formData.append('name', data.name);
         formData.append('description', data.description);
-        formData.append('category_id', data.category_id);
-        formData.append('format_id', data.format);
+        formData.append('category_id', Number(data.category_id));
+        formData.append('format_id', Number(data.format));
         formData.append('price', data.price);
         formData.append('currency', data.currency);
         formData.append('duration_minutes', data.duration_minutes);
@@ -553,13 +692,23 @@ const MockExam = () => {
         // Questions data
         data.questions.forEach((question, index) => {
           formData.append(`questions[${index}]`, question.question);
-          formData.append(`options[${index}][1]`, question.options[1]);
-          formData.append(`options[${index}][2]`, question.options[2]);
-          formData.append(`options[${index}][3]`, question.options[3]);
-          formData.append(`options[${index}][4]`, question.options[4]);
+          
+          // Convert options object to array format (backend expects array)
+          // Filter out empty options and convert to array with 0-based indexing
+          const optionValues = Object.values(question.options)
+            .filter(opt => opt && opt.trim() !== '');
+          
+          optionValues.forEach((optionValue, optIndex) => {
+            formData.append(`options[${index}][${optIndex}]`, optionValue);
+          });
+          
           formData.append(`answers[${index}]`, question.answer);
           formData.append(`duration_in_sec[${index}]`, question.duration_in_sec);
-          formData.append(`marks[${index}]`, question.marks);
+          
+          // Only append marks if provided (nullable in backend)
+          if (question.marks != null) {
+            formData.append(`marks[${index}]`, question.marks);
+          }
         });
 
         const response = await api.post('admin/mock-exam', formData);
@@ -595,6 +744,8 @@ const MockExam = () => {
       } else {
       toast.error(error.response?.data?.message || 'Failed to save exam');
     }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -809,7 +960,7 @@ const MockExam = () => {
         category_id: examData.category_id || '',
         format: formatValue || '',
         price: examData.price || '',
-        currency: examData.currency || '€',
+        currency: examData.currency || null,
         duration_minutes: examData.duration_minutes || '',
         school_id: examData.school_id || '',
         questions: transformedQuestions
@@ -1589,7 +1740,7 @@ const MockExam = () => {
             </Box>
           </Card>
 
-          <form onSubmit={handleSubmit(onSubmit)}>
+          <form onSubmit={handleSubmit(onSubmit)} noValidate>
             <Card sx={{ 
               mb: 3,
               borderRadius: 4,
@@ -1749,6 +1900,39 @@ const MockExam = () => {
                       error={!!errors.price}
                       helperText={errors.price?.message}
                     />
+                  )}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6} data-field-container="currency">
+                <Controller
+                  name="currency"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControl fullWidth error={!!errors.currency}>
+                      <InputLabel>Currency (Optional)</InputLabel>
+                      <Select
+                        {...field}
+                        value={field.value || ''}
+                        label="Currency (Optional)"
+                        sx={{
+                          borderRadius: 2,
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#667eea',
+                          },
+                        }}
+                      >
+                        <MenuItem value="">
+                          <em>None</em>
+                        </MenuItem>
+                        <MenuItem value="€">€ (Euro)</MenuItem>
+                        <MenuItem value="$">$ (Dollar)</MenuItem>
+                        <MenuItem value="£">£ (Pound)</MenuItem>
+                      </Select>
+                      <Typography color="error" fontSize={12}>
+                        {errors.currency?.message}
+                      </Typography>
+                    </FormControl>
                   )}
                 />
               </Grid>
@@ -2543,6 +2727,7 @@ What is 2+2?,3,4,5,6,4,20,1`;
                   type="submit"
                   variant="contained"
                   size="large"
+                  disabled={isSubmitting}
                 sx={{
                   ...gradientButtonStyle,
                   minWidth: 200,
@@ -2552,14 +2737,24 @@ What is 2+2?,3,4,5,6,4,20,1`;
                   boxShadow: '0 8px 24px rgba(59, 42, 159, 0.4)',
                   '&:hover': {
                     ...gradientButtonStyle['&:hover'],
-                    transform: 'translateY(-3px)',
-                    boxShadow: '0 12px 32px rgba(59, 42, 159, 0.5)'
+                    transform: isSubmitting ? 'none' : 'translateY(-3px)',
+                    boxShadow: isSubmitting ? '0 8px 24px rgba(59, 42, 159, 0.4)' : '0 12px 32px rgba(59, 42, 159, 0.5)'
+                  },
+                  '&:disabled': {
+                    opacity: 0.6,
+                    cursor: 'not-allowed'
                   },
                   transition: 'all 0.3s ease'
                 }}
-                  onClick={() => console.log('Submit button clicked!', errors)}
                 >
-                  {editingExam ? 'Update Exam' : 'Create Exam'}
+                  {isSubmitting ? (
+                    <>
+                      <CircularProgress size={20} sx={{ color: 'white', mr: 1 }} />
+                      {editingExam ? 'Updating...' : 'Creating...'}
+                    </>
+                  ) : (
+                    editingExam ? 'Update Exam' : 'Create Exam'
+                  )}
                 </Button>
             </Box>
           </form>

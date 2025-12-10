@@ -14,13 +14,14 @@ import {
   LinearProgress,
   Collapse,
 } from "@mui/material";
-import { 
+import {
   ExpandLess, 
   ExpandMore,
   People as PeopleIcon,
   PersonAdd as PersonAddIcon,
   Edit as EditIcon,
-  ReceiptLong as ReceiptLongIcon
+  ReceiptLong as ReceiptLongIcon,
+  Description as DescriptionIcon
 } from "@mui/icons-material";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import SchoolIcon from '@mui/icons-material/School';
@@ -135,11 +136,12 @@ const AdminLayout = () => {
       ],
     },
     {
-      label: "Mock Exams",
+      label: "Exams",
       icon: <CategoryIcon />,
       children: [
-        { label: "Mock Exam Categories", path: "/admin/mock-exam-categories", icon: <CategoryIcon /> },
+        { label: "Categories", path: "/admin/mock-exam-categories", icon: <CategoryIcon /> },
         { label: "Mock Exams", path: "/admin/mock-exams", icon: <QuizIcon /> },
+        { label: "Papers", path: "/admin/papers", icon: <DescriptionIcon /> },
       ],
     },
     {
@@ -149,6 +151,14 @@ const AdminLayout = () => {
         { label: "Student List", path: "/admin/students", icon: <ListIcon /> },
       ],
     },
+    // {
+    //   label: "Papers",
+    //   icon: <DescriptionIcon />,
+    //   children: [
+    //     { label: "Paper Categories", path: "/admin/paper-categories", icon: <CategoryIcon /> },
+    //     { label: "Papers", path: "/admin/papers", icon: <DescriptionIcon /> },
+    //   ],
+    // },
     { label: "Parents", path: "/admin/parents", icon: <PeopleIcon /> },
     { label: "Billing", path: "/admin/billing", icon: <ReceiptLongIcon /> },
     { label: "Master Forms", path: "/admin/master-forms", icon: <StorageIcon /> },

@@ -33,6 +33,10 @@ import TimeSlots from "./pages/Course/CourseTimeSlot";
 import MockExamCategory from "./pages/MockExam/MockExamCategory";
 import MockExam from "./pages/MockExam/MockExam";
 
+// Paper imports
+import Paper from "./pages/Paper/Paper";
+// import PaperCategory from "./pages/Paper/PaperCategory";
+
 // Master Form imports
 import MasterForm from "./pages/MasterForm/MasterForm";
 
@@ -188,6 +192,8 @@ const AppRoutes = () => {
         <Route path="course-report" element={<CourseReport />} />
         <Route path="mock-exam-categories" element={<MockExamCategory />} />
         <Route path="mock-exams" element={<MockExam />} />
+        {/* <Route path="paper-categories" element={<PaperCategory />} /> */}
+        <Route path="papers" element={<Paper />} />
         <Route path="master-forms" element={<MasterForm />} />
         
         {/* Admin Student Management Routes */}
