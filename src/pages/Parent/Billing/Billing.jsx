@@ -2,24 +2,28 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  Tabs,
-  Tab,
-  Paper,
   Card,
-  CardContent
+  CircularProgress
 } from '@mui/material';
 import SchoolIcon from '@mui/icons-material/School';
 import QuizIcon from '@mui/icons-material/Quiz';
+import DescriptionIcon from '@mui/icons-material/Description';
 import SubscriptionList from '../../../components/SubscriptionList';
 import MockExamSubscriptionList from '../../../components/MockExamSubscriptionList';
+import PaperPurchases from '../PaperPurchases';
 import api from '../../../api';
 import { toast } from 'react-toastify';
+import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 
 const Billing = () => {
-  const [tabValue, setTabValue] = useState(0);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [parentData, setParentData] = useState(null);
+
+  // Get current route segment (course, mock, or paper)
+  const currentRoute = location.pathname.split('/').pop() || 'course';
 
   // Debug authentication and get parent data
   useEffect(() => {
@@ -56,19 +60,19 @@ const Billing = () => {
     }
   }, []);
 
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
-  };
-
+  // Redirect to course if on base billing route
   useEffect(() => {
-    fetchSubscriptions();
-  }, []);
+    if (location.pathname.endsWith('/billing') || location.pathname.endsWith('/billing/')) {
+      navigate('course', { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
+  // Fetch subscriptions when route changes to course
   useEffect(() => {
-    if (tabValue === 0) {
+    if (currentRoute === 'course') {
       fetchSubscriptions();
     }
-  }, [tabValue]);
+  }, [currentRoute]);
 
   const fetchSubscriptions = async () => {
     setLoading(true);
@@ -204,59 +208,18 @@ const Billing = () => {
         backdropFilter: 'blur(20px)',
         overflow: 'hidden'
       }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs 
-            value={tabValue} 
-            onChange={handleTabChange}
-            sx={{
-              px: 2,
-              bgcolor: 'white',
-              '& .MuiTab-root': {
-                py: 3,
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '1rem',
-                color: '#718096',
-                minHeight: 64,
-                '&.Mui-selected': {
-                  color: '#667eea',
-                }
-              },
-              '& .MuiTabs-indicator': {
-                height: 3,
-                borderRadius: '3px 3px 0 0',
-                background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)'
-              }
-            }}
-          >
-            <Tab 
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <SchoolIcon />
-                  Course Subscriptions
-                </Box>
-              } 
-            />
-            <Tab 
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <QuizIcon />
-                  Mock Exam Subscriptions
-                </Box>
-              } 
-            />
-          </Tabs>
-        </Box>
-
         <Box sx={{ p: 4, bgcolor: '#f8fafc', minHeight: 500 }}>
-          {tabValue === 0 && (
+          {currentRoute === 'course' && (
             <SubscriptionList 
               subscriptions={subscriptions} 
               loading={loading} 
             />
           )}
-          {tabValue === 1 && (
+          {currentRoute === 'mock' && (
             <MockExamSubscriptionList />
+          )}
+          {currentRoute === 'paper' && (
+            <PaperPurchases />
           )}
         </Box>
       </Card>

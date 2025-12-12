@@ -43,6 +43,7 @@ import MasterForm from "./pages/MasterForm/MasterForm";
 // Admin Parent Management
 import ParentList from "./pages/Admin/ParentList";
 import ParentBilling from "./pages/Admin/ParentBilling";
+import AdminPaperPurchases from "./pages/Admin/PaperPurchases";
 
 // Admin Student Management
 import StudentList from "./pages/Admin/Student/StudentList";
@@ -51,6 +52,7 @@ import StudentDetails from "./pages/Admin/Student/StudentDetails";
 
 // Parent Billing
 import Billing from "./pages/Parent/Billing/Billing";
+import ParentPaperPurchases from "./pages/Parent/PaperPurchases";
 
 //============ START PARENT ROUTING ============
 // student routes
@@ -192,8 +194,10 @@ const AppRoutes = () => {
         <Route path="course-report" element={<CourseReport />} />
         <Route path="mock-exam-categories" element={<MockExamCategory />} />
         <Route path="mock-exams" element={<MockExam />} />
+        <Route path="mock-exams/billing" element={<ParentList />} />
         {/* <Route path="paper-categories" element={<PaperCategory />} /> */}
         <Route path="papers" element={<Paper />} />
+        <Route path="papers/billing" element={<AdminPaperPurchases />} />
         <Route path="master-forms" element={<MasterForm />} />
         
         {/* Admin Student Management Routes */}
@@ -205,6 +209,7 @@ const AppRoutes = () => {
         {/* Admin Parent Management Routes */}
         <Route path="parents" element={<ParentList />} />
         <Route path="billing" element={<ParentList />} /> {/* Reusing ParentList as entry point for Billing */}
+        <Route path="course/billing" element={<ParentList />} /> {/* Course Billing submenu */}
         <Route path="parent/:parentId/billing" element={<ParentBilling />} />
       </Route>
 
@@ -250,7 +255,10 @@ const AppRoutes = () => {
         <Route path="change-password" element={<ChangePassword />} />
 
         {/* Billing Routes */}
-        <Route path="billing" element={<Billing />} />
+        <Route path="billing" element={<Navigate to="billing/course" replace />} />
+        <Route path="billing/course" element={<Billing />} />
+        <Route path="billing/mock" element={<Billing />} />
+        <Route path="billing/paper" element={<Billing />} />
 
         { /* parent student progress routes */}
         <Route path="end-of-report" element={<EndOfReport />} />

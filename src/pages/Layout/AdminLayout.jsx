@@ -78,6 +78,21 @@ const AdminLayout = () => {
       if (item.label === "Students" && currentPath.includes("/student")) {
         return true;
       }
+      
+      // Special handling for Course - active for course/billing
+      if (item.label === "Course" && currentPath === "/admin/course/billing") {
+        return true;
+      }
+      
+      // Special handling for Mock Exams - active for mock-exams/billing
+      if (item.label === "Mock Exams" && currentPath === "/admin/mock-exams/billing") {
+        return true;
+      }
+      
+      // Special handling for Papers - active for papers/billing
+      if (item.label === "Papers" && currentPath === "/admin/papers/billing") {
+        return true;
+      }
     }
     
     // Handle leaf items
@@ -108,6 +123,23 @@ const AdminLayout = () => {
       children: [
         { label: "Course List", path: `/${name}/course-list`, icon: <ListIcon /> },
         { label: "Add Course", path: `/${name}/course`, icon: <AddIcon /> },
+        { label: "Billing", path: "/admin/course/billing", icon: <ReceiptLongIcon /> },
+      ],
+    },
+    {
+      label: "Mock Exams",
+      icon: <QuizIcon />,
+      children: [
+        { label: "Mock Exam List", path: "/admin/mock-exams", icon: <ListIcon /> },
+        { label: "Billing", path: "/admin/mock-exams/billing", icon: <ReceiptLongIcon /> },
+      ],
+    },
+    {
+      label: "Papers",
+      icon: <DescriptionIcon />,
+      children: [
+        { label: "Paper List", path: "/admin/papers", icon: <ListIcon /> },
+        { label: "Billing", path: "/admin/papers/billing", icon: <ReceiptLongIcon /> },
       ],
     },
     { label: "Timeslots", path: "/admin/timeslot", icon: <AccessTimeIcon /> },
@@ -136,13 +168,9 @@ const AdminLayout = () => {
       ],
     },
     {
-      label: "Exams",
+      label: "Mock/paper Exam Categories",
+      path: "/admin/mock-exam-categories",
       icon: <CategoryIcon />,
-      children: [
-        { label: "Categories", path: "/admin/mock-exam-categories", icon: <CategoryIcon /> },
-        { label: "Mock Exams", path: "/admin/mock-exams", icon: <QuizIcon /> },
-        { label: "Papers", path: "/admin/papers", icon: <DescriptionIcon /> },
-      ],
     },
     {
       label: "Students",
@@ -160,7 +188,7 @@ const AdminLayout = () => {
     //   ],
     // },
     { label: "Parents", path: "/admin/parents", icon: <PeopleIcon /> },
-    { label: "Billing", path: "/admin/billing", icon: <ReceiptLongIcon /> },
+    // { label: "Billing", path: "/admin/billing", icon: <ReceiptLongIcon /> },
     { label: "Master Forms", path: "/admin/master-forms", icon: <StorageIcon /> },
     { label: "Reports", path: `/${name}/course-report`, icon: <BarChartIcon /> },
   ];

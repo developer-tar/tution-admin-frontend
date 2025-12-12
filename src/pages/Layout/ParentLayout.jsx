@@ -100,8 +100,12 @@ const ParentLayout = () => {
     },
     {
       label: "Billing",
-      path: `/${name}/billing`,
       icon: <ReceiptLong />,
+      children: [
+        { label: "Course", path: `/${name}/billing/course`, icon: <School /> },
+        { label: "Mock", path: `/${name}/billing/mock`, icon: <Quiz /> },
+        { label: "Paper", path: `/${name}/billing/paper`, icon: <ReceiptLong /> },
+      ],
     },
     {
       label: "Setting",
