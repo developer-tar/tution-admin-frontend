@@ -7,6 +7,8 @@ const BooleanSelectField = ({ control, name, label, error, loading, required = f
         {loading ? (
             <CommonLoader />
         ) : (
+
+            
             <Controller
                 name={name}
                 control={control}

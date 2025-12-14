@@ -53,6 +53,7 @@ import StudentDetails from "./pages/Admin/Student/StudentDetails";
 // Parent Billing
 import Billing from "./pages/Parent/Billing/Billing";
 import ParentPaperPurchases from "./pages/Parent/PaperPurchases";
+import BillingInformation from "./pages/Parent/BillingInformation";
 
 //============ START PARENT ROUTING ============
 // student routes
@@ -258,7 +259,8 @@ const AppRoutes = () => {
         <Route path="billing" element={<Navigate to="billing/course" replace />} />
         <Route path="billing/course" element={<Billing />} />
         <Route path="billing/mock" element={<Billing />} />
-        <Route path="billing/paper" element={<Billing />} />
+        <Route path="billing/paper" element={<ParentPaperPurchases />} />
+        <Route path="billing-information" element={<BillingInformation />} />
 
         { /* parent student progress routes */}
         <Route path="end-of-report" element={<EndOfReport />} />

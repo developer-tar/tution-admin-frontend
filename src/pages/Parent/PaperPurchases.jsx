@@ -30,7 +30,8 @@ import {
   TableRow,
   TablePagination,
   InputAdornment,
-  Paper
+  Paper,
+  Alert
 } from '@mui/material';
 import {
   Description as DescriptionIcon,
@@ -38,7 +39,8 @@ import {
   ReceiptLong as ReceiptIcon,
   School as SchoolIcon,
   Person as PersonIcon,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Home as HomeIcon
 } from '@mui/icons-material';
 import api from '../../api';
 import { toast } from 'react-toastify';
@@ -52,9 +54,14 @@ const PaperPurchases = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [billingInfo, setBillingInfo] = useState([]);
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [requestingPaper, setRequestingPaper] = useState(false);
+  const [selectedBillingId, setSelectedBillingId] = useState('');
 
   useEffect(() => {
     fetchPurchases();
+    fetchBillingInformation();
   }, [statusFilter, searchTerm]);
 
   const fetchPurchases = async () => {
@@ -179,6 +186,20 @@ const PaperPurchases = () => {
     return `${symbols[currency?.toLowerCase()] || currency?.toUpperCase() || ''}${formattedAmount}`;
   };
 
+  const fetchBillingInformation = async () => {
+    try {
+      const response = await api.get('parent/billing-information');
+      if (response.data.success) {
+        setBillingInfo(response.data.data || []);
+        if (response.data.data && response.data.data.length > 0) {
+          setSelectedBillingId(response.data.data[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching billing information:', error);
+    }
+  };
+
   const handleViewDetails = (purchase) => {
     setSelectedPurchase(purchase);
     setDialogOpen(true);
@@ -186,6 +207,68 @@ const PaperPurchases = () => {
 
   const handleDownloadPdf = (pdf) => {
     window.open(pdf.url, '_blank');
+  };
+
+  const canRequestPaper = (purchase) => {
+    // Check if paper is purchased with paid status
+    const isPaid = purchase.payment_status === 'paid' || purchase.payment_status === 1 || purchase.payment_status === '1';
+    
+    // Check if paper format allows physical delivery
+    const format = purchase.paper_format?.toLowerCase();
+    const allowsPhysical = format === 'physical' || format === 'any';
+    
+    return isPaid && allowsPhysical;
+  };
+
+  const handleRequestPaperClick = () => {
+    if (billingInfo.length === 0) {
+      toast.error('Please add billing information first');
+      return;
+    }
+    setRequestDialogOpen(true);
+  };
+
+  const handleRequestPaper = async () => {
+    if (!selectedPurchase || !selectedBillingId) {
+      toast.error('Please select a billing address');
+      return;
+    }
+
+    setRequestingPaper(true);
+    try {
+      // Get paper_id from purchase - it might be paper_id or id depending on API response
+      const paperId = selectedPurchase.paper_id || selectedPurchase.paper?.id || selectedPurchase.id;
+      
+      if (!paperId) {
+        toast.error('Paper ID not found');
+        return;
+      }
+
+      const response = await api.post('parent/request-paper-to-home', {
+        paper_id: paperId,
+        billing_information_id: selectedBillingId
+      });
+
+      if (response.data.success) {
+        toast.success(response.data.message || 'Paper request submitted successfully');
+        setRequestDialogOpen(false);
+        fetchPurchases(); // Refresh purchases to update status
+      } else {
+        toast.error(response.data.message || 'Failed to submit paper request');
+      }
+    } catch (error) {
+      console.error('Error requesting paper:', error);
+      if (error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        Object.keys(errors).forEach(field => {
+          toast.error(errors[field][0]);
+        });
+      } else {
+        toast.error(error.response?.data?.message || 'An error occurred while submitting paper request');
+      }
+    } finally {
+      setRequestingPaper(false);
+    }
   };
 
   return (
@@ -516,7 +599,88 @@ const PaperPurchases = () => {
           )}
         </DialogContent>
         <DialogActions>
+          {selectedPurchase && canRequestPaper(selectedPurchase) && (
+            <Button
+              variant="contained"
+              startIcon={<HomeIcon />}
+              onClick={handleRequestPaperClick}
+              color="primary"
+            >
+              Request Paper to Home
+            </Button>
+          )}
           <Button onClick={() => setDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Request Paper to Home Dialog */}
+      <Dialog
+        open={requestDialogOpen}
+        onClose={() => setRequestDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <HomeIcon />
+            <Typography variant="h6">
+              Request Paper to Home
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          {selectedPurchase && (
+            <Box>
+              <Typography variant="body1" gutterBottom sx={{ mb: 2 }}>
+                Request <strong>{selectedPurchase.paper_name}</strong> to be delivered to your billing address.
+              </Typography>
+              
+              {billingInfo.length === 0 ? (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  No billing information found. Please add a billing address first.
+                </Alert>
+              ) : (
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Select Billing Address</InputLabel>
+                  <Select
+                    value={selectedBillingId}
+                    onChange={(e) => setSelectedBillingId(e.target.value)}
+                    label="Select Billing Address"
+                  >
+                    {billingInfo.map((billing) => {
+                      const addressParts = [];
+                      if (billing.address_line1) addressParts.push(billing.address_line1);
+                      if (billing.city) addressParts.push(billing.city);
+                      if (billing.postal_code) addressParts.push(billing.postal_code);
+                      if (billing.country) addressParts.push(billing.country);
+                      const addressLabel = addressParts.join(', ') || `Address #${billing.id}`;
+                      
+                      return (
+                        <MenuItem key={billing.id} value={billing.id}>
+                          {addressLabel}
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
+              )}
+              
+              <Alert severity="info">
+                Once submitted, we will process your request and deliver the paper to the selected address.
+              </Alert>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setRequestDialogOpen(false)}>Cancel</Button>
+          <Button
+            onClick={handleRequestPaper}
+            variant="contained"
+            disabled={requestingPaper || billingInfo.length === 0}
+            startIcon={<HomeIcon />}
+          >
+            {requestingPaper ? 'Submitting...' : 'Submit Request'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
