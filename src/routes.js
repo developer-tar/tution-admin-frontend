@@ -259,7 +259,7 @@ const AppRoutes = () => {
         <Route path="billing" element={<Navigate to="billing/course" replace />} />
         <Route path="billing/course" element={<Billing />} />
         <Route path="billing/mock" element={<Billing />} />
-        <Route path="billing/paper" element={<ParentPaperPurchases />} />
+        <Route path="billing/paper" element={<Billing />} />
         <Route path="billing-information" element={<BillingInformation />} />
 
         { /* parent student progress routes */}

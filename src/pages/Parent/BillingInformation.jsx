@@ -5,21 +5,22 @@ import {
   Card,
   CardContent,
   Button,
-  TextField,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  TextField,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
+  TablePagination,
   IconButton,
   Chip,
   Skeleton,
+  Paper,
   Alert,
   Grid
 } from '@mui/material';
@@ -51,20 +52,21 @@ const billingSchema = yup.object().shape({
 });
 
 const BillingInformation = () => {
-  const [billingInfo, setBillingInfo] = useState([]);
+  const [billingInfoList, setBillingInfoList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedBilling, setSelectedBilling] = useState(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [isEditing, setIsEditing] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
   const {
     control,
     handleSubmit,
     reset,
+    setError,
     formState: { errors },
-    setError
   } = useForm({
     resolver: yupResolver(billingSchema),
     defaultValues: {
@@ -74,8 +76,8 @@ const BillingInformation = () => {
       state: '',
       postal_code: '',
       country: '',
-      phone: ''
-    }
+      phone: '',
+    },
   });
 
   useEffect(() => {
@@ -87,7 +89,7 @@ const BillingInformation = () => {
     try {
       const response = await api.get('parent/billing-information');
       if (response.data.success) {
-        setBillingInfo(response.data.data || []);
+        setBillingInfoList(response.data.data || []);
       } else {
         toast.error(response.data.message || 'Failed to fetch billing information');
       }
@@ -110,7 +112,7 @@ const BillingInformation = () => {
         state: billing.state || '',
         postal_code: billing.postal_code || '',
         country: billing.country || '',
-        phone: billing.phone || ''
+        phone: billing.phone || '',
       });
     } else {
       setSelectedBilling(null);
@@ -122,7 +124,7 @@ const BillingInformation = () => {
         state: '',
         postal_code: '',
         country: '',
-        phone: ''
+        phone: '',
       });
     }
     setDialogOpen(true);
@@ -136,15 +138,16 @@ const BillingInformation = () => {
   };
 
   const onSubmit = async (data) => {
-    setSubmitting(true);
     try {
       if (isEditing) {
         // Update existing billing information
+        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
         const payload = {
           id: selectedBilling.id,
-          parent_id: selectedBilling.parent_id,
-          ...data
+          parent_id: userData.id || userData.parent_id,
+          ...data,
         };
+
         const response = await api.put('parent/billing-information', payload);
         if (response.data.success) {
           toast.success('Billing information updated successfully');
@@ -168,18 +171,15 @@ const BillingInformation = () => {
       console.error('Error saving billing information:', error);
       if (error.response?.data?.errors) {
         // Handle validation errors
-        const errors = error.response.data.errors;
-        Object.keys(errors).forEach(field => {
+        Object.keys(error.response.data.errors).forEach((field) => {
           setError(field, {
             type: 'manual',
-            message: errors[field][0]
+            message: error.response.data.errors[field][0],
           });
         });
       } else {
         toast.error(error.response?.data?.message || 'An error occurred while saving billing information');
       }
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -189,8 +189,6 @@ const BillingInformation = () => {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!selectedBilling) return;
-
     try {
       const response = await api.delete(`parent/billing-information/${selectedBilling.id}`);
       if (response.data.success) {
@@ -203,23 +201,27 @@ const BillingInformation = () => {
       }
     } catch (error) {
       console.error('Error deleting billing information:', error);
-      toast.error(error.response?.data?.message || 'An error occurred while deleting billing information');
+      toast.error(error.response?.data?.message || 'Failed to delete billing information');
     }
   };
 
-  const formatAddress = (billing) => {
-    const parts = [];
-    if (billing.address_line1) parts.push(billing.address_line1);
-    if (billing.address_line2) parts.push(billing.address_line2);
-    if (billing.city) parts.push(billing.city);
-    if (billing.state) parts.push(billing.state);
-    if (billing.postal_code) parts.push(billing.postal_code);
-    if (billing.country) parts.push(billing.country);
-    return parts.join(', ') || 'N/A';
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
   };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const paginatedData = billingInfoList.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Box sx={{ 
           display: 'inline-flex', 
@@ -242,106 +244,116 @@ const BillingInformation = () => {
         </Typography>
       </Box>
 
+      {/* Add Button */}
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => handleOpenDialog()}
         >
-          Add Billing Address
+          Add Billing Information
         </Button>
       </Box>
 
-      {loading ? (
-        <Card>
-          <CardContent>
-            {Array.from({ length: 3 }).map((_, index) => (
-              <Box key={index} sx={{ mb: 2 }}>
-                <Skeleton variant="text" width="60%" height={24} sx={{ mb: 1 }} />
-                <Skeleton variant="text" width="100%" height={20} />
-                <Skeleton variant="text" width="80%" height={20} />
-              </Box>
-            ))}
-          </CardContent>
-        </Card>
-      ) : billingInfo.length === 0 ? (
-        <Card>
-          <CardContent sx={{ textAlign: 'center', py: 4 }}>
-            <LocationIcon sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              No billing information found
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Add a billing address to request paper delivery to your home
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
-            >
-              Add Billing Address
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                  <TableCell sx={{ fontWeight: 600 }}>Address</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Created At</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }} align="center">Actions</TableCell>
+      {/* Billing Information Table */}
+      <Card>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                <TableCell sx={{ fontWeight: 600 }}>Address</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>City</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>State</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Postal Code</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Country</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
+                <TableCell sx={{ fontWeight: 600 }} align="center">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, index) => (
+                  <TableRow key={index}>
+                    <TableCell><Skeleton variant="text" width="100%" height={20} /></TableCell>
+                    <TableCell><Skeleton variant="text" width={80} height={20} /></TableCell>
+                    <TableCell><Skeleton variant="text" width={80} height={20} /></TableCell>
+                    <TableCell><Skeleton variant="text" width={80} height={20} /></TableCell>
+                    <TableCell><Skeleton variant="text" width={80} height={20} /></TableCell>
+                    <TableCell><Skeleton variant="text" width={100} height={20} /></TableCell>
+                    <TableCell align="center">
+                      <Skeleton variant="circular" width={32} height={32} />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : billingInfoList.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <LocationIcon sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />
+                    <Typography variant="h6" color="text.secondary">
+                      No billing information found
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      Click "Add Billing Information" to create your first address
+                    </Typography>
+                  </TableCell>
                 </TableRow>
-              </TableHead>
-              <TableBody>
-                {billingInfo.map((billing) => (
+              ) : (
+                paginatedData.map((billing) => (
                   <TableRow key={billing.id} hover>
                     <TableCell>
                       <Box>
-                        <Typography variant="body2" fontWeight={600} gutterBottom>
-                          {formatAddress(billing)}
-                        </Typography>
                         {billing.address_line1 && (
-                          <Typography variant="caption" color="text.secondary">
-                            {billing.address_line1}
-                            {billing.address_line2 && `, ${billing.address_line2}`}
+                          <Typography variant="body2">{billing.address_line1}</Typography>
+                        )}
+                        {billing.address_line2 && (
+                          <Typography variant="body2" color="text.secondary">
+                            {billing.address_line2}
                           </Typography>
+                        )}
+                        {!billing.address_line1 && !billing.address_line2 && (
+                          <Typography variant="body2" color="text.secondary">-</Typography>
                         )}
                       </Box>
                     </TableCell>
-                    <TableCell>
-                      {billing.phone || 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(billing.created_at).toLocaleDateString()}
-                    </TableCell>
+                    <TableCell>{billing.city || 'N/A'}</TableCell>
+                    <TableCell>{billing.state || 'N/A'}</TableCell>
+                    <TableCell>{billing.postal_code || 'N/A'}</TableCell>
+                    <TableCell>{billing.country || 'N/A'}</TableCell>
+                    <TableCell>{billing.phone || 'N/A'}</TableCell>
                     <TableCell align="center">
-                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => handleOpenDialog(billing)}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDeleteClick(billing)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Box>
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => handleOpenDialog(billing)}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleDeleteClick(billing)}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Card>
-      )}
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        {!loading && billingInfoList.length > 0 && (
+          <TablePagination
+            component="div"
+            count={billingInfoList.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25, 50]}
+          />
+        )}
+      </Card>
 
       {/* Create/Edit Dialog */}
       <Dialog
@@ -353,11 +365,11 @@ const BillingInformation = () => {
         <DialogTitle>
           {isEditing ? 'Edit Billing Information' : 'Add Billing Information'}
         </DialogTitle>
-        <DialogContent sx={{ p: 3 }}>
-          <Alert severity="info" sx={{ mb: 3 }}>
-            At least one address field (address, city, state, postal code, or country) must be provided.
-          </Alert>
-          <form onSubmit={handleSubmit(onSubmit)}>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Alert severity="info" sx={{ mb: 3 }}>
+              At least one address field (Address Line 1, Address Line 2, City, State, Postal Code, or Country) is required.
+            </Alert>
             <Grid container spacing={2}>
               <Grid item xs={12}>
                 <Controller
@@ -368,9 +380,9 @@ const BillingInformation = () => {
                       {...field}
                       fullWidth
                       label="Address Line 1"
-                      variant="outlined"
                       error={!!errors.address_line1}
                       helperText={errors.address_line1?.message}
+                      placeholder="123 Main Street"
                     />
                   )}
                 />
@@ -384,9 +396,9 @@ const BillingInformation = () => {
                       {...field}
                       fullWidth
                       label="Address Line 2"
-                      variant="outlined"
                       error={!!errors.address_line2}
                       helperText={errors.address_line2?.message}
+                      placeholder="Apt 4B, Suite 5C"
                     />
                   )}
                 />
@@ -400,9 +412,9 @@ const BillingInformation = () => {
                       {...field}
                       fullWidth
                       label="City"
-                      variant="outlined"
                       error={!!errors.city}
                       helperText={errors.city?.message}
+                      placeholder="London"
                     />
                   )}
                 />
@@ -415,10 +427,10 @@ const BillingInformation = () => {
                     <TextField
                       {...field}
                       fullWidth
-                      label="State"
-                      variant="outlined"
+                      label="State/Province"
                       error={!!errors.state}
                       helperText={errors.state?.message}
+                      placeholder="Greater London"
                     />
                   )}
                 />
@@ -432,9 +444,9 @@ const BillingInformation = () => {
                       {...field}
                       fullWidth
                       label="Postal Code"
-                      variant="outlined"
                       error={!!errors.postal_code}
                       helperText={errors.postal_code?.message}
+                      placeholder="SW1A 1AA"
                     />
                   )}
                 />
@@ -448,9 +460,9 @@ const BillingInformation = () => {
                       {...field}
                       fullWidth
                       label="Country"
-                      variant="outlined"
                       error={!!errors.country}
                       helperText={errors.country?.message}
+                      placeholder="United Kingdom"
                     />
                   )}
                 />
@@ -464,29 +476,20 @@ const BillingInformation = () => {
                       {...field}
                       fullWidth
                       label="Phone"
-                      variant="outlined"
                       error={!!errors.phone}
                       helperText={errors.phone?.message}
+                      placeholder="+44 20 1234 5678"
                     />
                   )}
                 />
               </Grid>
-              {errors.root && (
-                <Grid item xs={12}>
-                  <Alert severity="error">{errors.root.message}</Alert>
-                </Grid>
-              )}
             </Grid>
-          </form>
+          </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
+        <DialogActions>
           <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button
-            onClick={handleSubmit(onSubmit)}
-            variant="contained"
-            disabled={submitting}
-          >
-            {submitting ? 'Saving...' : isEditing ? 'Update' : 'Create'}
+          <Button onClick={handleSubmit(onSubmit)} variant="contained">
+            {isEditing ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
       </Dialog>
