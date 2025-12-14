@@ -13,7 +13,8 @@ import {
   TrendingUp,
   Logout,
   AccountCircle,
-  ReceiptLong
+  ReceiptLong,
+  Home
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -105,6 +106,7 @@ const ParentLayout = () => {
         { label: "Course", path: `/${name}/billing/course`, icon: <School /> },
         { label: "Mock", path: `/${name}/billing/mock`, icon: <Quiz /> },
         { label: "Paper", path: `/${name}/billing/paper`, icon: <ReceiptLong /> },
+        { label: "Billing Information", path: `/${name}/billing-information`, icon: <Home /> },
       ],
     },
     {

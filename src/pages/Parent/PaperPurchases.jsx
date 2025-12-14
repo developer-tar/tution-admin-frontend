@@ -38,7 +38,8 @@ import {
   ReceiptLong as ReceiptIcon,
   School as SchoolIcon,
   Person as PersonIcon,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Home as HomeIcon
 } from '@mui/icons-material';
 import api from '../../api';
 import { toast } from 'react-toastify';
@@ -52,9 +53,14 @@ const PaperPurchases = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [billingInfoList, setBillingInfoList] = useState([]);
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [selectedPaperForRequest, setSelectedPaperForRequest] = useState(null);
+  const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {
     fetchPurchases();
+    fetchBillingInformation();
   }, [statusFilter, searchTerm]);
 
   const fetchPurchases = async () => {
@@ -186,6 +192,89 @@ const PaperPurchases = () => {
 
   const handleDownloadPdf = (pdf) => {
     window.open(pdf.url, '_blank');
+  };
+
+  const fetchBillingInformation = async () => {
+    try {
+      const response = await api.get('parent/billing-information');
+      if (response.data.success) {
+        setBillingInfoList(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching billing information:', error);
+      // Don't show error toast here as it's optional
+    }
+  };
+
+  const handleRequestPaperToHome = (purchase) => {
+    // Check if paper format allows physical delivery
+    const format = purchase.paper_format?.toLowerCase();
+    if (format && format !== 'physical' && format !== 'any') {
+      toast.error('Only physical or any format papers can be requested for home delivery.');
+      return;
+    }
+
+    // Check if payment status is paid
+    if (purchase.payment_status !== 'paid' && purchase.payment_status !== 1 && purchase.payment_status !== '1') {
+      toast.error('You do not have access to this paper. Please purchase it first.');
+      return;
+    }
+
+    // Check if billing information exists
+    if (billingInfoList.length === 0) {
+      toast.error('Please add billing information first before requesting paper delivery.');
+      return;
+    }
+
+    setSelectedPaperForRequest(purchase);
+    setRequestDialogOpen(true);
+  };
+
+  const handleConfirmRequest = async () => {
+    if (!selectedPaperForRequest || billingInfoList.length === 0) {
+      toast.error('Please select a billing address');
+      return;
+    }
+
+    setRequesting(true);
+    try {
+      const billingInfoId = billingInfoList[0].id; // Use first billing info or let user select
+      const response = await api.post('parent/request-paper-to-home', {
+        paper_id: selectedPaperForRequest.paper_id,
+        billing_information_id: billingInfoId,
+      });
+
+      if (response.data.success) {
+        toast.success(response.data.message || 'Paper request submitted successfully. We are processing your request.');
+        setRequestDialogOpen(false);
+        setSelectedPaperForRequest(null);
+      } else {
+        toast.error(response.data.message || 'Failed to submit paper request');
+      }
+    } catch (error) {
+      console.error('Error requesting paper to home:', error);
+      if (error.response?.data?.errors) {
+        // Display validation errors
+        Object.keys(error.response.data.errors).forEach((field) => {
+          const errorMessage = error.response.data.errors[field][0];
+          toast.error(errorMessage);
+        });
+      } else {
+        toast.error(error.response?.data?.message || 'An error occurred while submitting paper request');
+      }
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const canRequestPaperToHome = (purchase) => {
+    // Check payment status
+    const isPaid = purchase.payment_status === 'paid' || purchase.payment_status === 1 || purchase.payment_status === '1';
+    if (!isPaid) return false;
+
+    // Check paper format
+    const format = purchase.paper_format?.toLowerCase();
+    return format === 'physical' || format === 'any';
   };
 
   return (
@@ -364,7 +453,7 @@ const PaperPurchases = () => {
                         : 'N/A'}
                     </TableCell>
                     <TableCell align="center">
-                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
                         <Button
                           variant="outlined"
                           size="small"
@@ -381,6 +470,17 @@ const PaperPurchases = () => {
                             onClick={() => handleDownloadPdf(purchase.paper_pdfs[0])}
                           >
                             Download
+                          </Button>
+                        )}
+                        {canRequestPaperToHome(purchase) && (
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            color="secondary"
+                            startIcon={<HomeIcon />}
+                            onClick={() => handleRequestPaperToHome(purchase)}
+                          >
+                            Request Home
                           </Button>
                         )}
                       </Box>
@@ -517,6 +617,107 @@ const PaperPurchases = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDialogOpen(false)}>Close</Button>
+          {selectedPurchase && canRequestPaperToHome(selectedPurchase) && (
+            <Button
+              variant="contained"
+              startIcon={<HomeIcon />}
+              onClick={() => {
+                setDialogOpen(false);
+                handleRequestPaperToHome(selectedPurchase);
+              }}
+            >
+              Request Paper to Home
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Request Paper to Home Dialog */}
+      <Dialog
+        open={requestDialogOpen}
+        onClose={() => {
+          setRequestDialogOpen(false);
+          setSelectedPaperForRequest(null);
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <HomeIcon />
+            <Typography variant="h6">
+              Request Paper to Home
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          {selectedPaperForRequest && (
+            <Box>
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                <strong>Paper:</strong> {selectedPaperForRequest.paper_name}
+              </Typography>
+              {billingInfoList.length === 0 ? (
+                <Box sx={{ p: 2, bgcolor: 'warning.light', borderRadius: 1, mb: 2 }}>
+                  <Typography variant="body2" color="warning.dark">
+                    No billing information found. Please add billing information first.
+                  </Typography>
+                </Box>
+              ) : (
+                <Box>
+                  <Typography variant="body2" sx={{ mb: 2 }}>
+                    The paper will be delivered to the following address:
+                  </Typography>
+                  <Card variant="outlined" sx={{ p: 2, mb: 2 }}>
+                    <Typography variant="body2">
+                      {billingInfoList[0].address_line1 && (
+                        <>{billingInfoList[0].address_line1}<br /></>
+                      )}
+                      {billingInfoList[0].address_line2 && (
+                        <>{billingInfoList[0].address_line2}<br /></>
+                      )}
+                      {billingInfoList[0].city && (
+                        <>{billingInfoList[0].city}, </>
+                      )}
+                      {billingInfoList[0].state && (
+                        <>{billingInfoList[0].state} </>
+                      )}
+                      {billingInfoList[0].postal_code && (
+                        <>{billingInfoList[0].postal_code}<br /></>
+                      )}
+                      {billingInfoList[0].country && (
+                        <>{billingInfoList[0].country}<br /></>
+                      )}
+                      {billingInfoList[0].phone && (
+                        <>Phone: {billingInfoList[0].phone}</>
+                      )}
+                    </Typography>
+                  </Card>
+                  <Typography variant="caption" color="text.secondary">
+                    Note: We are processing your request. You will be notified once the paper is dispatched.
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setRequestDialogOpen(false);
+              setSelectedPaperForRequest(null);
+            }}
+            disabled={requesting}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmRequest}
+            variant="contained"
+            disabled={requesting || billingInfoList.length === 0}
+            startIcon={<HomeIcon />}
+          >
+            {requesting ? 'Submitting...' : 'Confirm Request'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
