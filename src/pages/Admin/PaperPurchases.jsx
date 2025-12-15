@@ -34,7 +34,10 @@ import {
   ListItemText,
   ListItemIcon,
   Divider,
-  Button
+  Button,
+  Tabs,
+  Tab,
+  alpha
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -42,7 +45,12 @@ import {
   Person as PersonIcon,
   Email as EmailIcon,
   Visibility as ViewIcon,
-  Download as DownloadIcon
+  Download as DownloadIcon,
+  LocationOn as LocationOnIcon,
+  History as HistoryIcon,
+  Update as UpdateIcon,
+  Computer as ComputerIcon,
+  Phone as PhoneIcon
 } from '@mui/icons-material';
 import api from '../../api';
 import { toast } from 'react-toastify';
@@ -55,6 +63,8 @@ const PaperPurchases = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [totalRecords, setTotalRecords] = useState(0);
   const [viewDialog, setViewDialog] = useState({ open: false, parent: null });
+  const [selectedPurchase, setSelectedPurchase] = useState(null);
+  const [purchaseTabValue, setPurchaseTabValue] = useState(0);
   const [filters, setFilters] = useState({
     paymentStatus: '',
     dateFrom: '',
@@ -108,10 +118,14 @@ const PaperPurchases = () => {
 
   const handleViewDetails = (parent) => {
     setViewDialog({ open: true, parent });
+    setSelectedPurchase(null);
+    setPurchaseTabValue(0);
   };
 
   const handleCloseViewDialog = () => {
     setViewDialog({ open: false, parent: null });
+    setSelectedPurchase(null);
+    setPurchaseTabValue(0);
   };
 
   // Map payment status enum/numbers to readable strings
@@ -438,7 +452,7 @@ const PaperPurchases = () => {
             </Typography>
           </Box>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ maxHeight: '70vh', overflowY: 'auto' }}>
           {viewDialog.parent && (
             <Box>
               {/* Parent Info */}
@@ -484,53 +498,264 @@ const PaperPurchases = () => {
               <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
                 Individual Purchases ({viewDialog.parent.purchases?.length || 0})
               </Typography>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                    <TableCell sx={{ fontWeight: 600 }}>Paper Name</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Format</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Student</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600 }}>Amount</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Purchased At</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {viewDialog.parent.purchases?.map((purchase) => (
-                    <TableRow key={purchase.purchase_id} hover>
-                      <TableCell>{purchase.paper_name}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={purchase.format_name || 'N/A'}
-                          size="small"
-                          variant="outlined"
-                          sx={{
-                            bgcolor: 'rgba(102, 126, 234, 0.1)',
-                            color: '#667eea',
-                            fontWeight: 500
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>{purchase.student_name || 'N/A'}</TableCell>
-                      <TableCell align="right">
-                        {formatCurrency(purchase.amount, purchase.currency)}
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={purchase.payment_status}
-                          color={getStatusColor(purchase.payment_status)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {purchase.purchased_at 
-                          ? new Date(purchase.purchased_at).toLocaleString()
-                          : 'N/A'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              
+              {viewDialog.parent.purchases?.map((purchase) => (
+                <Card key={purchase.purchase_id} sx={{ mb: 2, border: `1px solid ${alpha('#667eea', 0.2)}` }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                      <Box>
+                        <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
+                          {purchase.paper_name}
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                          <Chip
+                            label={purchase.format_name || 'N/A'}
+                            size="small"
+                            variant="outlined"
+                            sx={{
+                              bgcolor: alpha('#667eea', 0.1),
+                              color: '#667eea',
+                              fontWeight: 500
+                            }}
+                          />
+                          <Chip
+                            label={getPaymentStatusLabel(purchase.payment_status)}
+                            color={getStatusColor(purchase.payment_status)}
+                            size="small"
+                          />
+                        </Box>
+                        <Typography variant="body2" color="text.secondary">
+                          Amount: {formatCurrency(purchase.amount, purchase.currency)}
+                        </Typography>
+                        {purchase.student_name && (
+                          <Typography variant="body2" color="text.secondary">
+                            Student: {purchase.student_name}
+                          </Typography>
+                        )}
+                        <Typography variant="body2" color="text.secondary">
+                          Purchased: {purchase.purchased_at 
+                            ? new Date(purchase.purchased_at).toLocaleString()
+                            : 'N/A'}
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    {/* Latest Billing Information */}
+                    {purchase.latest_billing_information && (
+                      <Box sx={{ mb: 2, p: 2, bgcolor: alpha('#667eea', 0.05), borderRadius: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                          <LocationOnIcon sx={{ color: '#667eea', fontSize: 20 }} />
+                          <Typography variant="subtitle2" fontWeight={600}>
+                            Latest Billing Information
+                          </Typography>
+                          {purchase.latest_billing_information.updated_at && (
+                            <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                              Updated: {new Date(purchase.latest_billing_information.updated_at).toLocaleString()}
+                            </Typography>
+                          )}
+                        </Box>
+                        <Box sx={{ pl: 3 }}>
+                          <Typography variant="body2" component="div">
+                            {purchase.latest_billing_information.address_line1 && (
+                              <>{purchase.latest_billing_information.address_line1}<br /></>
+                            )}
+                            {purchase.latest_billing_information.address_line2 && (
+                              <>{purchase.latest_billing_information.address_line2}<br /></>
+                            )}
+                            {purchase.latest_billing_information.city && (
+                              <>{purchase.latest_billing_information.city}, </>
+                            )}
+                            {purchase.latest_billing_information.state && (
+                              <>{purchase.latest_billing_information.state} </>
+                            )}
+                            {purchase.latest_billing_information.postal_code && (
+                              <>{purchase.latest_billing_information.postal_code}<br /></>
+                            )}
+                            {purchase.latest_billing_information.country && (
+                              <>{purchase.latest_billing_information.country}<br /></>
+                            )}
+                            {purchase.latest_billing_information.phone && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                                <PhoneIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                                <Typography variant="body2">{purchase.latest_billing_information.phone}</Typography>
+                              </Box>
+                            )}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    )}
+
+                    {/* Activity Logs */}
+                    {purchase.request_home_activity_logs && purchase.request_home_activity_logs.length > 0 && (
+                      <Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                          <HistoryIcon sx={{ color: '#667eea', fontSize: 20 }} />
+                          <Typography variant="subtitle2" fontWeight={600}>
+                            Activity Logs ({purchase.request_home_activity_logs.length})
+                          </Typography>
+                        </Box>
+                        <Box sx={{ maxHeight: '300px', overflowY: 'auto' }}>
+                          {purchase.request_home_activity_logs.map((log, index) => (
+                            <Card
+                              key={log.id}
+                              variant="outlined"
+                              sx={{
+                                p: 1.5,
+                                mb: 1.5,
+                                bgcolor: alpha('#667eea', 0.05),
+                                border: `1px solid ${alpha('#667eea', 0.2)}`,
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                <UpdateIcon sx={{ color: '#667eea', fontSize: 18 }} />
+                                <Chip
+                                  label={log.action?.toUpperCase() || 'UNKNOWN'}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: alpha('#667eea', 0.2),
+                                    color: '#667eea',
+                                    fontWeight: 600,
+                                    height: 20
+                                  }}
+                                />
+                                <Box sx={{ flex: 1 }} />
+                                <Typography variant="caption" color="text.secondary">
+                                  {log.created_at
+                                    ? new Date(log.created_at).toLocaleString()
+                                    : 'N/A'}
+                                </Typography>
+                              </Box>
+
+                              {log.billing_information && (
+                                <Box sx={{ mb: 1.5 }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                                    <LocationOnIcon sx={{ fontSize: 14, color: '#667eea' }} />
+                                    <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                                      Billing Information:
+                                    </Typography>
+                                  </Box>
+                                  <Box sx={{ pl: 2 }}>
+                                    <Typography variant="caption" component="div">
+                                      {log.billing_information.address_line1 && (
+                                        <>{log.billing_information.address_line1}<br /></>
+                                      )}
+                                      {log.billing_information.address_line2 && (
+                                        <>{log.billing_information.address_line2}<br /></>
+                                      )}
+                                      {log.billing_information.city && (
+                                        <>{log.billing_information.city}, </>
+                                      )}
+                                      {log.billing_information.state && (
+                                        <>{log.billing_information.state} </>
+                                      )}
+                                      {log.billing_information.postal_code && (
+                                        <>{log.billing_information.postal_code}<br /></>
+                                      )}
+                                      {log.billing_information.country && (
+                                        <>{log.billing_information.country}<br /></>
+                                      )}
+                                      {log.billing_information.phone && (
+                                        <>Phone: {log.billing_information.phone}</>
+                                      )}
+                                    </Typography>
+                                  </Box>
+                                </Box>
+                              )}
+
+                              {(log.old_values || log.new_values) && (
+                                <Box sx={{ mb: 1 }}>
+                                  <Typography variant="caption" sx={{ fontWeight: 600, mb: 0.5, display: 'block' }}>
+                                    Changes:
+                                  </Typography>
+                                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                    {log.old_values && Object.keys(log.old_values).length > 0 && (
+                                      <Box sx={{ flex: 1, minWidth: 200 }}>
+                                        <Typography variant="caption" color="error" sx={{ fontWeight: 600 }}>
+                                          Old Values:
+                                        </Typography>
+                                        <Box sx={{ mt: 0.5, p: 1, bgcolor: alpha('#f44336', 0.1), borderRadius: 1 }}>
+                                          {Object.entries(log.old_values)
+                                            .filter(([key]) => key !== 'billing_information_id')
+                                            .map(([key, value]) => {
+                                              if (key === 'billing_information' && typeof value === 'object' && value !== null) {
+                                                return (
+                                                  <Box key={key} sx={{ mb: 0.5 }}>
+                                                    <Typography variant="caption" component="div" sx={{ fontWeight: 600, mb: 0.25 }}>
+                                                      <strong>{key}:</strong>
+                                                    </Typography>
+                                                    <Box sx={{ pl: 1 }}>
+                                                      {Object.entries(value).map(([subKey, subValue]) => (
+                                                        <Typography key={subKey} variant="caption" component="div">
+                                                          {subKey}: {String(subValue ?? 'N/A')}
+                                                        </Typography>
+                                                      ))}
+                                                    </Box>
+                                                  </Box>
+                                                );
+                                              }
+                                              return (
+                                                <Typography key={key} variant="caption" component="div">
+                                                  <strong>{key}:</strong> {String(value ?? 'N/A')}
+                                                </Typography>
+                                              );
+                                            })}
+                                        </Box>
+                                      </Box>
+                                    )}
+                                    {log.new_values && Object.keys(log.new_values).length > 0 && (
+                                      <Box sx={{ flex: 1, minWidth: 200 }}>
+                                        <Typography variant="caption" color="success.main" sx={{ fontWeight: 600 }}>
+                                          New Values:
+                                        </Typography>
+                                        <Box sx={{ mt: 0.5, p: 1, bgcolor: alpha('#4caf50', 0.1), borderRadius: 1 }}>
+                                          {Object.entries(log.new_values)
+                                            .filter(([key]) => key !== 'billing_information_id')
+                                            .map(([key, value]) => {
+                                              if (key === 'billing_information' && typeof value === 'object' && value !== null) {
+                                                return (
+                                                  <Box key={key} sx={{ mb: 0.5 }}>
+                                                    <Typography variant="caption" component="div" sx={{ fontWeight: 600, mb: 0.25 }}>
+                                                      <strong>{key}:</strong>
+                                                    </Typography>
+                                                    <Box sx={{ pl: 1 }}>
+                                                      {Object.entries(value).map(([subKey, subValue]) => (
+                                                        <Typography key={subKey} variant="caption" component="div">
+                                                          {subKey}: {String(subValue ?? 'N/A')}
+                                                        </Typography>
+                                                      ))}
+                                                    </Box>
+                                                  </Box>
+                                                );
+                                              }
+                                              return (
+                                                <Typography key={key} variant="caption" component="div">
+                                                  <strong>{key}:</strong> {String(value ?? 'N/A')}
+                                                </Typography>
+                                              );
+                                            })}
+                                        </Box>
+                                      </Box>
+                                    )}
+                                  </Box>
+                                </Box>
+                              )}
+
+                              {log.ip_address && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
+                                  <ComputerIcon sx={{ fontSize: 12, color: 'text.secondary' }} />
+                                  <Typography variant="caption" color="text.secondary">
+                                    IP: {log.ip_address}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Card>
+                          ))}
+                        </Box>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
             </Box>
           )}
         </DialogContent>

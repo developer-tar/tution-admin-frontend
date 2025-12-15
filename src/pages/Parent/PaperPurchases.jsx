@@ -30,7 +30,16 @@ import {
   TableRow,
   TablePagination,
   InputAdornment,
-  Paper
+  Paper,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+  CircularProgress,
+  alpha,
+  Tabs,
+  Tab,
+  Fade,
+  IconButton
 } from '@mui/material';
 import {
   Description as DescriptionIcon,
@@ -39,12 +48,21 @@ import {
   School as SchoolIcon,
   Person as PersonIcon,
   Search as SearchIcon,
-  Home as HomeIcon
+  Home as HomeIcon,
+  History as HistoryIcon,
+  Update as UpdateIcon,
+  LocationOn as LocationOnIcon,
+  AccessTime as AccessTimeIcon,
+  Computer as ComputerIcon,
+  Close as CloseIcon,
+  Phone as PhoneIcon
 } from '@mui/icons-material';
 import api from '../../api';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 
 const PaperPurchases = () => {
+  const navigate = useNavigate();
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
@@ -57,10 +75,12 @@ const PaperPurchases = () => {
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const [selectedPaperForRequest, setSelectedPaperForRequest] = useState(null);
   const [requesting, setRequesting] = useState(false);
+  const [selectedBillingInfoId, setSelectedBillingInfoId] = useState(null);
+  const [loadingBillingInfo, setLoadingBillingInfo] = useState(false);
+  const [detailsTabValue, setDetailsTabValue] = useState(0);
 
   useEffect(() => {
     fetchPurchases();
-    fetchBillingInformation();
   }, [statusFilter, searchTerm]);
 
   const fetchPurchases = async () => {
@@ -194,19 +214,8 @@ const PaperPurchases = () => {
     window.open(pdf.url, '_blank');
   };
 
-  const fetchBillingInformation = async () => {
-    try {
-      const response = await api.get('parent/billing-information');
-      if (response.data.success) {
-        setBillingInfoList(response.data.data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching billing information:', error);
-      // Don't show error toast here as it's optional
-    }
-  };
 
-  const handleRequestPaperToHome = (purchase) => {
+  const handleRequestPaperToHome = async (purchase) => {
     // Check if paper format allows physical delivery
     const format = purchase.paper_format?.toLowerCase();
     if (format && format !== 'physical' && format !== 'any') {
@@ -220,34 +229,102 @@ const PaperPurchases = () => {
       return;
     }
 
-    // Check if billing information exists
-    if (billingInfoList.length === 0) {
-      toast.error('Please add billing information first before requesting paper delivery.');
-      return;
+    // Fetch billing information first
+    setLoadingBillingInfo(true);
+    try {
+      const response = await api.get('parent/billing-information');
+      if (response.data.success) {
+        const billingData = response.data.data || [];
+        
+        // Check if billing information exists
+        if (billingData.length === 0) {
+          toast.info('Please add billing information first before requesting paper delivery.');
+          const parentPrefix = process.env.REACT_APP_PARENT_PREFIX || 'parent';
+          navigate(`/${parentPrefix}/billing-information`);
+          return;
+        }
+        
+        // If billing information exists, set it and open dialog
+        setBillingInfoList(billingData);
+        
+        // Priority 1: Check billing_information_id from the purchase object (from API response)
+        let defaultBillingId = null;
+        if (purchase.billing_information_id) {
+          const billingInfoId = purchase.billing_information_id;
+          // Verify this billing ID exists in the fetched list
+          const exists = billingData.some(b => b.id === billingInfoId);
+          if (exists) {
+            defaultBillingId = billingInfoId;
+          }
+        }
+        
+        // Priority 2: If not found, check activity logs for billing_information.id in new_values
+        if (!defaultBillingId && purchase.request_home_activity_logs && purchase.request_home_activity_logs.length > 0) {
+          // Get the most recent activity log
+          const latestLog = purchase.request_home_activity_logs[purchase.request_home_activity_logs.length - 1];
+          
+          // First, check for billing_information.id in new_values.billing_information
+          if (latestLog.new_values && 
+              latestLog.new_values.billing_information && 
+              latestLog.new_values.billing_information.id) {
+            const billingInfoId = latestLog.new_values.billing_information.id;
+            // Verify this billing ID exists in the fetched list
+            const exists = billingData.some(b => b.id === billingInfoId);
+            if (exists) {
+              defaultBillingId = billingInfoId;
+            }
+          }
+          
+          // If not found, check for billing_information_id as fallback
+          if (!defaultBillingId && 
+              latestLog.new_values && 
+              latestLog.new_values.billing_information_id) {
+            const billingInfoId = latestLog.new_values.billing_information_id;
+            // Verify this billing ID exists in the fetched list
+            const exists = billingData.some(b => b.id === billingInfoId);
+            if (exists) {
+              defaultBillingId = billingInfoId;
+            }
+          }
+        }
+        
+        // Priority 3: If no billing ID found, use first one as default
+        if (!defaultBillingId && billingData.length > 0) {
+          defaultBillingId = billingData[0].id;
+        }
+        
+        setSelectedBillingInfoId(defaultBillingId);
+        setSelectedPaperForRequest(purchase);
+        setRequestDialogOpen(true);
+      } else {
+        toast.error('Failed to load billing information');
+      }
+    } catch (error) {
+      console.error('Error fetching billing information:', error);
+      toast.error('Failed to load billing information');
+    } finally {
+      setLoadingBillingInfo(false);
     }
-
-    setSelectedPaperForRequest(purchase);
-    setRequestDialogOpen(true);
   };
 
   const handleConfirmRequest = async () => {
-    if (!selectedPaperForRequest || billingInfoList.length === 0) {
+    if (!selectedPaperForRequest || !selectedBillingInfoId) {
       toast.error('Please select a billing address');
       return;
     }
 
     setRequesting(true);
     try {
-      const billingInfoId = billingInfoList[0].id; // Use first billing info or let user select
       const response = await api.post('parent/request-paper-to-home', {
         paper_id: selectedPaperForRequest.paper_id,
-        billing_information_id: billingInfoId,
+        billing_information_id: selectedBillingInfoId,
       });
 
       if (response.data.success) {
         toast.success(response.data.message || 'Paper request submitted successfully. We are processing your request.');
         setRequestDialogOpen(false);
         setSelectedPaperForRequest(null);
+        setSelectedBillingInfoId(null);
       } else {
         toast.error(response.data.message || 'Failed to submit paper request');
       }
@@ -272,9 +349,19 @@ const PaperPurchases = () => {
     const isPaid = purchase.payment_status === 'paid' || purchase.payment_status === 1 || purchase.payment_status === '1';
     if (!isPaid) return false;
 
-    // Check paper format
+    // Check paper format - show for physical or any (not download)
     const format = purchase.paper_format?.toLowerCase();
     return format === 'physical' || format === 'any';
+  };
+
+  const canDownloadPaper = (purchase) => {
+    // Check payment status
+    const isPaid = purchase.payment_status === 'paid' || purchase.payment_status === 1 || purchase.payment_status === '1';
+    if (!isPaid) return false;
+
+    // Check paper format - show download only for download format
+    const format = purchase.paper_format?.toLowerCase();
+    return format === 'download' && purchase.paper_pdfs?.length > 0;
   };
 
   return (
@@ -302,23 +389,60 @@ const PaperPurchases = () => {
       </Box>
 
       {/* Filters */}
-      <Card sx={{ mb: 3, p: 2 }}>
+      <Card 
+        sx={{ 
+          mb: 3, 
+          p: 2.5,
+          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)',
+          border: `1px solid ${alpha('#667eea', 0.2)}`,
+          borderRadius: 3,
+          boxShadow: '0 4px 20px rgba(102, 126, 234, 0.1)',
+        }}
+      >
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
           <TextField
             fullWidth
-            sx={{ maxWidth: 400 }}
+            sx={{ 
+              maxWidth: 400,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+                bgcolor: 'white',
+                '&:hover fieldset': {
+                  borderColor: '#667eea',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#667eea',
+                  borderWidth: 2,
+                },
+              },
+            }}
             placeholder="Search by paper name, description, category..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon />
+                  <SearchIcon sx={{ color: '#667eea' }} />
                 </InputAdornment>
               ),
             }}
           />
-          <FormControl sx={{ minWidth: 200 }}>
+          <FormControl 
+            sx={{ 
+              minWidth: 200,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+                bgcolor: 'white',
+                '&:hover fieldset': {
+                  borderColor: '#667eea',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#667eea',
+                  borderWidth: 2,
+                },
+              },
+            }}
+          >
             <InputLabel>Filter by Status</InputLabel>
             <Select
               value={statusFilter}
@@ -339,19 +463,28 @@ const PaperPurchases = () => {
       </Card>
 
       {/* Purchases Table */}
-      <Card>
+      <Card
+        sx={{
+          borderRadius: 3,
+          overflow: 'hidden',
+          boxShadow: '0 8px 32px rgba(102, 126, 234, 0.12)',
+          border: `1px solid ${alpha('#667eea', 0.1)}`,
+        }}
+      >
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
-              <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                <TableCell sx={{ fontWeight: 600 }}>Paper Name</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Category</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Format</TableCell>
-                <TableCell sx={{ fontWeight: 600 }} align="right">Amount</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Student</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Purchased At</TableCell>
-                <TableCell sx={{ fontWeight: 600 }} align="center">Actions</TableCell>
+              <TableRow sx={{ 
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              }}>
+                <TableCell sx={{ fontWeight: 700, color: 'white', fontSize: '0.95rem' }}>Paper Name</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'white', fontSize: '0.95rem' }}>Category</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'white', fontSize: '0.95rem' }}>Format</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'white', fontSize: '0.95rem' }} align="right">Amount</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'white', fontSize: '0.95rem' }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'white', fontSize: '0.95rem' }}>Student</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'white', fontSize: '0.95rem' }}>Purchased At</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'white', fontSize: '0.95rem' }} align="center">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -462,7 +595,7 @@ const PaperPurchases = () => {
                         >
                           View
                         </Button>
-                        {purchase.paper_pdfs?.length > 0 && (
+                        {canDownloadPaper(purchase) && (
                           <Button
                             variant="contained"
                             size="small"
@@ -519,9 +652,30 @@ const PaperPurchases = () => {
             </Typography>
           </Box>
         </DialogTitle>
-        <DialogContent sx={{ p: 3 }}>
+        <DialogContent sx={{ p: 0 }}>
           {selectedPurchase && (
-            <List>
+            <Box>
+              <Tabs
+                value={detailsTabValue}
+                onChange={(e, newValue) => setDetailsTabValue(newValue)}
+                sx={{
+                  borderBottom: 1,
+                  borderColor: 'divider',
+                  px: 3,
+                  pt: 2,
+                }}
+              >
+                <Tab label="Details" />
+                {selectedPurchase.request_home_activity_logs?.length > 0 && (
+                  <Tab 
+                    label={`Activity Logs (${selectedPurchase.request_home_activity_logs.length})`}
+                  />
+                )}
+              </Tabs>
+              
+              {detailsTabValue === 0 && (
+                <Box sx={{ p: 3 }}>
+                  <List>
               <ListItem>
                 <ListItemText
                   primary="Description"
@@ -612,7 +766,176 @@ const PaperPurchases = () => {
                   ))}
                 </>
               )}
-            </List>
+                  </List>
+                </Box>
+              )}
+              
+              {detailsTabValue === 1 && selectedPurchase.request_home_activity_logs?.length > 0 && (
+                <Box sx={{ p: 3, maxHeight: '60vh', overflowY: 'auto' }}>
+                  {selectedPurchase.request_home_activity_logs.map((log, index) => (
+                    <Box key={log.id} sx={{ pl: 4, pr: 2, pb: 2 }}>
+                      <Card
+                        variant="outlined"
+                        sx={{
+                          p: 2,
+                          mb: 2,
+                          bgcolor: alpha('#667eea', 0.05),
+                          border: `1px solid ${alpha('#667eea', 0.2)}`,
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                          <UpdateIcon sx={{ color: '#667eea', fontSize: 20 }} />
+                          <Chip
+                            label={log.action?.toUpperCase() || 'UNKNOWN'}
+                            size="small"
+                            sx={{
+                              bgcolor: alpha('#667eea', 0.2),
+                              color: '#667eea',
+                              fontWeight: 600,
+                            }}
+                          />
+                          <Box sx={{ flex: 1 }} />
+                          <Typography variant="caption" color="text.secondary">
+                            {log.created_at
+                              ? new Date(log.created_at).toLocaleString()
+                              : 'N/A'}
+                          </Typography>
+                        </Box>
+
+                        {log.billing_information && (
+                          <Box sx={{ mb: 2 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                              <LocationOnIcon sx={{ fontSize: 16, color: '#667eea' }} />
+                              <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                                Billing Information:
+                              </Typography>
+                            </Box>
+                            <Box sx={{ pl: 2.5 }}>
+                              <Typography variant="body2" component="div">
+                                {log.billing_information.address_line1 && (
+                                  <>{log.billing_information.address_line1}<br /></>
+                                )}
+                                {log.billing_information.address_line2 && (
+                                  <>{log.billing_information.address_line2}<br /></>
+                                )}
+                                {log.billing_information.city && (
+                                  <>{log.billing_information.city}, </>
+                                )}
+                                {log.billing_information.state && (
+                                  <>{log.billing_information.state} </>
+                                )}
+                                {log.billing_information.postal_code && (
+                                  <>{log.billing_information.postal_code}<br /></>
+                                )}
+                                {log.billing_information.country && (
+                                  <>{log.billing_information.country}<br /></>
+                                )}
+                                {log.billing_information.phone && (
+                                  <>Phone: {log.billing_information.phone}</>
+                                )}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        )}
+
+                        {(log.old_values || log.new_values) && (
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 600, mb: 1, display: 'block' }}>
+                              Changes:
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                              {log.old_values && Object.keys(log.old_values).length > 0 && (
+                                <Box sx={{ flex: 1, minWidth: 200 }}>
+                                  <Typography variant="caption" color="error" sx={{ fontWeight: 600 }}>
+                                    Old Values:
+                                  </Typography>
+                                  <Box sx={{ mt: 0.5, p: 1, bgcolor: alpha('#f44336', 0.1), borderRadius: 1 }}>
+                                    {Object.entries(log.old_values)
+                                      .filter(([key]) => key !== 'billing_information_id') // Remove billing_information_id
+                                      .map(([key, value]) => {
+                                        // Handle nested billing_information object
+                                        if (key === 'billing_information' && typeof value === 'object' && value !== null) {
+                                          return (
+                                            <Box key={key} sx={{ mb: 1 }}>
+                                              <Typography variant="caption" component="div" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                                <strong>{key}:</strong>
+                                              </Typography>
+                                              <Box sx={{ pl: 1 }}>
+                                                {Object.entries(value).map(([subKey, subValue]) => (
+                                                  <Typography key={subKey} variant="caption" component="div">
+                                                    {subKey}: {String(subValue ?? 'N/A')}
+                                                  </Typography>
+                                                ))}
+                                              </Box>
+                                            </Box>
+                                          );
+                                        }
+                                        // Handle regular values
+                                        return (
+                                          <Typography key={key} variant="caption" component="div">
+                                            <strong>{key}:</strong> {String(value ?? 'N/A')}
+                                          </Typography>
+                                        );
+                                      })}
+                                  </Box>
+                                </Box>
+                              )}
+                              {log.new_values && Object.keys(log.new_values).length > 0 && (
+                                <Box sx={{ flex: 1, minWidth: 200 }}>
+                                  <Typography variant="caption" color="success.main" sx={{ fontWeight: 600 }}>
+                                    New Values:
+                                  </Typography>
+                                  <Box sx={{ mt: 0.5, p: 1, bgcolor: alpha('#4caf50', 0.1), borderRadius: 1 }}>
+                                    {Object.entries(log.new_values)
+                                      .filter(([key]) => key !== 'billing_information_id') // Remove billing_information_id
+                                      .map(([key, value]) => {
+                                        // Handle nested billing_information object
+                                        if (key === 'billing_information' && typeof value === 'object' && value !== null) {
+                                          return (
+                                            <Box key={key} sx={{ mb: 1 }}>
+                                              <Typography variant="caption" component="div" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                                <strong>{key}:</strong>
+                                              </Typography>
+                                              <Box sx={{ pl: 1 }}>
+                                                {Object.entries(value).map(([subKey, subValue]) => (
+                                                  <Typography key={subKey} variant="caption" component="div">
+                                                    {subKey}: {String(subValue ?? 'N/A')}
+                                                  </Typography>
+                                                ))}
+                                              </Box>
+                                            </Box>
+                                          );
+                                        }
+                                        // Handle regular values
+                                        return (
+                                          <Typography key={key} variant="caption" component="div">
+                                            <strong>{key}:</strong> {String(value ?? 'N/A')}
+                                          </Typography>
+                                        );
+                                      })}
+                                  </Box>
+                                </Box>
+                              )}
+                            </Box>
+                          </Box>
+                        )}
+
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                          {log.ip_address && (
+                            <>
+                              <ComputerIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                              <Typography variant="caption" color="text.secondary">
+                                IP: {log.ip_address}
+                              </Typography>
+                            </>
+                          )}
+                        </Box>
+                      </Card>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
           )}
         </DialogContent>
         <DialogActions>
@@ -638,67 +961,206 @@ const PaperPurchases = () => {
         onClose={() => {
           setRequestDialogOpen(false);
           setSelectedPaperForRequest(null);
+          setSelectedBillingInfoId(null);
         }}
         maxWidth="sm"
         fullWidth
+        TransitionComponent={Fade}
+        TransitionProps={{ timeout: 300 }}
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+            overflow: 'hidden',
+          }
+        }}
       >
-        <DialogTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <HomeIcon />
-            <Typography variant="h6">
-              Request Paper to Home
-            </Typography>
+        <Box
+          sx={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            p: 3,
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          <Box
+            sx={{
+              position: 'absolute',
+              top: -50,
+              right: -50,
+              width: 200,
+              height: 200,
+              borderRadius: '50%',
+              background: alpha('#fff', 0.1),
+            }}
+          />
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: -30,
+              left: -30,
+              width: 150,
+              height: 150,
+              borderRadius: '50%',
+              background: alpha('#fff', 0.1),
+            }}
+          />
+          <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box
+              sx={{
+                width: 56,
+                height: 56,
+                borderRadius: 2,
+                background: alpha('#fff', 0.2),
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0,
+              }}
+            >
+              <HomeIcon sx={{ fontSize: 32 }} />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+                Request Paper to Home
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                Select delivery address for your paper
+              </Typography>
+            </Box>
+            <IconButton
+              onClick={() => {
+                setRequestDialogOpen(false);
+                setSelectedPaperForRequest(null);
+                setSelectedBillingInfoId(null);
+              }}
+              sx={{
+                color: 'white',
+                background: alpha('#fff', 0.2),
+                flexShrink: 0,
+                '&:hover': {
+                  background: alpha('#fff', 0.3),
+                },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
           </Box>
-        </DialogTitle>
-        <DialogContent sx={{ p: 3 }}>
+        </Box>
+        <DialogContent sx={{ p: 0, bgcolor: '#f8f9fa' }}>
+          <Box sx={{ p: 3 }}>
           {selectedPaperForRequest && (
             <Box>
-              <Typography variant="body1" sx={{ mb: 2 }}>
+              <Typography variant="body1" sx={{ mb: 3, fontWeight: 600 }}>
                 <strong>Paper:</strong> {selectedPaperForRequest.paper_name}
               </Typography>
-              {billingInfoList.length === 0 ? (
+              
+              {loadingBillingInfo ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : billingInfoList.length === 0 ? (
                 <Box sx={{ p: 2, bgcolor: 'warning.light', borderRadius: 1, mb: 2 }}>
-                  <Typography variant="body2" color="warning.dark">
+                  <Typography variant="body2" color="warning.dark" sx={{ mb: 2 }}>
                     No billing information found. Please add billing information first.
                   </Typography>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => {
+                      setRequestDialogOpen(false);
+                      const parentPrefix = process.env.REACT_APP_PARENT_PREFIX || 'parent';
+                      navigate(`/${parentPrefix}/billing-information`);
+                    }}
+                  >
+                    Add Billing Information
+                  </Button>
                 </Box>
               ) : (
                 <Box>
                   <Typography variant="body2" sx={{ mb: 2 }}>
                     The paper will be delivered to the following address:
                   </Typography>
-                  <Card variant="outlined" sx={{ p: 2, mb: 2 }}>
-                    <Typography variant="body2">
-                      {billingInfoList[0].address_line1 && (
-                        <>{billingInfoList[0].address_line1}<br /></>
-                      )}
-                      {billingInfoList[0].address_line2 && (
-                        <>{billingInfoList[0].address_line2}<br /></>
-                      )}
-                      {billingInfoList[0].city && (
-                        <>{billingInfoList[0].city}, </>
-                      )}
-                      {billingInfoList[0].state && (
-                        <>{billingInfoList[0].state} </>
-                      )}
-                      {billingInfoList[0].postal_code && (
-                        <>{billingInfoList[0].postal_code}<br /></>
-                      )}
-                      {billingInfoList[0].country && (
-                        <>{billingInfoList[0].country}<br /></>
-                      )}
-                      {billingInfoList[0].phone && (
-                        <>Phone: {billingInfoList[0].phone}</>
-                      )}
-                    </Typography>
-                  </Card>
-                  <Typography variant="caption" color="text.secondary">
+                  
+                  <RadioGroup
+                    value={selectedBillingInfoId ? selectedBillingInfoId.toString() : ''}
+                    onChange={(e) => {
+                      const newId = parseInt(e.target.value, 10);
+                      setSelectedBillingInfoId(newId);
+                    }}
+                  >
+                    {billingInfoList.map((billingInfo) => (
+                      <Card
+                        key={billingInfo.id}
+                        variant="outlined"
+                        sx={{
+                          p: 2,
+                          mb: 2,
+                          cursor: 'pointer',
+                          border: selectedBillingInfoId === billingInfo.id 
+                            ? '2px solid #667eea' 
+                            : '1px solid #e0e0e0',
+                          bgcolor: selectedBillingInfoId === billingInfo.id 
+                            ? alpha('#667eea', 0.05) 
+                            : 'white',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            borderColor: '#667eea',
+                            bgcolor: alpha('#667eea', 0.02),
+                          }
+                        }}
+                        onClick={() => {
+                          setSelectedBillingInfoId(billingInfo.id);
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="body2" component="div">
+                              {billingInfo.address_line1 && (
+                                <>{billingInfo.address_line1}<br /></>
+                              )}
+                              {billingInfo.address_line2 && (
+                                <>{billingInfo.address_line2}<br /></>
+                              )}
+                              {billingInfo.city && (
+                                <>{billingInfo.city}, </>
+                              )}
+                              {billingInfo.state && (
+                                <>{billingInfo.state} </>
+                              )}
+                              {billingInfo.postal_code && (
+                                <>{billingInfo.postal_code}<br /></>
+                              )}
+                              {billingInfo.country && (
+                                <>{billingInfo.country}<br /></>
+                              )}
+                              {billingInfo.phone && (
+                                <>Phone: {billingInfo.phone}</>
+                              )}
+                            </Typography>
+                          </Box>
+                          <FormControlLabel
+                            value={billingInfo.id.toString()}
+                            control={<Radio />}
+                            label=""
+                            sx={{ m: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </Box>
+                      </Card>
+                    ))}
+                  </RadioGroup>
+                  
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
                     Note: We are processing your request. You will be notified once the paper is dispatched.
                   </Typography>
                 </Box>
               )}
             </Box>
           )}
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button
@@ -713,7 +1175,7 @@ const PaperPurchases = () => {
           <Button
             onClick={handleConfirmRequest}
             variant="contained"
-            disabled={requesting || billingInfoList.length === 0}
+            disabled={requesting || billingInfoList.length === 0 || !selectedBillingInfoId}
             startIcon={<HomeIcon />}
           >
             {requesting ? 'Submitting...' : 'Confirm Request'}
