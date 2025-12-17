@@ -65,8 +65,8 @@ const examSchema = yup.object().shape({
   description: yup.string()
     .nullable()
     .transform((value, originalValue) => {
-      return originalValue === '' ? null : value;
-    }),
+    return originalValue === '' ? null : value;
+  }),
   category_id: yup.number()
     .required('Category is required')
     .integer('Category must be an integer')
@@ -112,17 +112,17 @@ const examSchema = yup.object().shape({
   mock_exam_image: yup.mixed()
     .nullable()
     .test('fileSize', 'Mock exam image size must not exceed 10MB', (value) => {
-      if (!value) return true; // Allow empty
-      return value.size <= 10 * 1024 * 1024; // 10MB in bytes
+    if (!value) return true; // Allow empty
+    return value.size <= 10 * 1024 * 1024; // 10MB in bytes
     })
     .test('fileType', 'The uploaded file must be an image', (value) => {
-      if (!value) return true; // Allow empty
-      return value.type.startsWith('image/');
-    }),
+    if (!value) return true; // Allow empty
+    return value.type.startsWith('image/');
+  }),
   questions: yup.array()
     .min(1, 'At least one question is required')
     .of(
-      yup.object().shape({
+    yup.object().shape({
         question: yup.string()
           .required('Each question is required')
           .min(10, 'Each question must be at least 10 characters')
@@ -159,7 +159,7 @@ const examSchema = yup.object().shape({
             2: yup.string().nullable().transform((v) => v === '' ? null : v),
             3: yup.string().nullable().transform((v) => v === '' ? null : v),
             4: yup.string().nullable().transform((v) => v === '' ? null : v)
-          }),
+      }),
         answer: yup.string()
           .required('Each question must have one answer')
           .min(1, 'Answer must be at least 1 character')
@@ -551,12 +551,12 @@ const MockExam = () => {
         
         // Use FormData if image or questions are present, otherwise use JSON
         if (hasImage || hasQuestions) {
-          const formData = new FormData();
+      const formData = new FormData();
           formData.append('_method', 'PUT'); // Method spoofing for Laravel/PHP
-          
+      
           // Only append fields that have values (following 'sometimes' pattern)
           if (data.name) {
-            formData.append('name', data.name);
+      formData.append('name', data.name);
           }
           
           if (data.description !== null && data.description !== undefined) {
@@ -572,29 +572,29 @@ const MockExam = () => {
           }
           
           if (data.price !== null && data.price !== undefined) {
-            formData.append('price', data.price);
+      formData.append('price', data.price);
           }
           
           if (data.currency && data.currency !== '') {
-            formData.append('currency', data.currency);
+      formData.append('currency', data.currency);
           }
           
           if (data.duration_minutes != null) {
-            formData.append('duration_minutes', data.duration_minutes);
+      formData.append('duration_minutes', data.duration_minutes);
           }
-          
-          if (data.school_id && data.school_id !== '' && !isNaN(data.school_id)) {
-            formData.append('school_id', data.school_id);
-          }
-          
+      
+      if (data.school_id && data.school_id !== '' && !isNaN(data.school_id)) {
+        formData.append('school_id', data.school_id);
+      }
+
           if (hasImage) {
-            formData.append('mock_exam_image', data.mock_exam_image);
-          }
-          
+        formData.append('mock_exam_image', data.mock_exam_image);
+      }
+
           // Add questions data if present (backend update doesn't validate, but accepts if sent)
           if (hasQuestions) {
-            data.questions.forEach((question, index) => {
-              formData.append(`questions[${index}]`, question.question);
+      data.questions.forEach((question, index) => {
+        formData.append(`questions[${index}]`, question.question);
               
               // Convert options object to array format (backend expects array)
               const optionValues = Object.values(question.options)
@@ -604,21 +604,21 @@ const MockExam = () => {
                 formData.append(`options[${index}][${optIndex}]`, optionValue);
               });
               
-              formData.append(`answers[${index}]`, question.answer);
-              formData.append(`duration_in_sec[${index}]`, question.duration_in_sec);
+        formData.append(`answers[${index}]`, question.answer);
+        formData.append(`duration_in_sec[${index}]`, question.duration_in_sec);
               
               if (question.marks != null) {
-                formData.append(`marks[${index}]`, question.marks);
+        formData.append(`marks[${index}]`, question.marks);
               }
-            });
+      });
           }
-          
-          // Debug FormData
+
+      // Debug FormData
           console.log('Update FormData contents:');
-          for (let [key, value] of formData.entries()) {
-            console.log(key, value);
-          }
-          
+      for (let [key, value] of formData.entries()) {
+        console.log(key, value);
+      }
+
           // Use POST with _method=PUT for multipart/form-data updates
           const response = await api.post(`admin/mock-exam/${editingExam.id}`, formData);
           console.log('Update response:', response);
@@ -667,7 +667,7 @@ const MockExam = () => {
               'Content-Type': 'application/json'
             }
           });
-          console.log('Update response:', response);
+        console.log('Update response:', response);
           toast.success(response.data.message || 'Exam updated successfully');
         }
       } else {

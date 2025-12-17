@@ -10,15 +10,12 @@ import {
   TableHead,
   TableRow,
   TablePagination,
-  IconButton,
   TextField,
   InputAdornment,
   Chip,
   Avatar,
-  Button,
   Card,
-  CardContent,
-  Tooltip
+  CardContent
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -26,12 +23,11 @@ import {
   Person as PersonIcon,
   Email as EmailIcon
 } from '@mui/icons-material';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import api from '../../api';
 import { toast } from 'react-toastify';
 
 const ParentList = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const isBillingView = location.pathname.includes('/billing');
   
@@ -84,17 +80,18 @@ const ParentList = () => {
   };
 
   // Convert numeric status codes to readable format
+  // Backend enum: 1 = Pending, 2 = Approved, 3 = Rejected
   const getStatusDisplay = (status) => {
     const statusMap = {
-      '0': { label: 'Inactive', color: 'error' },
-      '1': { label: 'Active', color: 'success' },
-      '2': { label: 'Pending', color: 'warning' },
-      '3': { label: 'Suspended', color: 'error' },
-      '4': { label: 'Verified', color: 'success' },
-      '5': { label: 'Blocked', color: 'error' }
+      1: { label: 'Pending', color: 'warning' },
+      2: { label: 'Approved', color: 'success' },
+      3: { label: 'Rejected', color: 'error' },
+      '1': { label: 'Pending', color: 'warning' },
+      '2': { label: 'Approved', color: 'success' },
+      '3': { label: 'Rejected', color: 'error' }
     };
 
-    const statusInfo = statusMap[String(status)] || { label: 'Unknown', color: 'default' };
+    const statusInfo = statusMap[status] || statusMap[String(status)] || { label: 'Unknown', color: 'default' };
     return statusInfo;
   };
 
@@ -174,19 +171,18 @@ const ParentList = () => {
                   <TableCell sx={{ fontWeight: 600, py: 2 }}>Phone</TableCell>
                   <TableCell sx={{ fontWeight: 600, py: 2 }}>Students</TableCell>
                   <TableCell sx={{ fontWeight: 600, py: 2 }}>Status</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600, py: 2 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                    <TableCell colSpan={5} align="center" sx={{ py: 8 }}>
                       <Typography color="text.secondary">Loading parents...</Typography>
                     </TableCell>
                   </TableRow>
                 ) : parents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                    <TableCell colSpan={5} align="center" sx={{ py: 8 }}>
                       <Typography color="text.secondary">No parents found</Typography>
                     </TableCell>
                   </TableRow>
@@ -249,21 +245,6 @@ const ParentList = () => {
                             />
                           );
                         })()}
-                      </TableCell>
-                      <TableCell align="center">
-                        <Tooltip title="View Billing & Subscriptions" arrow>
-                          <IconButton 
-                            onClick={() => navigate(`/admin/parent/${parent.id}/billing`)}
-                            sx={{ 
-                              color: '#667eea',
-                              bgcolor: 'rgba(102, 126, 234, 0.1)',
-                              '&:hover': { bgcolor: 'rgba(102, 126, 234, 0.2)' },
-                              transition: 'all 0.2s'
-                            }}
-                          >
-                            <BillingIcon />
-                          </IconButton>
-                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))
