@@ -44,6 +44,7 @@ import MasterForm from "./pages/MasterForm/MasterForm";
 import ParentList from "./pages/Admin/ParentList";
 import ParentBilling from "./pages/Admin/ParentBilling";
 import AdminPaperPurchases from "./pages/Admin/PaperPurchases";
+import Announcements from "./pages/Admin/Announcements";
 
 // Admin Student Management
 import StudentList from "./pages/Admin/Student/StudentList";
@@ -200,6 +201,7 @@ const AppRoutes = () => {
         <Route path="papers" element={<Paper />} />
         <Route path="papers/billing" element={<AdminPaperPurchases />} />
         <Route path="master-forms" element={<MasterForm />} />
+        <Route path="announcements" element={<Announcements />} />
         
         {/* Admin Student Management Routes */}
         <Route path="students" element={<StudentList />} />

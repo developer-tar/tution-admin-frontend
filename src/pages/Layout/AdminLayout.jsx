@@ -21,7 +21,8 @@ import {
   PersonAdd as PersonAddIcon,
   Edit as EditIcon,
   ReceiptLong as ReceiptLongIcon,
-  Description as DescriptionIcon
+  Description as DescriptionIcon,
+  Announcement as AnnouncementIcon
 } from "@mui/icons-material";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import SchoolIcon from '@mui/icons-material/School';
@@ -189,6 +190,7 @@ const AdminLayout = () => {
     // },
     { label: "Parents", path: "/admin/parents", icon: <PeopleIcon /> },
     // { label: "Billing", path: "/admin/billing", icon: <ReceiptLongIcon /> },
+    { label: "Announcements", path: "/admin/announcements", icon: <AnnouncementIcon /> },
     { label: "Master Forms", path: "/admin/master-forms", icon: <StorageIcon /> },
     { label: "Reports", path: `/${name}/course-report`, icon: <BarChartIcon /> },
   ];

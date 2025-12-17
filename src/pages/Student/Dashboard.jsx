@@ -56,6 +56,7 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import logout from "../../logout";
+import Announcements from "../../components/Announcements";
 
 ChartJS.register(
   BarElement,
@@ -274,6 +275,10 @@ const PerformanceChart = ({ title, subject, data, loading }) => {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  
+  // Get user role from localStorage
+  const userRole = localStorage.getItem("role") || "student";
+  const isAdmin = userRole === "admin";
   
   // State management
   const [loading, setLoading] = useState(true);
@@ -497,7 +502,7 @@ const Dashboard = () => {
                   textShadow: '0 4px 8px rgba(0,0,0,0.3)',
                 }}
               >
-                Student Dashboard
+                {isAdmin ? "Admin Dashboard" : "Student Dashboard"}
               </Typography>
               <Typography 
                 variant="subtitle1" 
@@ -521,6 +526,9 @@ const Dashboard = () => {
           {error}
         </Alert>
       )}
+
+      {/* Announcements Section */}
+      <Announcements role={isAdmin ? "admin" : "student"} />
 
       {/* Statistics Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
