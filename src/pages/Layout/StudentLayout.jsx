@@ -104,7 +104,7 @@ const StudentLayout = () => {
         {
             label: "📢 Announcements",
             icon: Announcement,
-            path: `/${name}/course-test`,
+            path: `/${name}/announcements`,
             color: "#ff5722",
             gradient: "linear-gradient(135deg, #ff5722 0%, #d84315 100%)",
         },

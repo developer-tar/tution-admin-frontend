@@ -1,0 +1,534 @@
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  CircularProgress,
+  Alert,
+  Chip,
+  Grid,
+  Paper,
+  Button,
+} from "@mui/material";
+import {
+  Announcement as AnnouncementIcon,
+  AccessTime,
+  Today,
+  ArrowBack,
+  Image as ImageIcon,
+} from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
+import api from "../../api";
+import { toast } from "react-toastify";
+
+const ParentAnnouncements = () => {
+  const navigate = useNavigate();
+  const [announcements, setAnnouncements] = useState([]);
+  const [todayAnnouncements, setTodayAnnouncements] = useState([]);
+  const [otherAnnouncements, setOtherAnnouncements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
+
+  const fetchAnnouncements = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await api.get("parent/announcements");
+
+      console.log("[Parent Announcements] API Response:", {
+        success: response.data?.success,
+        hasData: !!response.data?.data,
+        dataType: typeof response.data?.data,
+        isArray: Array.isArray(response.data?.data),
+        dataKeys: response.data?.data ? Object.keys(response.data.data) : [],
+        firstLevel: response.data?.data,
+      });
+
+      if (response.data && response.data.success !== false) {
+        const data = response.data.data;
+        // Handle different response structures (paginated or direct array)
+        let announcementsList = [];
+        
+        if (Array.isArray(data)) {
+          // Direct array response
+          announcementsList = data;
+          console.log("[Parent Announcements] Direct array response, count:", announcementsList.length);
+        } else if (data && typeof data === 'object') {
+          // Paginated response from Laravel
+          if (Array.isArray(data.data)) {
+            announcementsList = data.data;
+            console.log("[Parent Announcements] Paginated response (data.data), count:", announcementsList.length);
+          } else if (Array.isArray(data.announcements)) {
+            announcementsList = data.announcements;
+            console.log("[Parent Announcements] Paginated response (data.announcements), count:", announcementsList.length);
+          } else {
+            // Try to find any array property
+            for (const key in data) {
+              if (Array.isArray(data[key])) {
+                announcementsList = data[key];
+                console.log(`[Parent Announcements] Found array in property '${key}', count:`, announcementsList.length);
+                break;
+              }
+            }
+            if (announcementsList.length === 0) {
+              console.warn("[Parent Announcements] No array found in response data:", data);
+              // If no announcements found, that's okay - just set empty array
+              announcementsList = [];
+            }
+          }
+        } else if (data === null || data === undefined) {
+          // Null or undefined data is valid (no announcements)
+          console.log("[Parent Announcements] No data in response (null/undefined)");
+          announcementsList = [];
+        } else {
+          console.warn("[Parent Announcements] Unexpected data type:", typeof data, data);
+          announcementsList = [];
+        }
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        const filteredAnnouncements = announcementsList.filter((announcement) => {
+          let targetAudience = announcement.target_audience || announcement.target_roles;
+          
+          if (typeof targetAudience === "string") {
+            targetAudience = [targetAudience.toLowerCase()];
+          } else if (Array.isArray(targetAudience)) {
+            targetAudience = targetAudience.map(a => typeof a === 'string' ? a.toLowerCase() : a);
+          } else {
+            targetAudience = ["all"];
+          }
+
+          const matchesAudience =
+            targetAudience.includes("parent") ||
+            targetAudience.includes("all") ||
+            (targetAudience.length === 3 && targetAudience.includes("admin") && targetAudience.includes("parent") && targetAudience.includes("student"));
+
+          if (!matchesAudience) return false;
+
+          const startDateTime = announcement.start_date_time || announcement.start_datetime || announcement.published_at;
+          const endDateTime = announcement.end_date_time || announcement.end_datetime || announcement.expires_at;
+
+          if (startDateTime) {
+            const start = new Date(startDateTime);
+            if (now < start) return false;
+          }
+
+          if (endDateTime) {
+            const end = new Date(endDateTime);
+            if (now > end) return false;
+          }
+
+          return true;
+        });
+
+        const todayAnnouncements = filteredAnnouncements.filter(announcement => {
+          if (announcement.is_today) return true;
+          const publishedDate = announcement.start_date_time || announcement.start_datetime || announcement.published_at;
+          if (!publishedDate) return false;
+          const pubDate = new Date(publishedDate);
+          const announcementDate = new Date(pubDate.getFullYear(), pubDate.getMonth(), pubDate.getDate());
+          return announcementDate.getTime() === today.getTime();
+        });
+
+        const otherAnnouncements = filteredAnnouncements.filter(announcement => {
+          if (announcement.is_today) return false;
+          const publishedDate = announcement.start_date_time || announcement.start_datetime || announcement.published_at;
+          if (!publishedDate) return true;
+          const pubDate = new Date(publishedDate);
+          const announcementDate = new Date(pubDate.getFullYear(), pubDate.getMonth(), pubDate.getDate());
+          return announcementDate.getTime() !== today.getTime();
+        });
+
+        // Priority order: urgent > important > general > maintenance
+        const getPriorityOrder = (priority) => {
+          const priorityLower = priority?.toLowerCase() || 'general';
+          switch (priorityLower) {
+            case 'urgent':
+              return 0;
+            case 'important':
+              return 1;
+            case 'general':
+              return 2;
+            case 'maintenance':
+              return 3;
+            default:
+              return 2; // Default to general
+          }
+        };
+
+        // Sort today's announcements: pinned first, then by priority (urgent > important > general > maintenance), then by date
+        const sortedToday = todayAnnouncements.sort((a, b) => {
+          // Pinned items first
+          if (a.is_pinned && !b.is_pinned) return -1;
+          if (!a.is_pinned && b.is_pinned) return 1;
+          
+          // Then by priority
+          const priorityA = getPriorityOrder(a.priority);
+          const priorityB = getPriorityOrder(b.priority);
+          if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+          }
+          
+          // Then by date (newest first)
+          const dateA = new Date(a.start_date_time || a.start_datetime || a.published_at || a.created_at || 0);
+          const dateB = new Date(b.start_date_time || b.start_datetime || b.published_at || b.created_at || 0);
+          return dateB - dateA;
+        });
+
+        // Sort other announcements: pinned first, then by date
+        const sortedOther = otherAnnouncements.sort((a, b) => {
+          // Pinned items first
+          if (a.is_pinned && !b.is_pinned) return -1;
+          if (!a.is_pinned && b.is_pinned) return 1;
+          
+          // Then by date (newest first)
+          const dateA = new Date(a.start_date_time || a.start_datetime || a.published_at || a.created_at || 0);
+          const dateB = new Date(b.start_date_time || b.start_datetime || b.published_at || b.created_at || 0);
+          return dateB - dateA;
+        });
+
+        setTodayAnnouncements(sortedToday);
+        setOtherAnnouncements(sortedOther);
+        setAnnouncements([...sortedToday, ...sortedOther]);
+        
+        console.log("[Parent Announcements] Final counts - Today:", sortedToday.length, "Other:", sortedOther.length, "Total:", sortedToday.length + sortedOther.length);
+      } else {
+        console.warn("[Parent Announcements] API returned success=false or no data:", response.data);
+        setAnnouncements([]);
+        setTodayAnnouncements([]);
+        setOtherAnnouncements([]);
+      }
+    } catch (err) {
+      console.error("[Parent Announcements] Error fetching announcements:", err);
+      console.error("[Parent Announcements] Error details:", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        config: err.config,
+      });
+      
+      // Set empty arrays on any error
+      setAnnouncements([]);
+      setTodayAnnouncements([]);
+      setOtherAnnouncements([]);
+      
+      // Handle different error cases
+      if (err.response) {
+        // Server responded with error status
+        const status = err.response.status;
+        const errorData = err.response.data;
+        
+        if (status === 404) {
+          // 404 is valid - no announcements found
+          setError(null);
+        } else if (status === 401) {
+          setError("Authentication failed. Please log in again.");
+          toast.error("Authentication failed. Please log in again.");
+        } else if (status === 403) {
+          setError("You don't have permission to view announcements.");
+          toast.error("You don't have permission to view announcements.");
+        } else if (status === 500) {
+          setError("Server error. Please try again later.");
+          toast.error("Server error. Please try again later.");
+        } else {
+          const errorMessage = errorData?.message || errorData?.error || `Failed to load announcements (${status})`;
+          setError(errorMessage);
+          toast.error(errorMessage);
+        }
+      } else if (err.request) {
+        // Request was made but no response received
+        setError("Network error. Please check your connection and try again.");
+        toast.error("Network error. Please check your connection and try again.");
+      } else {
+        // Something else happened
+        const errorMessage = err.message || "Failed to load announcements";
+        setError(errorMessage);
+        toast.error(errorMessage);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (error) {
+      return dateString;
+    }
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority?.toLowerCase()) {
+      case "urgent":
+      case "high":
+        return "error";
+      case "important":
+      case "medium":
+        return "warning";
+      case "general":
+      case "low":
+        return "info";
+      default:
+        return "default";
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ p: 3, display: "flex", justifyContent: "center", alignItems: "center", minHeight: "50vh" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ p: 4, bgcolor: "#f4f6f8", minHeight: "100vh" }}>
+      <Box sx={{ mb: 4 }}>
+        <Button
+          startIcon={<ArrowBack />}
+          onClick={() => navigate("/parent")}
+          sx={{ mb: 2 }}
+        >
+          Back to Dashboard
+        </Button>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+          <Box
+            sx={{
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              borderRadius: "16px",
+              p: 2,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <AnnouncementIcon sx={{ fontSize: 32, color: "white" }} />
+          </Box>
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+              All Announcements
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Stay updated with the latest news and important information
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      {todayAnnouncements.length > 0 && (
+        <Box sx={{ mb: 4 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              mb: 2,
+              p: 2,
+              backgroundColor: "rgba(244, 67, 54, 0.1)",
+              borderRadius: 2,
+              border: "1px solid rgba(244, 67, 54, 0.3)",
+            }}
+          >
+            <Today sx={{ color: "error.main", fontSize: 24 }} />
+            <Typography variant="h6" sx={{ fontWeight: 700, color: "error.main" }}>
+              Today's Announcements ({todayAnnouncements.length})
+            </Typography>
+          </Box>
+          <Grid container spacing={3}>
+            {todayAnnouncements.map((announcement) => (
+              <Grid item xs={12} key={announcement.id}>
+                <Card
+                  sx={{
+                    border: "2px solid rgba(244, 67, 54, 0.3)",
+                    backgroundColor: "rgba(244, 67, 54, 0.03)",
+                    "&:hover": {
+                      boxShadow: "0 8px 24px rgba(244, 67, 54, 0.2)",
+                    },
+                  }}
+                >
+                  <CardContent>
+                    <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 2 }}>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1, flexWrap: "wrap" }}>
+                          <Typography variant="h6" sx={{ fontWeight: 700, color: "error.dark" }}>
+                            {announcement.title || "Announcement"}
+                          </Typography>
+                          <Chip
+                            icon={<Today />}
+                            label="Today"
+                            size="small"
+                            color="error"
+                            sx={{ fontWeight: 600 }}
+                          />
+                          {announcement.priority && (
+                            <Chip
+                              label={announcement.priority}
+                              size="small"
+                              color={getPriorityColor(announcement.priority)}
+                            />
+                          )}
+                          {announcement.is_pinned && (
+                            <Chip label="Pinned" size="small" color="warning" />
+                          )}
+                        </Box>
+                        <Typography
+                          variant="body1"
+                          sx={{ mb: 2, whiteSpace: "pre-wrap", lineHeight: 1.7 }}
+                        >
+                          {announcement.message ||
+                            announcement.content ||
+                            announcement.description ||
+                            ""}
+                        </Typography>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                            <AccessTime sx={{ fontSize: 16, color: "text.secondary" }} />
+                            <Typography variant="caption" color="text.secondary">
+                              {formatDate(
+                                announcement.created_at ||
+                                  announcement.published_at ||
+                                  announcement.start_date_time
+                              )}
+                            </Typography>
+                          </Box>
+                          {announcement.images && announcement.images.length > 0 && (
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                              <ImageIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+                              <Typography variant="caption" color="text.secondary">
+                                {announcement.images.length} image{announcement.images.length !== 1 ? "s" : ""}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
+
+      {otherAnnouncements.length > 0 && (
+        <Box>
+          {todayAnnouncements.length > 0 && (
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: "text.primary" }}>
+              All Announcements
+            </Typography>
+          )}
+          <Grid container spacing={3}>
+            {otherAnnouncements.map((announcement) => (
+              <Grid item xs={12} md={6} key={announcement.id}>
+                <Card
+                  sx={{
+                    height: "100%",
+                    "&:hover": {
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+                    },
+                  }}
+                >
+                  <CardContent>
+                    <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 2 }}>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1, flexWrap: "wrap" }}>
+                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                            {announcement.title || "Announcement"}
+                          </Typography>
+                          {announcement.priority && (
+                            <Chip
+                              label={announcement.priority}
+                              size="small"
+                              color={getPriorityColor(announcement.priority)}
+                            />
+                          )}
+                          {announcement.is_pinned && (
+                            <Chip label="Pinned" size="small" color="warning" />
+                          )}
+                        </Box>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ mb: 2, whiteSpace: "pre-wrap", lineHeight: 1.6 }}
+                        >
+                          {announcement.message ||
+                            announcement.content ||
+                            announcement.description ||
+                            ""}
+                        </Typography>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                            <AccessTime sx={{ fontSize: 14, color: "text.secondary" }} />
+                            <Typography variant="caption" color="text.secondary">
+                              {formatDate(
+                                announcement.created_at ||
+                                  announcement.published_at ||
+                                  announcement.start_date_time
+                              )}
+                            </Typography>
+                          </Box>
+                          {announcement.images && announcement.images.length > 0 && (
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                              <ImageIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                              <Typography variant="caption" color="text.secondary">
+                                {announcement.images.length} image{announcement.images.length !== 1 ? "s" : ""}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
+
+      {announcements.length === 0 && !loading && (
+        <Paper
+          sx={{
+            p: 6,
+            textAlign: "center",
+            backgroundColor: "rgba(255,255,255,0.8)",
+            borderRadius: 3,
+          }}
+        >
+          <AnnouncementIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+            No Announcements Available
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            There are no announcements at this time. Check back later for updates.
+          </Typography>
+        </Paper>
+      )}
+    </Box>
+  );
+};
+
+export default ParentAnnouncements;
+

@@ -31,6 +31,8 @@ import {
   Checkbox,
   ListItemText,
   OutlinedInput,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -38,6 +40,10 @@ import {
   Delete as DeleteIcon,
   Announcement as AnnouncementIcon,
   Search as SearchIcon,
+  Image as ImageIcon,
+  PictureAsPdf as PdfIcon,
+  Description as FileIcon,
+  Close as CloseIcon,
 } from "@mui/icons-material";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -45,34 +51,29 @@ import * as yup from "yup";
 import api from "../../api";
 import { toast } from "react-toastify";
 
-// Validation schema
-const announcementSchema = yup.object().shape({
-  title: yup.string().required("Title is required").max(200, "Title must be less than 200 characters"),
-  message: yup.string().required("Message is required"),
-  priority: yup.string().required("Priority is required").oneOf(["general", "important", "urgent", "maintenance"], "Invalid priority"),
-  target_audience: yup.array()
-    .of(yup.string().oneOf(["admin", "parent", "student", "all"], "Invalid target audience"))
-    .min(1, "At least one target audience must be selected")
-    .required("Target audience is required"),
-  start_date: yup.string().required("Start date is required"),
-  start_time: yup.string().required("Start time is required"),
-  end_date: yup.string().required("End date is required"),
-  end_time: yup.string().required("End time is required"),
-  class_ids: yup.array().when("target_audience", {
-    is: (val) => Array.isArray(val) && (val.includes("student") || val.includes("parent")),
-    then: (schema) => schema.min(1, "At least one class must be selected or select 'All Classes'"),
-    otherwise: (schema) => schema,
-  }),
-}).test("end-after-start", "End date/time must be after start date/time", function(value) {
-  if (!value.start_date || !value.end_date || !value.start_time || !value.end_time) {
-    return true; // Let required validation handle missing fields
-  }
-  const startDateTime = new Date(`${value.start_date}T${value.start_time}`);
-  const endDateTime = new Date(`${value.end_date}T${value.end_time}`);
-  return endDateTime > startDateTime;
-});
-
 const Announcements = () => {
+  // Validation schema - defined inside component to avoid webpack HMR initialization issues
+  const announcementSchema = yup.object().shape({
+    title: yup.string().required("Title is required").max(200, "Title must be less than 200 characters"),
+    message: yup.string().required("Message is required"),
+    priority: yup.string().required("Priority is required").oneOf(["general", "important", "urgent", "maintenance"], "Invalid priority"),
+    target_audience: yup.array()
+      .of(yup.string().oneOf(["admin", "parent", "student", "all"], "Invalid target audience"))
+      .min(1, "At least one target audience must be selected")
+      .required("Target audience is required"),
+    start_date: yup.string().required("Start date is required"),
+    start_time: yup.string().required("Start time is required"),
+    end_date: yup.string().required("End date is required"),
+    end_time: yup.string().required("End time is required"),
+    // class_ids removed - using course_time_slots instead
+  }).test("end-after-start", "End date/time must be after start date/time", function(value) {
+    if (!value.start_date || !value.end_date || !value.start_time || !value.end_time) {
+      return true; // Let required validation handle missing fields
+    }
+    const startDateTime = new Date(`${value.start_date}T${value.start_time}`);
+    const endDateTime = new Date(`${value.end_date}T${value.end_time}`);
+    return endDateTime > startDateTime;
+  });
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -85,10 +86,14 @@ const Announcements = () => {
   const [submitting, setSubmitting] = useState(false);
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
-  const [classes, setClasses] = useState([]);
-  const [classesLoading, setClassesLoading] = useState(false);
+  const [filterTargetAudience, setFilterTargetAudience] = useState("all"); // Filter state for table
   const [targetAudience, setTargetAudience] = useState(["admin", "parent", "student"]);
   const previousTargetAudienceRef = useRef(["admin", "parent", "student"]);
+  const [courseTimeSlots, setCourseTimeSlots] = useState([]);
+  const [timeSlotsLoading, setTimeSlotsLoading] = useState(false);
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [selectedPdfs, setSelectedPdfs] = useState([]);
+  const [selectedTimetables, setSelectedTimetables] = useState([]);
 
   const isEditMode = Boolean(selectedAnnouncement);
 
@@ -110,40 +115,22 @@ const Announcements = () => {
           start_time: "",
           end_date: "",
           end_time: "",
-          class_ids: [],
+          course_time_slot_ids: [],
+          is_pinned: false,
         },
   });
 
-  // Watch target_audience to show/hide class selection
-  const watchedTargetAudience = watch("target_audience");
-  
-  // Check if class selection should be shown (if student or parent is in target audience)
-  const shouldShowClassSelection = Array.isArray(watchedTargetAudience) && 
-    (watchedTargetAudience.includes("student") || watchedTargetAudience.includes("parent"));
-
+  // Fetch announcements when pagination/search changes
   useEffect(() => {
     fetchAnnouncements();
-    fetchClasses();
   }, [page, rowsPerPage, searchTerm]);
 
+  // Fetch course time slots once on component mount
   useEffect(() => {
-    if (watchedTargetAudience) {
-      setTargetAudience(Array.isArray(watchedTargetAudience) ? watchedTargetAudience : [watchedTargetAudience]);
-    }
-  }, [watchedTargetAudience]);
+    fetchCourseTimeSlots();
+  }, []);
 
-  // Clear class_ids when target audience doesn't include student or parent
-  useEffect(() => {
-    if (watchedTargetAudience) {
-      const targetAudienceArray = Array.isArray(watchedTargetAudience) ? watchedTargetAudience : [watchedTargetAudience];
-      const hasStudentOrParent = targetAudienceArray.includes("student") || targetAudienceArray.includes("parent");
-      
-      if (!hasStudentOrParent) {
-        // Clear class_ids if target audience doesn't include student or parent
-        setValue("class_ids", []);
-      }
-    }
-  }, [watchedTargetAudience, setValue]);
+  // class_ids removed - using course_time_slots instead
 
   const fetchAnnouncements = async () => {
     setLoading(true);
@@ -155,86 +142,252 @@ const Announcements = () => {
           search: searchTerm || undefined,
         },
       });
-
-      if (response.data.success) {
-        const data = response.data.data;
-        // Handle different response structures
-        const announcementsList = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.data)
-          ? data.data
-          : Array.isArray(data?.announcements)
-          ? data.announcements
-          : [];
-
+      
+      console.log("Announcements API Response:", {
+        success: response.data?.success,
+        hasData: !!response.data?.data,
+        dataType: typeof response.data?.data,
+        isArray: Array.isArray(response.data?.data),
+        dataKeys: response.data?.data ? Object.keys(response.data.data) : [],
+        fullResponse: response.data
+      });
+      
+      if (response.data && response.data.success !== false) {
+        const responseData = response.data.data;
+        
+        // Handle Laravel paginated response structure
+        // sendResponse wraps paginated data, so structure is: { success: true, data: { data: [...], total: X, ... } }
+        let announcementsList = [];
+        let total = 0;
+        
+        if (Array.isArray(responseData)) {
+          // Direct array response (shouldn't happen with pagination, but handle it)
+          announcementsList = responseData;
+          total = responseData.length;
+          console.log("Received direct array response");
+        } else if (responseData && typeof responseData === 'object') {
+          // Paginated response from Laravel
+          if (Array.isArray(responseData.data)) {
+            announcementsList = responseData.data;
+            total = responseData.total || responseData.data.length;
+            console.log("Received paginated response with data array");
+          } else if (Array.isArray(responseData.announcements)) {
+            announcementsList = responseData.announcements;
+            total = responseData.total || responseData.announcements.length;
+            console.log("Received paginated response with announcements array");
+          } else {
+            // Fallback: check all properties for arrays
+            console.warn("Unexpected response structure, checking all properties:", responseData);
+            for (const key in responseData) {
+              if (Array.isArray(responseData[key])) {
+                announcementsList = responseData[key];
+                total = responseData.total || responseData[key].length;
+                console.log(`Found array in property: ${key}`);
+                break;
+              }
+            }
+            if (announcementsList.length === 0) {
+              console.error("No array found in response data:", responseData);
+            }
+          }
+        } else {
+          console.warn("Response data is not an array or object:", typeof responseData, responseData);
+          announcementsList = [];
+          total = 0;
+        }
+        
         setAnnouncements(announcementsList);
-        setTotalRecords(data?.total || announcementsList.length);
+        setTotalRecords(total);
+        
+        console.log("Announcements loaded:", {
+          count: announcementsList.length,
+          total: total,
+          currentPage: responseData?.current_page || page + 1,
+          perPage: responseData?.per_page || rowsPerPage,
+          hasFirstItem: !!announcementsList[0],
+          firstItemTitle: announcementsList[0]?.title
+        });
       } else {
-        throw new Error(response.data.message || "Failed to fetch announcements");
+        // If success is false, set empty arrays
+        console.warn("API returned success=false or no data", response.data);
+        setAnnouncements([]);
+        setTotalRecords(0);
       }
     } catch (error) {
-      console.error("Error fetching announcements:", error);
-      if (error.response?.status !== 404) {
-        toast.error("Failed to load announcements");
-      }
+      console.error('Error fetching announcements:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       setAnnouncements([]);
+      setTotalRecords(0);
+      toast.error(error.response?.data?.message || 'Failed to load announcements');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchClasses = async () => {
-    setClassesLoading(true);
+  const fetchCourseTimeSlots = async () => {
+    setTimeSlotsLoading(true);
     try {
-      // Use the backend API route: Route::get('classes', [FrontendController::class, 'getActiveClasses']);
-      const response = await api.get("admin/classes");
-
-      // Handle different response structures
-      let classesList = [];
+      console.log("[Course Time Slots] Fetching from API...");
+      const response = await api.get("admin/announcements/course-time-slots/list");
       
-      if (response.data) {
-        // Check if response has success property
-        if (response.data.success && response.data.data) {
-          classesList = Array.isArray(response.data.data) ? response.data.data : [];
-        } 
-        // Check if data is directly in response.data
-        else if (Array.isArray(response.data)) {
-          classesList = response.data;
+      console.log("[Course Time Slots] Full API response:", JSON.stringify(response.data, null, 2));
+      console.log("[Course Time Slots] API response structure:", {
+        hasResponse: !!response,
+        hasData: !!response?.data,
+        success: response?.data?.success,
+        hasDataField: !!response?.data?.data,
+        dataType: typeof response?.data?.data,
+        dataIsArray: Array.isArray(response?.data?.data),
+        dataLength: Array.isArray(response?.data?.data) ? response.data.data.length : 'N/A',
+        message: response?.data?.message
+      });
+      
+      // Handle response - check for success flag or just check if data exists
+      let data = null;
+      
+      if (response?.data) {
+        // Check if response has success field
+        if (response.data.success === true || response.data.success === undefined) {
+          // Get data from response.data.data (standard sendResponse structure)
+          // sendResponse wraps data as: {success: true, data: [...], message: "..."}
+          data = response.data.data;
+          
+          // Fallback: if data.data is not an array, try response.data directly
+          if (!Array.isArray(data) && Array.isArray(response.data)) {
+            data = response.data;
+          }
+        } else if (response.data.success === false) {
+          console.warn("[Course Time Slots] API returned success=false");
+          setCourseTimeSlots([]);
+          toast.error(response.data.message || "Failed to load course time slots");
+          return;
+        } else {
+          // If no success field, try to get data directly
+          data = response.data.data || response.data;
         }
-        // Check if data is nested
-        else if (response.data.data) {
-          classesList = Array.isArray(response.data.data) ? response.data.data : [];
+      } else {
+        console.warn("[Course Time Slots] No response data");
+        setCourseTimeSlots([]);
+        return;
+      }
+      
+      console.log("[Course Time Slots] Extracted data:", {
+        data,
+        isArray: Array.isArray(data),
+        type: typeof data,
+        length: Array.isArray(data) ? data.length : 'N/A',
+        keys: data && typeof data === 'object' && !Array.isArray(data) ? Object.keys(data) : 'N/A',
+        firstItem: Array.isArray(data) && data.length > 0 ? data[0] : null
+      });
+      
+      // Helper function to convert object with numeric keys to array
+      const convertToArray = (obj) => {
+        if (Array.isArray(obj)) return obj;
+        if (obj && typeof obj === 'object') {
+          const keys = Object.keys(obj);
+          // Check if all keys are numeric (array-like object)
+          if (keys.length > 0 && keys.every(key => !isNaN(parseInt(key)))) {
+            return Object.values(obj);
+          }
+        }
+        return null;
+      };
+      
+      // Handle different response structures
+      let finalData = null;
+      
+      if (Array.isArray(data)) {
+        // Direct array response - this is what we expect from sendResponse
+        finalData = data;
+      } else if (data && typeof data === 'object' && Array.isArray(data.data)) {
+        // Nested data structure (double nested)
+        finalData = data.data;
+      } else if (data && typeof data === 'object') {
+        // Try to convert object with numeric keys to array
+        const converted = convertToArray(data);
+        if (converted) {
+          finalData = converted;
+        } else {
+          // Check if it's an object with a data property
+          if (data.data && Array.isArray(data.data)) {
+            finalData = data.data;
+          }
         }
       }
-
-      if (classesList.length > 0) {
-        setClasses(classesList);
-        console.log("Classes loaded successfully:", classesList.length);
+      
+      // Set the course time slots if we found valid data
+      if (finalData && Array.isArray(finalData)) {
+        if (finalData.length > 0) {
+          setCourseTimeSlots(finalData);
+          console.log("[Course Time Slots] ✅ Loaded successfully:", finalData.length, "slots");
+          console.log("[Course Time Slots] Sample slot:", finalData[0]);
+        } else {
+          console.warn("[Course Time Slots] ⚠️ Array is empty - no time slots found in database");
+          setCourseTimeSlots([]);
+        }
+      } else if (data === null || data === undefined) {
+        console.warn("[Course Time Slots] ⚠️ Data is null or undefined");
+        setCourseTimeSlots([]);
       } else {
-        console.warn("No classes found from backend");
-        setClasses([]);
+        console.error("[Course Time Slots] ❌ Unexpected response structure:", data);
+        console.error("[Course Time Slots] Data type:", typeof data);
+        console.error("[Course Time Slots] Data keys:", data && typeof data === 'object' ? Object.keys(data) : 'N/A');
+        console.error("[Course Time Slots] Full response.data:", response?.data);
+        setCourseTimeSlots([]);
       }
     } catch (error) {
-      console.error("Error fetching classes:", error);
-      console.error("Error details:", {
+      console.error("[Course Time Slots] ❌ Error fetching:", error);
+      console.error("[Course Time Slots] Error details:", {
         status: error.response?.status,
+        statusText: error.response?.statusText,
         data: error.response?.data,
-        message: error.message
+        message: error.message,
+        url: error.config?.url,
+        method: error.config?.method
       });
-      toast.error(error.response?.data?.message || "Failed to load classes. Please try again later.");
-      setClasses([]);
+      
+      // Show error toast for all errors except 404
+      if (error.response?.status !== 404) {
+        let errorMessage = "Failed to load course time slots.";
+        
+        if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response?.data?.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.response?.status === 401) {
+          errorMessage = "Authentication failed. Please log in again.";
+        } else if (error.response?.status === 403) {
+          errorMessage = "You don't have permission to access this resource.";
+        } else if (error.response?.status === 500) {
+          errorMessage = "Server error. Please try again later or contact support.";
+        } else if (error.message === 'Network Error' || !error.response) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        }
+        
+        console.error("[Course Time Slots] Error message to show:", errorMessage);
+        toast.error(errorMessage);
+      } else {
+        console.log("[Course Time Slots] 404 - No time slots found (this is valid)");
+      }
+      setCourseTimeSlots([]);
     } finally {
-      setClassesLoading(false);
+      setTimeSlotsLoading(false);
     }
   };
 
   const handleOpenDialog = (announcement = null) => {
     setSelectedAnnouncement(announcement);
     
-    // Fetch classes if not already loaded (especially if dialog is opened before initial load completes)
-    if (classes.length === 0 && !classesLoading) {
-      fetchClasses();
+    // Ensure course time slots are loaded when opening dialog
+    // Always fetch to ensure we have the latest data from course_time_slots table
+    if (!timeSlotsLoading) {
+      fetchCourseTimeSlots();
     }
+    
     if (announcement) {
       // Parse date and time from datetime strings
       const startDateTime = announcement.start_date_time || announcement.start_datetime;
@@ -278,17 +431,8 @@ const Announcements = () => {
         start_time: startTime,
         end_date: endDate,
         end_time: endTime,
-        class_ids: (() => {
-          let classIds = [];
-          if (announcement.class_ids) {
-            classIds = Array.isArray(announcement.class_ids) 
-              ? announcement.class_ids.map(id => typeof id === 'string' ? parseInt(id, 10) : id)
-              : [typeof announcement.class_ids === 'string' ? parseInt(announcement.class_ids, 10) : announcement.class_ids];
-          } else if (announcement.class_id) {
-            classIds = [typeof announcement.class_id === 'string' ? parseInt(announcement.class_id, 10) : announcement.class_id];
-          }
-          return classIds.filter(id => !isNaN(id));
-        })(),
+        course_time_slot_ids: announcement.course_time_slot_ids || [],
+        is_pinned: announcement.is_pinned || false,
       });
       setTargetAudience(targetAudienceValue);
       previousTargetAudienceRef.current = targetAudienceValue;
@@ -303,7 +447,8 @@ const Announcements = () => {
         start_time: "",
         end_date: "",
         end_time: "",
-        class_ids: [],
+        course_time_slot_ids: [],
+        is_pinned: false,
       });
       setTargetAudience(defaultTargetAudience);
       previousTargetAudienceRef.current = defaultTargetAudience;
@@ -314,6 +459,9 @@ const Announcements = () => {
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setSelectedAnnouncement(null);
+    setSelectedImages([]);
+    setSelectedPdfs([]);
+    setSelectedTimetables([]);
     reset();
   };
 
@@ -356,53 +504,65 @@ const Announcements = () => {
       const startDateTime = `${data.start_date}T${data.start_time}:00`;
       const endDateTime = `${data.end_date}T${data.end_time}:00`;
 
-      const payload = {
-        title: data.title,
-        message: data.message,
-        priority: data.priority,
-        target_audience: Array.isArray(data.target_audience) ? data.target_audience : [data.target_audience],
-        start_date_time: startDateTime,
-        end_date_time: endDateTime,
-      };
-
-      // Only include class_ids if target_audience includes student or parent
+      // Create FormData for file uploads
+      const formData = new FormData();
+      formData.append('title', data.title || '');
+      formData.append('message', data.message || '');
+      formData.append('priority', data.priority);
+      
+      // Append target_audience as array
       const targetAudienceArray = Array.isArray(data.target_audience) ? data.target_audience : [data.target_audience];
-      if (targetAudienceArray.includes("student") || targetAudienceArray.includes("parent")) {
-        // Convert class_ids to integers and ensure they're valid
-        let classIdsArray = [];
-        
-        if (data.class_ids && Array.isArray(data.class_ids) && data.class_ids.length > 0) {
-          // If all classes are selected (length equals total classes), send all class IDs
-          if (data.class_ids.length === classes.length) {
-            // Send all class IDs as integers
-            classIdsArray = classes.map(cls => parseInt(cls.id, 10)).filter(id => !isNaN(id));
-          } else {
-            // Convert selected class IDs to integers
-            classIdsArray = data.class_ids
-              .map(id => {
-                // Handle both string and number IDs
-                const numId = typeof id === 'string' ? parseInt(id, 10) : id;
-                return isNaN(numId) ? null : numId;
-              })
-              .filter(id => id !== null);
-          }
-        }
-        
-        // Backend requires class_ids to be an array of integers
-        if (classIdsArray.length === 0) {
-          toast.error("Please select at least one class");
-          setSubmitting(false);
-          return;
-        }
-        
-        payload.class_ids = classIdsArray;
-      }
+      targetAudienceArray.forEach((audience, index) => {
+        formData.append(`target_audience[${index}]`, audience);
+      });
+      
+      formData.append('start_date_time', startDateTime);
+      formData.append('end_date_time', endDateTime);
+
+      // Append course_time_slot_ids
+      const courseTimeSlotIds = data.course_time_slot_ids || [];
+      console.log("[Announcement Submit] Course time slot IDs:", courseTimeSlotIds);
+      courseTimeSlotIds.forEach((id, index) => {
+        formData.append(`course_time_slot_ids[${index}]`, id);
+      });
+
+      // Append is_pinned
+      formData.append('is_pinned', data.is_pinned ? '1' : '0');
+
+      // class_ids removed - using course_time_slots instead
+
+      // Append files
+      selectedImages.forEach((file) => {
+        formData.append('announcement_images[]', file);
+      });
+      selectedPdfs.forEach((file) => {
+        formData.append('announcement_pdfs[]', file);
+      });
+      selectedTimetables.forEach((file) => {
+        formData.append('announcement_timetables[]', file);
+      });
+
+      console.log("[Announcement Submit] FormData prepared:", {
+        title: data.title,
+        message: data.message?.substring(0, 50),
+        course_time_slot_ids: courseTimeSlotIds,
+        course_time_slot_ids_count: courseTimeSlotIds.length,
+        is_edit_mode: isEditMode
+      });
 
       let response;
       if (isEditMode) {
-        response = await api.put(`admin/announcements/${selectedAnnouncement.id}`, payload);
+        response = await api.post(`admin/announcements/${selectedAnnouncement.id}?_method=PUT`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
       } else {
-        response = await api.post("admin/announcements", payload);
+        response = await api.post("admin/announcements", formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
       }
 
       if (response.data.success) {
@@ -414,14 +574,19 @@ const Announcements = () => {
       }
     } catch (error) {
       console.error(`Error ${isEditMode ? "updating" : "creating"} announcement:`, error);
+      console.error("Error response:", error.response);
+      console.error("Error data:", error.response?.data);
       
       if (error.response?.status === 422) {
         const errors = error.response.data.errors;
-        Object.keys(errors).forEach((key) => {
-          toast.error(`${key}: ${errors[key].join(", ")}`);
-        });
+        if (errors) {
+          Object.keys(errors).forEach((key) => {
+            toast.error(`${key}: ${errors[key].join(", ")}`);
+          });
+        }
       } else {
-        toast.error(error.response?.data?.message || `Failed to ${isEditMode ? "update" : "create"} announcement`);
+        const errorMessage = error.response?.data?.message || error.message || `Failed to ${isEditMode ? "update" : "create"} announcement`;
+        toast.error(errorMessage);
       }
     } finally {
       setSubmitting(false);
@@ -507,6 +672,21 @@ const Announcements = () => {
         announcement.message?.toLowerCase().includes(searchLower) ||
         announcement.content?.toLowerCase().includes(searchLower);
       if (!matchesSearch) return false;
+    }
+
+    // Target audience filter
+    if (filterTargetAudience && filterTargetAudience !== "all") {
+      const announcementAudience = announcement.target_audience || announcement.target_roles || [];
+      const audienceArray = Array.isArray(announcementAudience) 
+        ? announcementAudience.map(a => typeof a === 'string' ? a.toLowerCase() : String(a).toLowerCase())
+        : [String(announcementAudience).toLowerCase() || ""];
+      
+      // Check if the filter audience is in the announcement's audience
+      const matchesAudience = audienceArray.includes(filterTargetAudience.toLowerCase()) ||
+        audienceArray.includes("all") ||
+        (audienceArray.length === 3 && audienceArray.includes("admin") && audienceArray.includes("parent") && audienceArray.includes("student"));
+      
+      if (!matchesAudience) return false;
     }
 
     // Date range filter
@@ -667,7 +847,23 @@ const Announcements = () => {
                 placeholder="End date"
               />
             </Grid>
-            <Grid item xs={12} md={2} sx={{ textAlign: { xs: "left", md: "right" } }}>
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth>
+                <InputLabel>Filter by Audience</InputLabel>
+                <Select
+                  value={filterTargetAudience}
+                  onChange={(e) => setFilterTargetAudience(e.target.value)}
+                  label="Filter by Audience"
+                  input={<OutlinedInput label="Filter by Audience" />}
+                >
+                  <MenuItem value="all">All Audiences</MenuItem>
+                  <MenuItem value="admin">Admin</MenuItem>
+                  <MenuItem value="student">Student</MenuItem>
+                  <MenuItem value="parent">Parent</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={1} sx={{ textAlign: { xs: "left", md: "right" } }}>
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}
@@ -737,7 +933,7 @@ const Announcements = () => {
                 <TableCell sx={{ fontWeight: 600 }}>Target Audience</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Start Date/Time</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>End Date/Time</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Classes</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Course Time Slots</TableCell>
                 <TableCell sx={{ fontWeight: 600, textAlign: "center" }}>Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -760,10 +956,7 @@ const Announcements = () => {
                 filteredAnnouncements.map((announcement) => {
                   const startDateTime = announcement.start_date_time || announcement.start_datetime;
                   const endDateTime = announcement.end_date_time || announcement.end_datetime;
-                  const classIds = announcement.class_ids || (announcement.class_id ? [announcement.class_id] : []);
-                  // Empty array means all classes
-                  const isAllClasses = classIds.length === 0;
-                  const selectedClasses = isAllClasses ? [] : classes.filter(c => classIds.includes(c.id));
+                  // class_ids removed - using course_time_slots instead
                   
                   return (
                     <TableRow key={announcement.id} hover>
@@ -794,16 +987,28 @@ const Announcements = () => {
                       </TableCell>
                     <TableCell>
                       {(() => {
-                        const audience = announcement.target_audience;
-                        const audienceArray = Array.isArray(audience) ? audience : [audience || "all"];
+                        const audience = announcement.target_audience || announcement.target_roles;
+                        let audienceArray = [];
                         
-                        if (audienceArray.includes("all") || audienceArray.length === 3) {
+                        if (Array.isArray(audience)) {
+                          audienceArray = audience.map(a => typeof a === 'string' ? a.toLowerCase() : String(a).toLowerCase());
+                        } else if (audience) {
+                          audienceArray = [String(audience).toLowerCase()];
+                        } else {
+                          audienceArray = ["all"];
+                        }
+                        
+                        // Check if all audiences are included
+                        const hasAll = audienceArray.includes("all") || 
+                          (audienceArray.includes("admin") && audienceArray.includes("parent") && audienceArray.includes("student"));
+                        
+                        if (hasAll || audienceArray.length === 0) {
                           return <Chip label="All" size="small" color="default" />;
                         }
                         
                         return (
                           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                            {audienceArray.map((aud, idx) => (
+                            {audienceArray.filter(a => a && a !== "all").map((aud, idx) => (
                               <Chip
                                 key={idx}
                                 label={aud.charAt(0).toUpperCase() + aud.slice(1)}
@@ -826,21 +1031,30 @@ const Announcements = () => {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        {isAllClasses ? (
-                          <Chip label="All Classes" size="small" color="default" />
-                        ) : selectedClasses.length > 0 ? (
+                        {announcement.course_time_slot_ids && announcement.course_time_slot_ids.length > 0 ? (
                           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                            {selectedClasses.slice(0, 2).map((cls) => (
+                            {announcement.course_time_slot_ids.slice(0, 2).map((slotId) => {
+                              const slot = courseTimeSlots.find(s => s.id === slotId);
+                              return slot ? (
+                                <Chip
+                                  key={slotId}
+                                  label={slot.display_name || slot.class_name || `Slot ${slotId}`}
+                                  size="small"
+                                  color="primary"
+                                  title={slot.display_name || slot.class_name || `Slot ${slotId}`}
+                                />
+                              ) : (
+                                <Chip
+                                  key={slotId}
+                                  label={`Slot ${slotId}`}
+                                  size="small"
+                                  color="default"
+                                />
+                              );
+                            })}
+                            {announcement.course_time_slot_ids.length > 2 && (
                               <Chip
-                                key={cls.id}
-                                label={cls.name || cls.class_name || `Class ${cls.id}`}
-                                size="small"
-                                color="primary"
-                              />
-                            ))}
-                            {selectedClasses.length > 2 && (
-                              <Chip
-                                label={`+${selectedClasses.length - 2}`}
+                                label={`+${announcement.course_time_slot_ids.length - 2} more`}
                                 size="small"
                                 color="default"
                               />
@@ -848,7 +1062,7 @@ const Announcements = () => {
                           </Box>
                         ) : (
                           <Typography variant="caption" color="text.secondary">
-                            {classIds.length} class{classIds.length !== 1 ? "es" : ""}
+                            All Time Slots
                           </Typography>
                         )}
                       </TableCell>
@@ -1088,6 +1302,35 @@ const Announcements = () => {
                 />
               </Grid>
 
+              {/* Pinned Status */}
+              <Grid item xs={12}>
+                <Controller
+                  name="is_pinned"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                          color="primary"
+                        />
+                      }
+                      label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            Pin this announcement
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            (Pinned announcements appear at the top)
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                  )}
+                />
+              </Grid>
+
               {/* Date and Time Fields */}
               <Grid item xs={12} md={6}>
                 <Controller
@@ -1172,125 +1415,199 @@ const Announcements = () => {
                 </Grid>
               )}
 
-              {/* Class Selection - Only show for student or parent */}
-              {shouldShowClassSelection && (
-                <Grid item xs={12}>
-                  <Controller
-                    name="class_ids"
-                    control={control}
-                    render={({ field }) => (
-                      <FormControl fullWidth error={!!errors.class_ids}>
-                        <InputLabel>Select Classes</InputLabel>
-                        <Select
-                          {...field}
-                          multiple
-                          label="Select Classes"
-                          input={<OutlinedInput label="Select Classes" />}
-                          renderValue={(selected) => {
-                            if (selected.length === 0) return "";
-                            if (selected.includes("all") || (classes.length > 0 && selected.length === classes.length)) {
-                              return "All Classes";
-                            }
-                            // Convert selected IDs to integers for comparison
-                            const selectedInts = selected.map(s => typeof s === 'string' ? parseInt(s, 10) : s);
-                            const selectedClasses = classes.filter(c => {
-                              const classId = typeof c.id === 'string' ? parseInt(c.id, 10) : c.id;
-                              return selectedInts.includes(classId);
-                            });
-                            if (selectedClasses.length > 3) {
-                              return `${selectedClasses.slice(0, 3).map(c => c.name || c.class_name || `Class ${c.id}`).join(", ")} +${selectedClasses.length - 3} more`;
-                            }
-                            return selectedClasses.map(c => c.name || c.class_name || `Class ${c.id}`).join(", ");
-                          }}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            // Remove "all" if present (it's handled by onClick on MenuItem)
-                            const filteredValue = value
-                              .filter(v => v !== "all")
-                              .map(v => {
-                                const id = typeof v === 'string' ? parseInt(v, 10) : v;
-                                return isNaN(id) ? null : id;
-                              })
-                              .filter(id => id !== null);
-                            field.onChange(filteredValue);
-                          }}
-                        >
-                          <MenuItem 
-                            value="all"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              
-                              const currentValue = field.value || [];
-                              const allClassIds = classes.length > 0 
-                                ? classes.map(c => {
-                                    const id = typeof c.id === 'string' ? parseInt(c.id, 10) : c.id;
-                                    return isNaN(id) ? null : id;
-                                  }).filter(id => id !== null)
-                                : [];
-                              
-                              // Check if all classes are already selected
-                              const allSelected = allClassIds.length > 0 && 
-                                currentValue.length === allClassIds.length &&
-                                allClassIds.every(id => currentValue.includes(id));
-                              
-                              if (allSelected) {
-                                // Deselect all
-                                field.onChange([]);
-                              } else {
-                                // Select all
-                                field.onChange(allClassIds);
-                              }
-                            }}
-                          >
-                            <Checkbox 
-                              checked={(() => {
-                                if (!field.value || !classes.length) return false;
-                                const allClassIds = classes.map(c => {
-                                  const id = typeof c.id === 'string' ? parseInt(c.id, 10) : c.id;
-                                  return isNaN(id) ? null : id;
-                                }).filter(id => id !== null);
-                                
-                                return field.value.length === allClassIds.length &&
-                                  allClassIds.every(id => field.value.includes(id));
-                              })()} 
-                            />
-                            <ListItemText primary="All Classes" />
-                          </MenuItem>
-                          {classes.map((cls) => {
-                            const classId = typeof cls.id === 'string' ? parseInt(cls.id, 10) : cls.id;
-                            const isChecked = field.value && field.value.some(val => {
-                              const valId = typeof val === 'string' ? parseInt(val, 10) : val;
-                              return valId === classId;
-                            });
-                            return (
-                              <MenuItem key={cls.id} value={classId}>
-                                <Checkbox checked={isChecked} />
-                                <ListItemText primary={cls.name || cls.class_name || `Class ${cls.id}`} />
-                              </MenuItem>
-                            );
-                          })}
-                        </Select>
-                        {errors.class_ids && (
-                          <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-                            {errors.class_ids.message}
+              {/* Course Time Slot Selection */}
+              <Grid item xs={12}>
+                <Controller
+                  name="course_time_slot_ids"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControl fullWidth>
+                      <InputLabel>Select Course Time Slots (Optional)</InputLabel>
+                      <Select
+                        {...field}
+                        multiple
+                        label="Select Course Time Slots (Optional)"
+                        input={<OutlinedInput label="Select Course Time Slots (Optional)" />}
+                        renderValue={(selected) => {
+                          if (selected.length === 0) return "";
+                          if (selected.length > 3) {
+                            return `${selected.length} time slots selected`;
+                          }
+                          const selectedSlots = courseTimeSlots.filter(slot => selected.includes(slot.id));
+                          return selectedSlots.map(slot => slot.display_name || slot.class_name || `Slot ${slot.id}`).join(", ");
+                        }}
+                        onChange={(e) => {
+                          field.onChange(e.target.value);
+                        }}
+                      >
+                        {courseTimeSlots.map((slot) => {
+                          const isChecked = field.value && field.value.includes(slot.id);
+                          return (
+                            <MenuItem key={slot.id} value={slot.id}>
+                              <Checkbox checked={isChecked} />
+                              <ListItemText 
+                                primary={slot.display_name}
+                                secondary={`${slot.course_name} - ${slot.academic_year}`}
+                              />
+                            </MenuItem>
+                          );
+                        })}
+                      </Select>
+                      {timeSlotsLoading ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, ml: 1.75 }}>
+                          <CircularProgress size={14} />
+                          <Typography variant="caption" color="text.secondary">
+                            Loading course time slots...
                           </Typography>
-                        )}
-                        {classesLoading && (
-                          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, ml: 1.75 }}>
-                            Loading classes...
-                          </Typography>
-                        )}
-                        {!classesLoading && classes.length === 0 && (
-                          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, ml: 1.75 }}>
-                            No classes available. Please add classes first.
-                          </Typography>
-                        )}
-                      </FormControl>
-                    )}
+                        </Box>
+                      ) : courseTimeSlots.length === 0 ? (
+                        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, ml: 1.75 }}>
+                          No course time slots available. Please add course time slots first.
+                        </Typography>
+                      ) : null}
+                    </FormControl>
+                  )}
+                />
+              </Grid>
+
+              {/* File Uploads Section */}
+              <Grid item xs={12}>
+                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: "text.primary" }}>
+                  Attachments (Optional)
+                </Typography>
+              </Grid>
+
+              {/* Images Upload */}
+              <Grid item xs={12} md={4}>
+                <Box>
+                  <input
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    id="image-upload"
+                    multiple
+                    type="file"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files);
+                      setSelectedImages([...selectedImages, ...files]);
+                    }}
                   />
-                </Grid>
-              )}
+                  <label htmlFor="image-upload">
+                    <Button
+                      variant="outlined"
+                      component="span"
+                      startIcon={<ImageIcon />}
+                      fullWidth
+                      sx={{ mb: 1 }}
+                    >
+                      Upload Images
+                    </Button>
+                  </label>
+                  {selectedImages.length > 0 && (
+                    <Box sx={{ mt: 1 }}>
+                      {selectedImages.map((file, index) => (
+                        <Chip
+                          key={index}
+                          label={file.name}
+                          onDelete={() => {
+                            setSelectedImages(selectedImages.filter((_, i) => i !== index));
+                          }}
+                          deleteIcon={<CloseIcon />}
+                          sx={{ mr: 0.5, mb: 0.5 }}
+                          size="small"
+                        />
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+              </Grid>
+
+              {/* PDFs Upload */}
+              <Grid item xs={12} md={4}>
+                <Box>
+                  <input
+                    accept=".pdf"
+                    style={{ display: 'none' }}
+                    id="pdf-upload"
+                    multiple
+                    type="file"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files);
+                      setSelectedPdfs([...selectedPdfs, ...files]);
+                    }}
+                  />
+                  <label htmlFor="pdf-upload">
+                    <Button
+                      variant="outlined"
+                      component="span"
+                      startIcon={<PdfIcon />}
+                      fullWidth
+                      sx={{ mb: 1 }}
+                    >
+                      Upload PDFs
+                    </Button>
+                  </label>
+                  {selectedPdfs.length > 0 && (
+                    <Box sx={{ mt: 1 }}>
+                      {selectedPdfs.map((file, index) => (
+                        <Chip
+                          key={index}
+                          label={file.name}
+                          onDelete={() => {
+                            setSelectedPdfs(selectedPdfs.filter((_, i) => i !== index));
+                          }}
+                          deleteIcon={<CloseIcon />}
+                          sx={{ mr: 0.5, mb: 0.5 }}
+                          size="small"
+                        />
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+              </Grid>
+
+              {/* Timetables Upload */}
+              <Grid item xs={12} md={4}>
+                <Box>
+                  <input
+                    accept=".pdf,.doc,.docx,.xls,.xlsx"
+                    style={{ display: 'none' }}
+                    id="timetable-upload"
+                    multiple
+                    type="file"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files);
+                      setSelectedTimetables([...selectedTimetables, ...files]);
+                    }}
+                  />
+                  <label htmlFor="timetable-upload">
+                    <Button
+                      variant="outlined"
+                      component="span"
+                      startIcon={<FileIcon />}
+                      fullWidth
+                      sx={{ mb: 1 }}
+                    >
+                      Upload Timetables
+                    </Button>
+                  </label>
+                  {selectedTimetables.length > 0 && (
+                    <Box sx={{ mt: 1 }}>
+                      {selectedTimetables.map((file, index) => (
+                        <Chip
+                          key={index}
+                          label={file.name}
+                          onDelete={() => {
+                            setSelectedTimetables(selectedTimetables.filter((_, i) => i !== index));
+                          }}
+                          deleteIcon={<CloseIcon />}
+                          sx={{ mr: 0.5, mb: 0.5 }}
+                          size="small"
+                        />
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+              </Grid>
             </Grid>
           </form>
         </DialogContent>

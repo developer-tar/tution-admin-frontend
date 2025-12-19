@@ -48,7 +48,6 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { Country, State, City } from 'country-state-city';
 import api from '../../api';
 import { toast } from 'react-toastify';
 
@@ -153,18 +152,9 @@ const BillingInformation = () => {
     if (billing) {
       setSelectedBilling(billing);
       setIsEditing(true);
-      // Find country and state codes from names
-      const countryData = Country.getAllCountries().find(c => c.name === billing.country);
-      const countryCode = countryData?.isoCode || null;
-      setSelectedCountryId(countryCode);
-      
-      if (countryCode) {
-        const stateData = State.getStatesOfCountry(countryCode).find(s => s.name === billing.state);
-        const stateCode = stateData?.isoCode || null;
-        setSelectedStateId(stateCode);
-      } else {
-        setSelectedStateId(null);
-      }
+      // Reset country and state IDs as we're using simple text fields now
+      setSelectedCountryId(null);
+      setSelectedStateId(null);
       
       reset({
         address_line1: billing.address_line1 || '',
@@ -739,75 +729,33 @@ const BillingInformation = () => {
                   <Controller
                     name="country"
                     control={control}
-                    render={({ field: { onChange, value, ...field } }) => (
-                      <Autocomplete
+                    render={({ field }) => (
+                      <TextField
                         {...field}
-                        freeSolo
-                        options={Country.getAllCountries().map(country => country.name)}
-                        value={value || null}
-                        onChange={(event, newValue) => {
-                          // Handle both string (custom input) and object values
-                          const countryName = typeof newValue === 'string' ? newValue : newValue;
-                          onChange(countryName || '');
-                          
-                          // Try to find country in the list
-                          const countryData = Country.getAllCountries().find(c => c.name === countryName);
-                          setSelectedCountryId(countryData?.isoCode || null);
-                          
-                          // Reset state and city when country changes
-                          setSelectedStateId(null);
-                          const stateField = control._formValues?.state;
-                          const cityField = control._formValues?.city;
-                          if (stateField) {
-                            control._formValues.state = '';
-                          }
-                          if (cityField) {
-                            control._formValues.city = '';
-                          }
+                        fullWidth
+                        label="Country"
+                        error={!!errors.country}
+                        helperText={errors.country?.message}
+                        placeholder="Enter country..."
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <PublicIcon sx={{ color: errors.country ? 'error.main' : '#667eea' }} />
+                            </InputAdornment>
+                          ),
                         }}
-                        filterOptions={(options, params) => {
-                          const filtered = options.filter((option) =>
-                            option.toLowerCase().includes(params.inputValue.toLowerCase())
-                          );
-                          // If input doesn't match any option, allow custom input
-                          if (params.inputValue !== '' && !filtered.includes(params.inputValue)) {
-                            filtered.push(params.inputValue);
-                          }
-                          return filtered;
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: 2,
+                            '&:hover fieldset': {
+                              borderColor: '#667eea',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: '#667eea',
+                              borderWidth: 2,
+                            },
+                          },
                         }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            fullWidth
-                            label="Country"
-                            error={!!errors.country}
-                            helperText={errors.country?.message || 'Search or type to add custom country'}
-                            placeholder="Search country..."
-                            InputProps={{
-                              ...params.InputProps,
-                              startAdornment: (
-                                <>
-                                  <InputAdornment position="start">
-                                    <PublicIcon sx={{ color: errors.country ? 'error.main' : '#667eea' }} />
-                                  </InputAdornment>
-                                  {params.InputProps.startAdornment}
-                                </>
-                              ),
-                            }}
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                borderRadius: 2,
-                                '&:hover fieldset': {
-                                  borderColor: '#667eea',
-                                },
-                                '&.Mui-focused fieldset': {
-                                  borderColor: '#667eea',
-                                  borderWidth: 2,
-                                },
-                              },
-                            }}
-                          />
-                        )}
                       />
                     )}
                   />
@@ -831,76 +779,33 @@ const BillingInformation = () => {
                   <Controller
                     name="state"
                     control={control}
-                    render={({ field: { onChange, value, ...field } }) => (
-                      <Autocomplete
+                    render={({ field }) => (
+                      <TextField
                         {...field}
-                        freeSolo
-                        options={selectedCountryId 
-                          ? State.getStatesOfCountry(selectedCountryId).map(state => state.name)
-                          : []}
-                        value={value || null}
-                        onChange={(event, newValue) => {
-                          // Handle both string (custom input) and object values
-                          const stateName = typeof newValue === 'string' ? newValue : newValue;
-                          onChange(stateName || '');
-                          
-                          // Try to find state in the list
-                          setSelectedStateId(
-                            stateName && selectedCountryId
-                              ? State.getStatesOfCountry(selectedCountryId).find(s => s.name === stateName)?.isoCode || null
-                              : null
-                          );
-                          
-                          // Reset city when state changes
-                          const cityField = control._formValues?.city;
-                          if (cityField) {
-                            control._formValues.city = '';
-                          }
+                        fullWidth
+                        label="State/Province"
+                        error={!!errors.state}
+                        helperText={errors.state?.message}
+                        placeholder="Enter state/province..."
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <MapIcon sx={{ color: errors.state ? 'error.main' : '#667eea' }} />
+                            </InputAdornment>
+                          ),
                         }}
-                        disabled={!selectedCountryId}
-                        filterOptions={(options, params) => {
-                          const filtered = options.filter((option) =>
-                            option.toLowerCase().includes(params.inputValue.toLowerCase())
-                          );
-                          // If input doesn't match any option, allow custom input
-                          if (params.inputValue !== '' && !filtered.includes(params.inputValue)) {
-                            filtered.push(params.inputValue);
-                          }
-                          return filtered;
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: 2,
+                            '&:hover fieldset': {
+                              borderColor: '#667eea',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: '#667eea',
+                              borderWidth: 2,
+                            },
+                          },
                         }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            fullWidth
-                            label="State/Province"
-                            error={!!errors.state}
-                            helperText={errors.state?.message || (!selectedCountryId ? 'Please select country first' : 'Search or type to add custom state')}
-                            placeholder="Search state..."
-                            InputProps={{
-                              ...params.InputProps,
-                              startAdornment: (
-                                <>
-                                  <InputAdornment position="start">
-                                    <MapIcon sx={{ color: errors.state ? 'error.main' : '#667eea' }} />
-                                  </InputAdornment>
-                                  {params.InputProps.startAdornment}
-                                </>
-                              ),
-                            }}
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                borderRadius: 2,
-                                '&:hover fieldset': {
-                                  borderColor: '#667eea',
-                                },
-                                '&.Mui-focused fieldset': {
-                                  borderColor: '#667eea',
-                                  borderWidth: 2,
-                                },
-                              },
-                            }}
-                          />
-                        )}
                       />
                     )}
                   />
@@ -924,63 +829,33 @@ const BillingInformation = () => {
                   <Controller
                     name="city"
                     control={control}
-                    render={({ field: { onChange, value, ...field } }) => (
-                      <Autocomplete
+                    render={({ field }) => (
+                      <TextField
                         {...field}
-                        freeSolo
-                        options={selectedCountryId && selectedStateId 
-                          ? City.getCitiesOfState(selectedCountryId, selectedStateId).map(city => city.name)
-                          : []}
-                        value={value || null}
-                        onChange={(event, newValue) => {
-                          // Handle both string (custom input) and object values
-                          const cityName = typeof newValue === 'string' ? newValue : newValue;
-                          onChange(cityName || '');
+                        fullWidth
+                        label="City"
+                        error={!!errors.city}
+                        helperText={errors.city?.message}
+                        placeholder="Enter city..."
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <LocationCityIcon sx={{ color: errors.city ? 'error.main' : '#667eea' }} />
+                            </InputAdornment>
+                          ),
                         }}
-                        disabled={!selectedCountryId || !selectedStateId}
-                        filterOptions={(options, params) => {
-                          const filtered = options.filter((option) =>
-                            option.toLowerCase().includes(params.inputValue.toLowerCase())
-                          );
-                          // If input doesn't match any option, allow custom input
-                          if (params.inputValue !== '' && !filtered.includes(params.inputValue)) {
-                            filtered.push(params.inputValue);
-                          }
-                          return filtered;
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: 2,
+                            '&:hover fieldset': {
+                              borderColor: '#667eea',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: '#667eea',
+                              borderWidth: 2,
+                            },
+                          },
                         }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            fullWidth
-                            label="City"
-                            error={!!errors.city}
-                            helperText={errors.city?.message || (!selectedCountryId || !selectedStateId ? 'Please select country and state first' : 'Search or type to add custom city')}
-                            placeholder="Search city..."
-                            InputProps={{
-                              ...params.InputProps,
-                              startAdornment: (
-                                <>
-                                  <InputAdornment position="start">
-                                    <LocationCityIcon sx={{ color: errors.city ? 'error.main' : '#667eea' }} />
-                                  </InputAdornment>
-                                  {params.InputProps.startAdornment}
-                                </>
-                              ),
-                            }}
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                borderRadius: 2,
-                                '&:hover fieldset': {
-                                  borderColor: '#667eea',
-                                },
-                                '&.Mui-focused fieldset': {
-                                  borderColor: '#667eea',
-                                  borderWidth: 2,
-                                },
-                              },
-                            }}
-                          />
-                        )}
                       />
                     )}
                   />

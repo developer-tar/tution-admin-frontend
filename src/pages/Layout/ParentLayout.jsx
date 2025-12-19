@@ -14,7 +14,8 @@ import {
   Logout,
   AccountCircle,
   ReceiptLong,
-  Home
+  Home,
+  Announcement
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -108,6 +109,11 @@ const ParentLayout = () => {
         { label: "Paper", path: `/${name}/billing/paper`, icon: <ReceiptLong /> },
         { label: "Billing Information", path: `/${name}/billing-information`, icon: <Home /> },
       ],
+    },
+    {
+      label: "Announcements",
+      path: `/${name}/announcements`,
+      icon: <Announcement />,
     },
     {
       label: "Setting",
