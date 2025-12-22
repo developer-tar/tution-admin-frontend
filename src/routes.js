@@ -44,6 +44,7 @@ import MasterForm from "./pages/MasterForm/MasterForm";
 import ParentList from "./pages/Admin/ParentList";
 import ParentBilling from "./pages/Admin/ParentBilling";
 import AdminPaperPurchases from "./pages/Admin/PaperPurchases";
+import Announcements from "./pages/Admin/Announcements";
 
 // Admin Student Management
 import StudentList from "./pages/Admin/Student/StudentList";
@@ -212,6 +213,9 @@ const AppRoutes = () => {
         <Route path="billing" element={<ParentList />} /> {/* Reusing ParentList as entry point for Billing */}
         <Route path="course/billing" element={<ParentList />} /> {/* Course Billing submenu */}
         <Route path="parent/:parentId/billing" element={<ParentBilling />} />
+        
+        {/* Admin Announcements Routes */}
+        <Route path="announcements" element={<Announcements />} />
       </Route>
 
       {/* STUDENT ROUTES */}
