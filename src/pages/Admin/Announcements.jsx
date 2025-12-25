@@ -52,8 +52,12 @@ import { toast } from 'react-toastify';
 const announcementSchema = yup.object().shape({
   title: yup.string().required('Title is required').max(255, 'Title cannot exceed 255 characters'),
   message: yup.string().required('Message is required'),
-  status: yup.string().required('Status is required').oneOf(['active', 'inactive']),
+  status: yup.number().required('Status is required').oneOf([0, 1]), // 0 = draft, 1 = publish
   target_audience: yup.array().min(1, 'At least one target audience is required').required('Target audience is required'),
+  module_id: yup.number().nullable(),
+  academic_year_id: yup.number().nullable(),
+  course_id: yup.number().nullable(),
+  class_id: yup.number().nullable(),
 });
 
 const Announcements = () => {
@@ -71,19 +75,33 @@ const Announcements = () => {
   const [roles, setRoles] = useState([]);
   const [rolesLoading, setRolesLoading] = useState(false);
   const [totalRecords, setTotalRecords] = useState(0);
+  const [moduleModes, setModuleModes] = useState([]);
+  const [academicYears, setAcademicYears] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [loadingModuleModes, setLoadingModuleModes] = useState(false);
+  const [loadingAcademicYears, setLoadingAcademicYears] = useState(false);
+  const [loadingCourses, setLoadingCourses] = useState(false);
+  const [loadingClasses, setLoadingClasses] = useState(false);
 
   const {
     control,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: yupResolver(announcementSchema),
     defaultValues: {
       title: '',
       message: '',
-      status: 'active',
+      status: 0, // 0 = draft, 1 = publish
       target_audience: [],
+      module_id: null,
+      academic_year_id: null,
+      course_id: null,
+      class_id: null,
     },
   });
 
@@ -96,9 +114,11 @@ const Announcements = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Fetch roles only once on component mount
+  // Fetch roles, module modes, and academic years only once on component mount
   useEffect(() => {
     fetchRoles();
+    fetchModuleModes();
+    fetchAcademicYears();
   }, []); // Empty dependency array - only run once
 
   // Fetch announcements when filters change
@@ -153,6 +173,90 @@ const Announcements = () => {
       setRoles([]);
     } finally {
       setRolesLoading(false);
+    }
+  };
+
+  const fetchModuleModes = async () => {
+    setLoadingModuleModes(true);
+    try {
+      const response = await api.get('common/data', { params: { param: 'ModuleModes' } });
+      if (response.data && response.data.success) {
+        setModuleModes(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching module modes:', error);
+      setModuleModes([]);
+    } finally {
+      setLoadingModuleModes(false);
+    }
+  };
+
+  const fetchAcademicYears = async () => {
+    setLoadingAcademicYears(true);
+    try {
+      const response = await api.get('admin/announcements/academic-years');
+      if (response.data && response.data.success) {
+        setAcademicYears(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching academic years:', error);
+      setAcademicYears([]);
+    } finally {
+      setLoadingAcademicYears(false);
+    }
+  };
+
+  const fetchCourses = async (moduleId, academicYearId) => {
+    if (!moduleId) {
+      setCourses([]);
+      return;
+    }
+    
+    setLoadingCourses(true);
+    try {
+      const params = { module_id: moduleId };
+      if (academicYearId) {
+        params.academic_year_id = academicYearId;
+      }
+      const response = await api.get('admin/announcements/filtered-items', { params });
+      if (response.data && response.data.success) {
+        setCourses(response.data.data || []);
+      } else {
+        setCourses([]);
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      setCourses([]);
+    } finally {
+      setLoadingCourses(false);
+    }
+  };
+
+  const fetchClasses = async (courseId, academicYearId) => {
+    if (!courseId || !academicYearId) {
+      setClasses([]);
+      return;
+    }
+    
+    setLoadingClasses(true);
+    try {
+      const response = await api.get('common/data', { 
+        params: { 
+          param: 'Classes',
+          course_id: courseId,
+          academic_year_id: academicYearId
+        } 
+      });
+      if (response.data && response.data.success) {
+        setClasses(response.data.data || []);
+      } else {
+        setClasses([]);
+      }
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+      setClasses([]);
+    } finally {
+      setLoadingClasses(false);
     }
   };
 
@@ -217,18 +321,36 @@ const Announcements = () => {
       reset({
         title: announcement.title,
         message: announcement.message,
-        status: announcement.status,
+        status: announcement.status !== undefined ? announcement.status : 0,
         target_audience: announcement.roles?.map(r => r.id) || [],
+        module_id: announcement.module_id || null,
+        academic_year_id: announcement.academic_year_id || null,
+        course_id: announcement.course_id || null,
+        class_id: announcement.class_id || null,
       });
+      
+      // Fetch courses and classes if mode and course are set
+      if (announcement.module_id) {
+        fetchCourses(announcement.module_id, announcement.academic_year_id);
+      }
+      if (announcement.course_id && announcement.academic_year_id) {
+        fetchClasses(announcement.course_id, announcement.academic_year_id);
+      }
     } else {
       setSelectedAnnouncement(null);
       setIsEditing(false);
       reset({
         title: '',
         message: '',
-        status: 'active',
+        status: 0, // 0 = draft, 1 = publish
         target_audience: [],
+        module_id: null,
+        academic_year_id: null,
+        course_id: null,
+        class_id: null,
       });
+      setCourses([]);
+      setClasses([]);
     }
     setDialogOpen(true);
   };
@@ -238,21 +360,28 @@ const Announcements = () => {
     setSelectedAnnouncement(null);
     setIsEditing(false);
     reset();
+    setCourses([]);
+    setClasses([]);
   };
 
   const onSubmit = async (data) => {
     try {
+      const submitData = {
+        ...data,
+        status: data.status ?? 0, // Default to draft if not set
+      };
+      
       if (isEditing) {
-        const response = await api.put(`admin/announcements/${selectedAnnouncement.id}`, data);
+        const response = await api.put(`admin/announcements/${selectedAnnouncement.id}`, submitData);
         if (response.data.success) {
-          toast.success('Announcement updated successfully');
+          toast.success(submitData.status === 0 ? 'Announcement saved as draft' : 'Announcement published successfully');
           fetchAnnouncements();
           handleCloseDialog();
         }
       } else {
-        const response = await api.post('admin/announcements', data);
+        const response = await api.post('admin/announcements', submitData);
         if (response.data.success) {
-          toast.success('Announcement created successfully');
+          toast.success(submitData.status === 0 ? 'Announcement saved as draft' : 'Announcement published successfully');
           fetchAnnouncements();
           handleCloseDialog();
         }
@@ -299,7 +428,11 @@ const Announcements = () => {
   };
 
   const getStatusColor = (status) => {
-    return status === 'active' ? 'success' : 'default';
+    return status === 1 ? 'success' : 'default';
+  };
+
+  const getStatusLabel = (status) => {
+    return status === 1 ? 'Published' : 'Draft';
   };
 
   return (
@@ -366,8 +499,8 @@ const Announcements = () => {
               label="Status"
             >
               <MenuItem value="">All</MenuItem>
-              <MenuItem value="active">Active</MenuItem>
-              <MenuItem value="inactive">Inactive</MenuItem>
+              <MenuItem value="0">Draft</MenuItem>
+              <MenuItem value="1">Published</MenuItem>
             </Select>
           </FormControl>
         </Box>
@@ -443,7 +576,7 @@ const Announcements = () => {
                     </TableCell>
                     <TableCell>
                       <Chip 
-                        label={announcement.status} 
+                        label={getStatusLabel(announcement.status)} 
                         color={getStatusColor(announcement.status)}
                         size="small"
                       />
@@ -560,14 +693,187 @@ const Announcements = () => {
 
             <Grid item xs={12} sm={6}>
               <Controller
+                name="module_id"
+                control={control}
+                render={({ field }) => (
+                    <FormControl fullWidth error={!!errors.module_id} disabled={loadingModuleModes}>
+                      <InputLabel>Choose Mode</InputLabel>
+                      <Select 
+                        {...field} 
+                        label="Choose Mode"
+                        disabled={loadingModuleModes}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          // Reset dependent fields when mode changes
+                          setValue('academic_year_id', null);
+                          setValue('course_id', null);
+                          setValue('class_id', null);
+                          setCourses([]);
+                          setClasses([]);
+                          // Fetch courses if mode is selected
+                          if (e.target.value) {
+                            fetchCourses(e.target.value, null);
+                          }
+                        }}
+                      >
+                      <MenuItem value="">None</MenuItem>
+                      {moduleModes.map((mode) => (
+                        <MenuItem key={mode.id} value={mode.id}>
+                          {mode.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {errors.module_id && (
+                      <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+                        {errors.module_id.message}
+                      </Typography>
+                    )}
+                  </FormControl>
+                )}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <Controller
+                name="academic_year_id"
+                control={control}
+                render={({ field }) => {
+                  const moduleId = watch('module_id');
+                  const selectedMode = moduleModes.find(m => m.id === moduleId);
+                  const isCoursesMode = selectedMode?.name?.toLowerCase() === 'courses';
+                  return (
+                    <FormControl fullWidth error={!!errors.academic_year_id} disabled={loadingAcademicYears || !moduleId || !isCoursesMode}>
+                      <InputLabel>Course Year</InputLabel>
+                      <Select 
+                        {...field} 
+                        label="Course Year"
+                        disabled={loadingAcademicYears || !moduleId || !isCoursesMode}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          // Reset course and class when academic year changes
+                          setValue('course_id', null);
+                          setValue('class_id', null);
+                          setClasses([]);
+                          // Fetch courses with new academic year
+                          if (moduleId) {
+                            fetchCourses(moduleId, e.target.value);
+                          }
+                          // If a course was already selected, fetch classes with new academic year
+                          const courseId = watch('course_id');
+                          if (courseId && e.target.value) {
+                            fetchClasses(courseId, e.target.value);
+                          }
+                        }}
+                      >
+                      <MenuItem value="">Select Course Year</MenuItem>
+                      {academicYears.map((year) => (
+                        <MenuItem key={year.id} value={year.id}>
+                          {year.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {errors.academic_year_id && (
+                      <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+                        {errors.academic_year_id.message}
+                      </Typography>
+                    )}
+                  </FormControl>
+                  );
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <Controller
+                name="course_id"
+                control={control}
+                render={({ field }) => {
+                  const moduleId = watch('module_id');
+                  return (
+                    <FormControl fullWidth error={!!errors.course_id} disabled={loadingCourses || !moduleId}>
+                      <InputLabel>Course</InputLabel>
+                      <Select 
+                        {...field} 
+                        label="Course"
+                        disabled={loadingCourses || !moduleId}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          // Reset class when course changes
+                          setValue('class_id', null);
+                          // Fetch classes for selected course and academic year
+                          const academicYearId = watch('academic_year_id');
+                          if (e.target.value && academicYearId) {
+                            fetchClasses(e.target.value, academicYearId);
+                          } else {
+                            setClasses([]);
+                          }
+                        }}
+                      >
+                      <MenuItem value="">Select Course</MenuItem>
+                      {courses.map((course) => (
+                        <MenuItem key={course.id} value={course.id}>
+                          {course.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {errors.course_id && (
+                      <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+                        {errors.course_id.message}
+                      </Typography>
+                    )}
+                  </FormControl>
+                  );
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <Controller
+                name="class_id"
+                control={control}
+                render={({ field }) => {
+                  const courseId = watch('course_id');
+                  const academicYearId = watch('academic_year_id');
+                  const moduleId = watch('module_id');
+                  const selectedMode = moduleModes.find(m => m.id === moduleId);
+                  const isCoursesMode = selectedMode?.name?.toLowerCase() === 'courses';
+                  const isDisabled = loadingClasses || !courseId || !academicYearId || !isCoursesMode;
+                  return (
+                    <FormControl fullWidth error={!!errors.class_id} disabled={isDisabled}>
+                      <InputLabel>Class</InputLabel>
+                      <Select 
+                        {...field} 
+                        label="Class"
+                        disabled={isDisabled}
+                      >
+                      <MenuItem value="">Select Class</MenuItem>
+                      {classes.map((classItem) => (
+                        <MenuItem key={classItem.id} value={classItem.id}>
+                          {classItem.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                      {errors.class_id && (
+                        <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+                          {errors.class_id.message}
+                        </Typography>
+                      )}
+                    </FormControl>
+                  );
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <Controller
                 name="status"
                 control={control}
                 render={({ field }) => (
                   <FormControl fullWidth error={!!errors.status}>
                     <InputLabel>Status</InputLabel>
-                    <Select {...field} label="Status">
-                      <MenuItem value="active">Active</MenuItem>
-                      <MenuItem value="inactive">Inactive</MenuItem>
+                    <Select {...field} label="Status" value={field.value ?? 0}>
+                      <MenuItem value={0}>Draft</MenuItem>
+                      <MenuItem value={1}>Publish</MenuItem>
                     </Select>
                     {errors.status && (
                       <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
@@ -702,7 +1008,7 @@ const Announcements = () => {
                           {rolesLoading 
                             ? 'Loading roles from database...' 
                             : roles.length > 0 
-                              ? `Select one or more roles from ${roles.length} available roles, or select "All" to select all roles`
+                              ? ``
                               : 'No roles available. Please ensure roles are seeded in the database.'}
                         </Typography>
                       )}
@@ -714,12 +1020,14 @@ const Announcements = () => {
           </Grid>
         </DialogContent>
         
-        <DialogActions sx={{ p: 3 }}>
-          <Button onClick={handleCloseDialog} variant="outlined">
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit(onSubmit)} variant="contained">
-            {isEditing ? 'Update' : 'Create'}
+        <DialogActions sx={{ p: 3, justifyContent: 'flex-end' }}>
+          <Button 
+            onClick={handleSubmit(onSubmit)} 
+            variant="contained"
+            color="primary"
+            size="small"
+          >
+            Submit
           </Button>
         </DialogActions>
       </Dialog>

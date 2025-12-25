@@ -19,6 +19,7 @@ import {
     Tooltip,
     Fade,
     ListItemIcon,
+    Badge,
 } from "@mui/material";
 import {
     Dashboard,
@@ -37,6 +38,7 @@ import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import logout  from "../../logout";
 import  CapitalizeFirstLetter  from "../../CapitalizeFirstLetter";
+import api from "../../api";
 
 const drawerWidth = 280;
 
@@ -46,6 +48,7 @@ const StudentLayout = () => {
     const [openMenus, setOpenMenus] = useState({});
     const [loading, setLoading] = useState(true);  // loader state
     const [userData, setUserData] = useState(null); // user data from localStorage
+    const [announcementCount, setAnnouncementCount] = useState(0); // announcement count for badge
     const name = process.env.REACT_APP_STUDENT_PREFIX; //getting the prefix from the environment variable
 
     const handleLogout = () => {
@@ -104,7 +107,7 @@ const StudentLayout = () => {
         {
             label: "📢 Announcements",
             icon: Announcement,
-            path: `/${name}/course-test`,
+            path: `/${name}/announcements`,
             color: "#ff5722",
             gradient: "linear-gradient(135deg, #ff5722 0%, #d84315 100%)",
         },
@@ -128,6 +131,23 @@ const StudentLayout = () => {
                 console.error('Error parsing user data from localStorage:', error);
             }
         }
+    }, []);
+
+    // Fetch announcement count for badge
+    useEffect(() => {
+        const fetchAnnouncementCount = async () => {
+            try {
+                const response = await api.get('student/announcements');
+                if (response.data && response.data.success && response.data.data) {
+                    const announcements = Array.isArray(response.data.data) ? response.data.data : [];
+                    setAnnouncementCount(announcements.length);
+                }
+            } catch (error) {
+                console.error('Error fetching announcement count:', error);
+                setAnnouncementCount(0);
+            }
+        };
+        fetchAnnouncementCount();
     }, []);
 
     // Auto-open parent menus based on current route and simulate page load
@@ -490,7 +510,13 @@ const StudentLayout = () => {
                                                 minWidth: 40,
                                                 color: 'inherit'
                                             }}>
-                                                <ItemIcon sx={{ fontSize: 22 }} />
+                                                {item.label === "📢 Announcements" ? (
+                                                    <Badge badgeContent={announcementCount} color="error" max={99}>
+                                                        <ItemIcon sx={{ fontSize: 22 }} />
+                                                    </Badge>
+                                                ) : (
+                                                    <ItemIcon sx={{ fontSize: 22 }} />
+                                                )}
                                             </ListItemIcon>
                                             <ListItemText 
                                                 primary={item.label}

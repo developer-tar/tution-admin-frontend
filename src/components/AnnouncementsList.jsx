@@ -32,13 +32,34 @@ const AnnouncementsList = ({ role = 'student' }) => {
 
   const fetchAnnouncements = async () => {
     try {
+      setLoading(true);
       const endpoint = role === 'student' ? 'student/announcements' : 'parent/announcements';
       const response = await api.get(endpoint);
-      if (response.data.success) {
-        setAnnouncements(response.data.data || []);
+      
+      console.log('AnnouncementsList API Response:', response.data);
+      
+      // Handle different response structures
+      let announcementsData = [];
+      if (response.data) {
+        if (response.data.success && response.data.data) {
+          // Standard response structure
+          announcementsData = Array.isArray(response.data.data) 
+            ? response.data.data 
+            : [];
+        } else if (Array.isArray(response.data)) {
+          // Direct array response
+          announcementsData = response.data;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          // Nested data structure
+          announcementsData = response.data.data;
+        }
       }
+      
+      console.log('AnnouncementsList parsed data:', announcementsData);
+      setAnnouncements(announcementsData);
     } catch (error) {
       console.error('Error fetching announcements:', error);
+      setAnnouncements([]); // Set empty array on error
     } finally {
       setLoading(false);
     }

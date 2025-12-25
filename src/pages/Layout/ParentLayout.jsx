@@ -14,7 +14,8 @@ import {
   Logout,
   AccountCircle,
   ReceiptLong,
-  Home
+  Home,
+  Notifications
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -30,12 +31,14 @@ import {
   Toolbar,
   Typography,
   Button,
-  Avatar
+  Avatar,
+  Badge
 } from "@mui/material";
 import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import logout  from "../../logout";
 import  CapitalizeFirstLetter  from "../../CapitalizeFirstLetter";
+import api from "../../api";
 const drawerWidth = 240;
 
 const ParentLayout = () => {
@@ -44,6 +47,7 @@ const ParentLayout = () => {
   const [openMenus, setOpenMenus] = useState({});
   const [loading, setLoading] = useState(true);  // loader state
   const [userData, setUserData] = useState(null); // user data from localStorage
+  const [announcementCount, setAnnouncementCount] = useState(0); // announcement count for badge
   
   const handleLogout = () => {
     logout();
@@ -110,6 +114,11 @@ const ParentLayout = () => {
       ],
     },
     {
+      label: "Announcements",
+      path: `/${name}/announcements`,
+      icon: <Notifications />,
+    },
+    {
       label: "Setting",
       path: `/${name}/settings`,
       icon: <Settings />,
@@ -127,6 +136,23 @@ const ParentLayout = () => {
         console.error('Error parsing user data from localStorage:', error);
       }
     }
+  }, []);
+
+  // Fetch announcement count for badge
+  useEffect(() => {
+    const fetchAnnouncementCount = async () => {
+      try {
+        const response = await api.get('parent/announcements');
+        if (response.data && response.data.success && response.data.data) {
+          const announcements = Array.isArray(response.data.data) ? response.data.data : [];
+          setAnnouncementCount(announcements.length);
+        }
+      } catch (error) {
+        console.error('Error fetching announcement count:', error);
+        setAnnouncementCount(0);
+      }
+    };
+    fetchAnnouncementCount();
   }, []);
 
   // Simulate page load finished by hiding loader after mount
@@ -442,7 +468,13 @@ const ParentLayout = () => {
                       color: location.pathname === item.path ? "#fff" : "#667eea",
                       minWidth: 40 
                     }}>
-                      {item.icon}
+                      {item.label === "Announcements" ? (
+                        <Badge badgeContent={announcementCount} color="error" max={99}>
+                          {item.icon}
+                        </Badge>
+                      ) : (
+                        item.icon
+                      )}
                     </ListItemIcon>
                     <ListItemText 
                       primary={item.label} 

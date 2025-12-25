@@ -21,6 +21,7 @@ import SignUp from "./pages/SignUp";
 import Dashboard from "./pages/Student/Dashboard";
 import MyCurrentCourseAssignment from "./pages/Student/MyCurrentCourseAssignment";
 import StudentTest from "./pages/Student/StudentTest";
+import StudentAnnouncements from "./pages/Student/Announcements";
 import SubTopicContentView from "./pages/Student/SubTopicContentView";
 import SubTopicTest from "./pages/Student/SubTopicTest";
 import TopicTest from "./pages/Student/TopicTest";
@@ -66,6 +67,7 @@ import MyStudentList from "./pages/Parent/Student/MyStudentList";
 import TestScores from "./pages/Parent/Progress/TestScores";
 //setting route
 import ParentDashboard from "./pages/Parent/Dashboard";
+import ParentAnnouncements from "./pages/Parent/Announcements";
 import EndOfReport from "./pages/Parent/Progress/EndOfReport";
 import FinishedTest from "./pages/Parent/Progress/FinishedTest";
 import Setting from "./pages/Parent/Setting";
@@ -225,6 +227,8 @@ const AppRoutes = () => {
         </RequireRole>
       }>
         <Route index element={<StudentDashboard />} />  
+        { /*student announcements route */}
+        <Route path="announcements" element={<StudentAnnouncements />} />
         { /*student homework routes */}
         <Route path="my-course-test" element={<MyCourseTest />} />
         <Route path="course-target-area" element={<MyStudentList />} />
@@ -253,6 +257,8 @@ const AppRoutes = () => {
         </RequireRole>
       }>
        <Route index element={<ParentDashboard />} /> 
+        { /* parent announcements route */}
+        <Route path="announcements" element={<ParentAnnouncements />} />
         { /* parent student routes */}
         <Route path="add-student" element={<AddStudent />} />
         <Route path="edit-student/:studentId" element={<EditStudent />} />
