@@ -33,6 +33,7 @@ import {
     AccountCircle,
     MenuBook,
     TrendingUp,
+    EmojiEvents,
 } from "@mui/icons-material";
 import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -110,6 +111,13 @@ const StudentLayout = () => {
             path: `/${name}/announcements`,
             color: "#ff5722",
             gradient: "linear-gradient(135deg, #ff5722 0%, #d84315 100%)",
+        },
+        {
+            label: "🏆 Certificates",
+            icon: EmojiEvents,
+            path: `/${name}/certificates`,
+            color: "#d4af37",
+            gradient: "linear-gradient(135deg, #d4af37 0%, #f4d03f 100%)",
         },
     ];
 

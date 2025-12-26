@@ -15,7 +15,8 @@ import {
   AccountCircle,
   ReceiptLong,
   Home,
-  Notifications
+  Notifications,
+  EmojiEvents
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -117,6 +118,12 @@ const ParentLayout = () => {
       label: "Announcements",
       path: `/${name}/announcements`,
       icon: <Notifications />,
+      badgeCount: announcementCount,
+    },
+    {
+      label: "Certificates",
+      path: `/${name}/certificates`,
+      icon: <EmojiEvents />,
     },
     {
       label: "Setting",
