@@ -33,6 +33,7 @@ import {
     AccountCircle,
     MenuBook,
     TrendingUp,
+    EmojiEvents,
 } from "@mui/icons-material";
 import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -48,7 +49,7 @@ const StudentLayout = () => {
     const [openMenus, setOpenMenus] = useState({});
     const [loading, setLoading] = useState(true);  // loader state
     const [userData, setUserData] = useState(null); // user data from localStorage
-    const [announcementCount, setAnnouncementCount] = useState(0); // announcement count for badge
+    const [notificationCount, setNotificationCount] = useState(0); // unread notification count for badge
     const name = process.env.REACT_APP_STUDENT_PREFIX; //getting the prefix from the environment variable
 
     const handleLogout = () => {
@@ -111,6 +112,13 @@ const StudentLayout = () => {
             color: "#ff5722",
             gradient: "linear-gradient(135deg, #ff5722 0%, #d84315 100%)",
         },
+        {
+            label: "🏆 Certificates",
+            icon: EmojiEvents,
+            path: `/${name}/certificates`,
+            color: "#d4af37",
+            gradient: "linear-gradient(135deg, #d4af37 0%, #f4d03f 100%)",
+        },
     ];
 
     const handleToggle = (label) => {
@@ -135,19 +143,22 @@ const StudentLayout = () => {
 
     // Fetch announcement count for badge
     useEffect(() => {
-        const fetchAnnouncementCount = async () => {
+        const fetchNotificationCount = async () => {
             try {
-                const response = await api.get('student/announcements');
+                const response = await api.get('student/notifications/unread-count');
                 if (response.data && response.data.success && response.data.data) {
-                    const announcements = Array.isArray(response.data.data) ? response.data.data : [];
-                    setAnnouncementCount(announcements.length);
+                    setNotificationCount(response.data.data.count || 0);
                 }
             } catch (error) {
-                console.error('Error fetching announcement count:', error);
-                setAnnouncementCount(0);
+                console.error('Error fetching notification count:', error);
+                setNotificationCount(0);
             }
         };
-        fetchAnnouncementCount();
+        fetchNotificationCount();
+        
+        // Refresh notification count every 30 seconds
+        const interval = setInterval(fetchNotificationCount, 30000);
+        return () => clearInterval(interval);
     }, []);
 
     // Auto-open parent menus based on current route and simulate page load
@@ -511,7 +522,7 @@ const StudentLayout = () => {
                                                 color: 'inherit'
                                             }}>
                                                 {item.label === "📢 Announcements" ? (
-                                                    <Badge badgeContent={announcementCount} color="error" max={99}>
+                                                    <Badge badgeContent={notificationCount > 0 ? notificationCount : null} color="error" max={99}>
                                                         <ItemIcon sx={{ fontSize: 22 }} />
                                                     </Badge>
                                                 ) : (

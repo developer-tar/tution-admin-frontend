@@ -15,7 +15,8 @@ import {
   AccountCircle,
   ReceiptLong,
   Home,
-  Notifications
+  Notifications,
+  EmojiEvents
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -47,7 +48,7 @@ const ParentLayout = () => {
   const [openMenus, setOpenMenus] = useState({});
   const [loading, setLoading] = useState(true);  // loader state
   const [userData, setUserData] = useState(null); // user data from localStorage
-  const [announcementCount, setAnnouncementCount] = useState(0); // announcement count for badge
+  const [notificationCount, setNotificationCount] = useState(0); // unread notification count for badge
   
   const handleLogout = () => {
     logout();
@@ -117,6 +118,12 @@ const ParentLayout = () => {
       label: "Announcements",
       path: `/${name}/announcements`,
       icon: <Notifications />,
+      badgeCount: notificationCount,
+    },
+    {
+      label: "Certificates",
+      path: `/${name}/certificates`,
+      icon: <EmojiEvents />,
     },
     {
       label: "Setting",
@@ -138,21 +145,24 @@ const ParentLayout = () => {
     }
   }, []);
 
-  // Fetch announcement count for badge
+  // Fetch unread notification count for badge
   useEffect(() => {
-    const fetchAnnouncementCount = async () => {
+    const fetchNotificationCount = async () => {
       try {
-        const response = await api.get('parent/announcements');
+        const response = await api.get('parent/notifications/unread-count');
         if (response.data && response.data.success && response.data.data) {
-          const announcements = Array.isArray(response.data.data) ? response.data.data : [];
-          setAnnouncementCount(announcements.length);
+          setNotificationCount(response.data.data.count || 0);
         }
       } catch (error) {
-        console.error('Error fetching announcement count:', error);
-        setAnnouncementCount(0);
+        console.error('Error fetching notification count:', error);
+        setNotificationCount(0);
       }
     };
-    fetchAnnouncementCount();
+    fetchNotificationCount();
+    
+    // Refresh notification count every 30 seconds
+    const interval = setInterval(fetchNotificationCount, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // Simulate page load finished by hiding loader after mount
@@ -469,7 +479,7 @@ const ParentLayout = () => {
                       minWidth: 40 
                     }}>
                       {item.label === "Announcements" ? (
-                        <Badge badgeContent={announcementCount} color="error" max={99}>
+                        <Badge badgeContent={notificationCount > 0 ? notificationCount : null} color="error" max={99}>
                           {item.icon}
                         </Badge>
                       ) : (
