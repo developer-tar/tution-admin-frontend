@@ -129,15 +129,15 @@ const Announcements = () => {
   const fetchRoles = async () => {
     setRolesLoading(true);
     try {
-      // Use Common Data API to get ALL roles from roles table
-      // Using 'RolesAll' to get all roles including ADMIN, TUTOR, SCHOOL, STUDENT, PARENT
-      const response = await api.get('common/data?param=RolesAll');
+      // Use Common Data API with param=Roles to get roles for target_audience
+      // param=Roles excludes Admin, Tutor, and School - returns Student and Parent
+      const response = await api.get('common/data?param=Roles');
       
-      // Handle response - match the pattern used in Login.jsx and useCommonDropdowns
+      // Handle response
       const rolesData = response.data?.data || [];
       
       if (Array.isArray(rolesData) && rolesData.length > 0) {
-        // Filter and sort active roles
+        // Filter and sort active roles (Admin and Tutor already excluded by param=Roles)
         const activeRoles = rolesData
           .filter(role => role && role.id && role.name) // Ensure valid roles
           .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
@@ -318,11 +318,17 @@ const Announcements = () => {
     if (announcement) {
       setSelectedAnnouncement(announcement);
       setIsEditing(true);
+      // Filter out Admin and Tutor roles from target_audience
+      const filteredRoles = announcement.roles?.filter(role => {
+        const roleName = role.name?.toLowerCase();
+        return roleName !== 'admin' && roleName !== 'tutor';
+      }) || [];
+      
       reset({
         title: announcement.title,
         message: announcement.message,
         status: announcement.status !== undefined ? announcement.status : 0,
-        target_audience: announcement.roles?.map(r => r.id) || [],
+        target_audience: filteredRoles.map(r => r.id),
         module_id: announcement.module_id || null,
         academic_year_id: announcement.academic_year_id || null,
         course_id: announcement.course_id || null,
