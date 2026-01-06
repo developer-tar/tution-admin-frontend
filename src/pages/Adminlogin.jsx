@@ -54,16 +54,39 @@ const AdminLogin = () => {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
       });
 
-      const { access_token, role } = res.data.data;
+      if (res.data && res.data.success) {
+        const { access_token, role } = res.data.data;
 
-      localStorage.setItem("token", access_token);
-      localStorage.setItem("role", role.toLowerCase());
+        localStorage.setItem("admin-token", access_token);
+        localStorage.setItem("token", access_token);
+        localStorage.setItem("role", role.toLowerCase());
 
-      toast.success("Admin login successful!");
-      navigate("/admin/course-list");
+        toast.success(res.data.message || "Admin login successful!");
+        navigate("/admin/course-list");
+      } else {
+        const errMsg = res.data?.data?.error || res.data?.message || "Login failed!";
+        toast.error(errMsg);
+      }
     } catch (error) {
-      const errMsg = error.response?.data?.message || "Login failed!";
-      toast.error(errMsg);
+      console.error("Admin login error:", error);
+      
+      // Handle validation errors
+      if (error.response?.status === 422) {
+        const errors = error.response.data?.errors;
+        if (errors) {
+          const errorMessages = Object.values(errors).flat();
+          toast.error(errorMessages.join(", ") || "Validation failed");
+        } else {
+          toast.error(error.response.data?.data?.error || error.response.data?.message || "Validation failed");
+        }
+      } else if (error.response?.data?.data?.error) {
+        // Handle custom error format
+        toast.error(error.response.data.data.error);
+      } else if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error(error.message || "Login failed! Please check your credentials.");
+      }
     }
   };
 

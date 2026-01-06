@@ -21,7 +21,10 @@ import {
   PersonAdd as PersonAddIcon,
   Edit as EditIcon,
   ReceiptLong as ReceiptLongIcon,
-  Description as DescriptionIcon
+  Description as DescriptionIcon,
+  Notifications as NotificationsIcon,
+  EmojiEvents as EmojiEventsIcon,
+  PictureAsPdf as PictureAsPdfIcon
 } from "@mui/icons-material";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import SchoolIcon from '@mui/icons-material/School';
@@ -110,7 +113,20 @@ const AdminLayout = () => {
         currentPath.match(/^\/admin\/parent\/\d+\/billing$/)
       )) {
         return true;
-    }
+      }
+      
+      // Special handling for Announcements
+      if (item.label === "Announcements" && currentPath.startsWith("/admin/announcements")) {
+        return true;
+      }
+      // Special handling for Awards
+      if (item.label === "Awards" && currentPath.startsWith("/admin/awards")) {
+        return true;
+      }
+      // Special handling for Certificates
+      if (item.label === "Certificates" && currentPath.startsWith("/admin/certificates")) {
+        return true;
+      }
     }
     
     return false;
@@ -189,6 +205,9 @@ const AdminLayout = () => {
     // },
     { label: "Parents", path: "/admin/parents", icon: <PeopleIcon /> },
     // { label: "Billing", path: "/admin/billing", icon: <ReceiptLongIcon /> },
+    { label: "Announcements", path: "/admin/announcements", icon: <NotificationsIcon /> },
+    { label: "Awards", path: "/admin/awards", icon: <EmojiEventsIcon /> },
+    { label: "Certificates", path: "/admin/certificates", icon: <PictureAsPdfIcon /> },
     { label: "Master Forms", path: "/admin/master-forms", icon: <StorageIcon /> },
     { label: "Reports", path: `/${name}/course-report`, icon: <BarChartIcon /> },
   ];

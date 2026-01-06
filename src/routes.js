@@ -21,6 +21,8 @@ import SignUp from "./pages/SignUp";
 import Dashboard from "./pages/Student/Dashboard";
 import MyCurrentCourseAssignment from "./pages/Student/MyCurrentCourseAssignment";
 import StudentTest from "./pages/Student/StudentTest";
+import StudentAnnouncements from "./pages/Student/Announcements";
+import StudentCertificates from "./pages/Student/Certificates";
 import SubTopicContentView from "./pages/Student/SubTopicContentView";
 import SubTopicTest from "./pages/Student/SubTopicTest";
 import TopicTest from "./pages/Student/TopicTest";
@@ -44,6 +46,9 @@ import MasterForm from "./pages/MasterForm/MasterForm";
 import ParentList from "./pages/Admin/ParentList";
 import ParentBilling from "./pages/Admin/ParentBilling";
 import AdminPaperPurchases from "./pages/Admin/PaperPurchases";
+import Announcements from "./pages/Admin/Announcements";
+import Awards from "./pages/Admin/Awards";
+import Certificates from "./pages/Admin/Certificates";
 
 // Admin Student Management
 import StudentList from "./pages/Admin/Student/StudentList";
@@ -65,6 +70,8 @@ import MyStudentList from "./pages/Parent/Student/MyStudentList";
 import TestScores from "./pages/Parent/Progress/TestScores";
 //setting route
 import ParentDashboard from "./pages/Parent/Dashboard";
+import ParentAnnouncements from "./pages/Parent/Announcements";
+import ParentCertificates from "./pages/Parent/Certificates";
 import EndOfReport from "./pages/Parent/Progress/EndOfReport";
 import FinishedTest from "./pages/Parent/Progress/FinishedTest";
 import Setting from "./pages/Parent/Setting";
@@ -212,6 +219,15 @@ const AppRoutes = () => {
         <Route path="billing" element={<ParentList />} /> {/* Reusing ParentList as entry point for Billing */}
         <Route path="course/billing" element={<ParentList />} /> {/* Course Billing submenu */}
         <Route path="parent/:parentId/billing" element={<ParentBilling />} />
+        
+        {/* Admin Announcements Routes */}
+        <Route path="announcements" element={<Announcements />} />
+        
+        {/* Admin Awards Routes */}
+        <Route path="awards" element={<Awards />} />
+        
+        {/* Admin Certificates Routes */}
+        <Route path="certificates" element={<Certificates />} />
       </Route>
 
       {/* STUDENT ROUTES */}
@@ -221,6 +237,10 @@ const AppRoutes = () => {
         </RequireRole>
       }>
         <Route index element={<StudentDashboard />} />  
+        { /*student announcements route */}
+        <Route path="announcements" element={<StudentAnnouncements />} />
+        { /*student certificates route */}
+        <Route path="certificates" element={<StudentCertificates />} />
         { /*student homework routes */}
         <Route path="my-course-test" element={<MyCourseTest />} />
         <Route path="course-target-area" element={<MyStudentList />} />
@@ -249,6 +269,10 @@ const AppRoutes = () => {
         </RequireRole>
       }>
        <Route index element={<ParentDashboard />} /> 
+        { /* parent announcements route */}
+        <Route path="announcements" element={<ParentAnnouncements />} />
+        { /* parent certificates route */}
+        <Route path="certificates" element={<ParentCertificates />} />
         { /* parent student routes */}
         <Route path="add-student" element={<AddStudent />} />
         <Route path="edit-student/:studentId" element={<EditStudent />} />

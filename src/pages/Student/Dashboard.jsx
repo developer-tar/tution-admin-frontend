@@ -56,6 +56,7 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import logout from "../../logout";
+import AnnouncementsList from "../../components/AnnouncementsList";
 
 ChartJS.register(
   BarElement,
@@ -521,6 +522,9 @@ const Dashboard = () => {
           {error}
         </Alert>
       )}
+
+      {/* Announcements */}
+      <AnnouncementsList role="student" />
 
       {/* Statistics Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>

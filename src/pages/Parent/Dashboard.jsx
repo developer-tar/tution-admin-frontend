@@ -13,6 +13,7 @@ import {
   FormControl,
   InputLabel,
 } from "@mui/material";
+import AnnouncementsList from "../../components/AnnouncementsList";
 
 import {
   BarChart,
@@ -160,6 +161,9 @@ const Dashboard = () => {
       <Typography variant="h4" mb={3} fontWeight={700}>
         Parent Dashboard
       </Typography>
+
+      {/* Announcements */}
+      <AnnouncementsList role="parent" />
 
       {/* Summary Cards */}
       <Grid container spacing={3} mb={4}>
