@@ -45,6 +45,9 @@ import { toast } from 'react-toastify';
 
 const certificateSchema = yup.object().shape({
   award_id: yup.number().required('Award is required'),
+  academic_year_id: yup.number().nullable(),
+  course_id: yup.number().nullable(),
+  mode_id: yup.number().nullable(),
   student_id: yup.number().required('Student is required'),
   issued_date: yup.string().nullable(),
   achievement_details: yup.string().nullable(),
@@ -66,22 +69,32 @@ const Certificates = () => {
   const [totalRecords, setTotalRecords] = useState(0);
   const [awards, setAwards] = useState([]);
   const [students, setStudents] = useState([]);
+  const [academicYears, setAcademicYears] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [modes, setModes] = useState([]);
   
   // Ensure students is always an array (safety check)
   const safeStudents = Array.isArray(students) ? students : [];
   const [loadingAwards, setLoadingAwards] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
+  const [loadingAcademicYears, setLoadingAcademicYears] = useState(false);
+  const [loadingCourses, setLoadingCourses] = useState(false);
+  const [loadingModes, setLoadingModes] = useState(false);
 
   const {
     control,
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: yupResolver(certificateSchema),
     defaultValues: {
       award_id: null,
+      academic_year_id: null,
+      course_id: null,
+      mode_id: null,
       student_id: null,
       issued_date: new Date().toISOString().split('T')[0],
       achievement_details: '',
@@ -101,11 +114,27 @@ const Certificates = () => {
     fetchCertificates();
   }, [page, rowsPerPage, debouncedSearchTerm, statusFilter, awardFilter]);
 
-  // Fetch awards and students for dropdowns
+  // Fetch awards, academic years, and modes for dropdowns
   useEffect(() => {
     fetchAwards();
-    fetchStudents();
+    fetchAcademicYears();
+    fetchModes();
   }, []);
+
+  // Watch for changes in filters and fetch students accordingly
+  const academicYearId = watch('academic_year_id');
+  const courseId = watch('course_id');
+  const modeId = watch('mode_id');
+
+  useEffect(() => {
+    // Only fetch students if at least one filter is selected
+    if (academicYearId || courseId || modeId) {
+      fetchStudents(academicYearId, courseId, modeId);
+    } else {
+      // If no filters, clear students list
+      setStudents([]);
+    }
+  }, [academicYearId, courseId, modeId]);
 
   const fetchAwards = async () => {
     setLoadingAwards(true);
@@ -122,11 +151,82 @@ const Certificates = () => {
     }
   };
 
-  const fetchStudents = async () => {
+  const fetchAcademicYears = async () => {
+    setLoadingAcademicYears(true);
+    try {
+      const response = await api.get('admin/certificates/academic-years');
+      console.log('Academic Years API Response:', response.data);
+      if (response.data && response.data.success) {
+        const data = response.data.data || [];
+        console.log('Academic Years Data:', data);
+        setAcademicYears(Array.isArray(data) ? data : []);
+      } else {
+        console.warn('Academic Years API response format unexpected:', response.data);
+        setAcademicYears([]);
+      }
+    } catch (error) {
+      console.error('Error fetching academic years:', error);
+      console.error('Error details:', error.response?.data);
+      toast.error('Failed to load academic years. Please try again.');
+      setAcademicYears([]);
+    } finally {
+      setLoadingAcademicYears(false);
+    }
+  };
+
+  const fetchCourses = async (academicYearId) => {
+    if (!academicYearId) {
+      setCourses([]);
+      return;
+    }
+    
+    setLoadingCourses(true);
+    try {
+      const response = await api.get('admin/certificates/courses-by-year', {
+        params: { academic_year_id: academicYearId }
+      });
+      if (response.data && response.data.success) {
+        setCourses(response.data.data || []);
+      } else {
+        setCourses([]);
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      setCourses([]);
+    } finally {
+      setLoadingCourses(false);
+    }
+  };
+
+  const fetchModes = async () => {
+    setLoadingModes(true);
+    try {
+      const response = await api.get('admin/certificates/modes');
+      if (response.data && response.data.success) {
+        setModes(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching modes:', error);
+      setModes([]);
+    } finally {
+      setLoadingModes(false);
+    }
+  };
+
+  const fetchStudents = async (academicYearId, courseId, modeId) => {
     setLoadingStudents(true);
     try {
-      // Fetch only users with student role
-      const response = await api.get('admin/certificates/students/list');
+      const params = {};
+      if (academicYearId) params.academic_year_id = academicYearId;
+      if (courseId) params.course_id = courseId;
+      if (modeId) params.mode_id = modeId;
+
+      // If any filter is provided, use filtered endpoint, otherwise use list endpoint
+      const endpoint = Object.keys(params).length > 0 
+        ? 'admin/certificates/students/filtered'
+        : 'admin/certificates/students/list';
+      
+      const response = await api.get(endpoint, { params });
       if (response.data && response.data.success) {
         const data = response.data.data;
         // Ensure students is always an array
@@ -194,6 +294,9 @@ const Certificates = () => {
       setIsEditing(true);
       reset({
         award_id: certificate.award_id,
+        academic_year_id: null,
+        course_id: null,
+        mode_id: null,
         student_id: certificate.student_id,
         issued_date: certificate.issued_date ? certificate.issued_date.split('T')[0] : new Date().toISOString().split('T')[0],
         achievement_details: certificate.achievement_details || '',
@@ -203,10 +306,15 @@ const Certificates = () => {
       setIsEditing(false);
       reset({
         award_id: null,
+        academic_year_id: null,
+        course_id: null,
+        mode_id: null,
         student_id: null,
         issued_date: new Date().toISOString().split('T')[0],
         achievement_details: '',
       });
+      setCourses([]);
+      setStudents([]);
     }
     setDialogOpen(true);
   };
@@ -579,6 +687,144 @@ const Certificates = () => {
               />
             </Grid>
 
+            <Grid item xs={12} sm={4}>
+              <Controller
+                name="academic_year_id"
+                control={control}
+                render={({ field }) => {
+                  return (
+                    <FormControl fullWidth error={!!errors.academic_year_id} disabled={loadingAcademicYears}>
+                      <InputLabel>Academic Year</InputLabel>
+                      <Select 
+                        {...field} 
+                        label="Academic Year"
+                        disabled={loadingAcademicYears}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          // Reset dependent fields
+                          setValue('course_id', null);
+                          setValue('mode_id', null);
+                          setValue('student_id', null);
+                          setCourses([]);
+                          setStudents([]);
+                          // Fetch courses for selected year
+                          if (e.target.value) {
+                            fetchCourses(e.target.value);
+                          }
+                        }}
+                      >
+                        <MenuItem value="">Select Year</MenuItem>
+                        {loadingAcademicYears ? (
+                          <MenuItem value="" disabled>Loading years...</MenuItem>
+                        ) : academicYears.length > 0 ? (
+                          academicYears.map((year) => (
+                            <MenuItem key={year.id} value={year.id}>
+                              {year.name}
+                            </MenuItem>
+                          ))
+                        ) : (
+                          <MenuItem value="" disabled>No academic years available</MenuItem>
+                        )}
+                      </Select>
+                      {errors.academic_year_id && (
+                        <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+                          {errors.academic_year_id.message}
+                        </Typography>
+                      )}
+                    </FormControl>
+                  );
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={4}>
+              <Controller
+                name="course_id"
+                control={control}
+                render={({ field }) => {
+                  const academicYearId = watch('academic_year_id');
+                  return (
+                    <FormControl fullWidth error={!!errors.course_id} disabled={loadingCourses || !academicYearId}>
+                      <InputLabel>Course</InputLabel>
+                      <Select 
+                        {...field} 
+                        label="Course"
+                        disabled={loadingCourses || !academicYearId}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          // Reset dependent fields
+                          setValue('mode_id', null);
+                          setValue('student_id', null);
+                          setStudents([]);
+                          // Fetch students when course is selected
+                          const yearId = watch('academic_year_id');
+                          const modeId = watch('mode_id');
+                          if (e.target.value) {
+                            fetchStudents(yearId, e.target.value, modeId);
+                          }
+                        }}
+                      >
+                        <MenuItem value="">Select Course</MenuItem>
+                        {courses.map((course) => (
+                          <MenuItem key={course.id} value={course.id}>
+                            {course.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {errors.course_id && (
+                        <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+                          {errors.course_id.message}
+                        </Typography>
+                      )}
+                    </FormControl>
+                  );
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={4}>
+              <Controller
+                name="mode_id"
+                control={control}
+                render={({ field }) => {
+                  const courseId = watch('course_id');
+                  return (
+                    <FormControl fullWidth error={!!errors.mode_id} disabled={loadingModes || !courseId}>
+                      <InputLabel>Mode</InputLabel>
+                      <Select 
+                        {...field} 
+                        label="Mode"
+                        disabled={loadingModes || !courseId}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          // Reset student selection
+                          setValue('student_id', null);
+                          // Fetch students with new mode filter
+                          const yearId = watch('academic_year_id');
+                          const selectedCourseId = watch('course_id');
+                          if (selectedCourseId) {
+                            fetchStudents(yearId, selectedCourseId, e.target.value);
+                          }
+                        }}
+                      >
+                        <MenuItem value="">Select Mode</MenuItem>
+                        {modes.map((mode) => (
+                          <MenuItem key={mode.id} value={mode.id}>
+                            {mode.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {errors.mode_id && (
+                        <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+                          {errors.mode_id.message}
+                        </Typography>
+                      )}
+                    </FormControl>
+                  );
+                }}
+              />
+            </Grid>
+
             <Grid item xs={12}>
               <Controller
                 name="student_id"
@@ -596,7 +842,7 @@ const Certificates = () => {
                         ))
                       ) : (
                         <MenuItem value="" disabled>
-                          {loadingStudents ? 'Loading students...' : 'No students available'}
+                          {loadingStudents ? 'Loading students...' : 'No students available. Please select year, course, and mode first.'}
                         </MenuItem>
                       )}
                     </Select>
