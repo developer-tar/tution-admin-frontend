@@ -53,11 +53,16 @@ const announcementSchema = yup.object().shape({
   title: yup.string().required('Title is required').max(255, 'Title cannot exceed 255 characters'),
   message: yup.string().required('Message is required'),
   status: yup.number().required('Status is required').oneOf([0, 1]), // 0 = draft, 1 = publish
-  target_audience: yup.array().min(1, 'At least one target audience is required').required('Target audience is required'),
+  target_audience: yup.array().nullable(),
+  specific_users: yup.array().nullable(),
   module_id: yup.number().nullable(),
   academic_year_id: yup.number().nullable(),
   course_id: yup.number().nullable(),
   class_id: yup.number().nullable(),
+}).test('targeting-required', 'Either target audience (roles) or specific users must be provided', function(value) {
+  const hasTargetAudience = value.target_audience && value.target_audience.length > 0;
+  const hasSpecificUsers = value.specific_users && value.specific_users.length > 0;
+  return hasTargetAudience || hasSpecificUsers;
 });
 
 const Announcements = () => {
@@ -83,6 +88,10 @@ const Announcements = () => {
   const [loadingAcademicYears, setLoadingAcademicYears] = useState(false);
   const [loadingCourses, setLoadingCourses] = useState(false);
   const [loadingClasses, setLoadingClasses] = useState(false);
+  const [students, setStudents] = useState([]);
+  const [parents, setParents] = useState([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [loadingParents, setLoadingParents] = useState(false);
 
   const {
     control,
@@ -98,6 +107,7 @@ const Announcements = () => {
       message: '',
       status: 0, // 0 = draft, 1 = publish
       target_audience: [],
+      specific_users: [],
       module_id: null,
       academic_year_id: null,
       course_id: null,
@@ -114,11 +124,13 @@ const Announcements = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Fetch roles, module modes, and academic years only once on component mount
+  // Fetch roles, module modes, academic years, students, and parents only once on component mount
   useEffect(() => {
     fetchRoles();
     fetchModuleModes();
     fetchAcademicYears();
+    fetchStudents();
+    fetchParents();
   }, []); // Empty dependency array - only run once
 
   // Fetch announcements when filters change
@@ -232,6 +244,36 @@ const Announcements = () => {
     }
   };
 
+  const fetchStudents = async () => {
+    setLoadingStudents(true);
+    try {
+      const response = await api.get('admin/announcements/students');
+      if (response.data && response.data.success) {
+        setStudents(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      setStudents([]);
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  const fetchParents = async () => {
+    setLoadingParents(true);
+    try {
+      const response = await api.get('admin/announcements/parents');
+      if (response.data && response.data.success) {
+        setParents(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching parents:', error);
+      setParents([]);
+    } finally {
+      setLoadingParents(false);
+    }
+  };
+
   const fetchClasses = async (courseId, academicYearId) => {
     if (!courseId || !academicYearId) {
       setClasses([]);
@@ -329,6 +371,7 @@ const Announcements = () => {
         message: announcement.message,
         status: announcement.status !== undefined ? announcement.status : 0,
         target_audience: filteredRoles.map(r => r.id),
+        specific_users: announcement.specific_users?.map(u => u.id) || [],
         module_id: announcement.module_id || null,
         academic_year_id: announcement.academic_year_id || null,
         course_id: announcement.course_id || null,
@@ -350,6 +393,7 @@ const Announcements = () => {
         message: '',
         status: 0, // 0 = draft, 1 = publish
         target_audience: [],
+        specific_users: [],
         module_id: null,
         academic_year_id: null,
         course_id: null,
@@ -528,6 +572,7 @@ const Announcements = () => {
                 <TableCell sx={{ fontWeight: 600 }}>Title</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Message</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Target Audience</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Specific Users</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Created At</TableCell>
                 <TableCell sx={{ fontWeight: 600 }} align="center">Actions</TableCell>
@@ -540,6 +585,7 @@ const Announcements = () => {
                     <TableCell><Skeleton variant="text" width="100%" height={20} /></TableCell>
                     <TableCell><Skeleton variant="text" width="100%" height={20} /></TableCell>
                     <TableCell><Skeleton variant="text" width={150} height={20} /></TableCell>
+                    <TableCell><Skeleton variant="text" width={150} height={20} /></TableCell>
                     <TableCell><Skeleton variant="text" width={80} height={20} /></TableCell>
                     <TableCell><Skeleton variant="text" width={120} height={20} /></TableCell>
                     <TableCell align="center">
@@ -549,7 +595,7 @@ const Announcements = () => {
                 ))
               ) : announcements.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                     <NotificationsIcon sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />
                     <Typography variant="h6" color="text.secondary">
                       No announcements found
@@ -575,9 +621,34 @@ const Announcements = () => {
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                        {announcement.roles?.map((role) => (
-                          <Chip key={role.id} label={role.name} size="small" />
-                        ))}
+                        {announcement.roles && announcement.roles.length > 0 ? (
+                          announcement.roles.map((role) => (
+                            <Chip key={role.id} label={role.name} size="small" color="primary" />
+                          ))
+                        ) : (
+                          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                            None
+                          </Typography>
+                        )}
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                        {announcement.specific_users && announcement.specific_users.length > 0 ? (
+                          announcement.specific_users.map((user) => (
+                            <Chip 
+                              key={user.id} 
+                              label={user.name || user.email} 
+                              size="small" 
+                              color="secondary"
+                              title={user.email}
+                            />
+                          ))
+                        ) : (
+                          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                            None
+                          </Typography>
+                        )}
                       </Box>
                     </TableCell>
                     <TableCell>
@@ -1014,8 +1085,102 @@ const Announcements = () => {
                           {rolesLoading 
                             ? 'Loading roles from database...' 
                             : roles.length > 0 
-                              ? ``
+                              ? `Select roles to target all users with those roles. You can also select specific users below.`
                               : 'No roles available. Please ensure roles are seeded in the database.'}
+                        </Typography>
+                      )}
+                    </FormControl>
+                  );
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Controller
+                name="specific_users"
+                control={control}
+                render={({ field }) => {
+                  const allUsers = [...students, ...parents];
+                  const currentValue = Array.isArray(field.value) ? field.value : [];
+                  
+                  return (
+                    <FormControl fullWidth error={!!errors.specific_users} disabled={loadingStudents || loadingParents}>
+                      <InputLabel>Specific Users (Students & Parents)</InputLabel>
+                      <Select
+                        multiple
+                        value={currentValue}
+                        onChange={field.onChange}
+                        disabled={loadingStudents || loadingParents}
+                        input={<OutlinedInput label="Specific Users (Students & Parents)" />}
+                        renderValue={(selected) => {
+                          if (loadingStudents || loadingParents) {
+                            return <Typography variant="body2" color="text.secondary">Loading users...</Typography>;
+                          }
+                          if (selected.length === 0) {
+                            return <Typography variant="body2" color="text.secondary">Select specific users (optional)</Typography>;
+                          }
+                          return (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {selected.map((userId) => {
+                                const user = allUsers.find(u => u.id === userId);
+                                return <Chip key={userId} label={user?.name || userId} size="small" />;
+                              })}
+                            </Box>
+                          );
+                        }}
+                      >
+                        {(() => {
+                          if (loadingStudents || loadingParents) {
+                            return (
+                              <MenuItem disabled>
+                                <Typography variant="body2" color="text.secondary">Loading users...</Typography>
+                              </MenuItem>
+                            );
+                          }
+                          if (allUsers.length === 0) {
+                            return (
+                              <MenuItem disabled>
+                                <Typography variant="body2" color="text.secondary">No users available</Typography>
+                              </MenuItem>
+                            );
+                          }
+                          return [
+                            students.length > 0 && (
+                              <MenuItem key="students-header" disabled sx={{ fontWeight: 'bold', bgcolor: 'action.hover' }}>
+                                <ListItemText primary="Students" />
+                              </MenuItem>
+                            ),
+                            ...students.map((student) => (
+                              <MenuItem key={`student-${student.id}`} value={student.id}>
+                                <Checkbox checked={currentValue.indexOf(student.id) > -1} />
+                                <ListItemText primary={student.name} secondary={student.email} />
+                              </MenuItem>
+                            )),
+                            parents.length > 0 && (
+                              <MenuItem key="parents-header" disabled sx={{ fontWeight: 'bold', bgcolor: 'action.hover' }}>
+                                <ListItemText primary="Parents" />
+                              </MenuItem>
+                            ),
+                            ...parents.map((parent) => (
+                              <MenuItem key={`parent-${parent.id}`} value={parent.id}>
+                                <Checkbox checked={currentValue.indexOf(parent.id) > -1} />
+                                <ListItemText primary={parent.name} secondary={parent.email} />
+                              </MenuItem>
+                            ))
+                          ].filter(Boolean);
+                        })()}
+                      </Select>
+                      {errors.specific_users ? (
+                        <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+                          {errors.specific_users.message}
+                        </Typography>
+                      ) : (
+                        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, ml: 1.75 }}>
+                          {loadingStudents || loadingParents 
+                            ? 'Loading users from database...' 
+                            : allUsers.length > 0 
+                              ? `Select specific students and/or parents to target. You can use this instead of or in addition to role-based targeting.`
+                              : 'No users available. Please ensure students and parents are registered in the system.'}
                         </Typography>
                       )}
                     </FormControl>

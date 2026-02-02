@@ -52,7 +52,7 @@ const ParentLayout = () => {
   
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    window.location.href = "/login";
   };//logout 
 
   const handleToggle = (label) => {

@@ -1,4 +1,6 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+// ================= IMPORTS =================
+import { useEffect } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 // Pages
 import AdminLogin from "./pages/Adminlogin";
@@ -11,38 +13,45 @@ import CourseReport from "./pages/Course/CourseReport";
 import CourseTest from "./pages/Course/CourseTest";
 import TestList from "./pages/Course/TestList";
 import TopicSubtopicList from "./pages/Course/TopicList";
+import TimeSlots from "./pages/Course/CourseTimeSlot";
+
 import AdminLayout from "./pages/Layout/AdminLayout";
 import Layout from "./pages/Layout/Layout";
 import ParentLayout from "./pages/Layout/ParentLayout";
 import StudentLayout from "./pages/Layout/StudentLayout";
+
 import Login from "./pages/Login";
-import MyCourseVideoPage from "./pages/MyCourseVideoPage";
 import SignUp from "./pages/SignUp";
 import Dashboard from "./pages/Student/Dashboard";
-import MyCurrentCourseAssignment from "./pages/Student/MyCurrentCourseAssignment";
-import StudentTest from "./pages/Student/StudentTest";
+import StudentDashboard from "./pages/Student/Dashboard";
 import StudentAnnouncements from "./pages/Student/Announcements";
 import StudentCertificates from "./pages/Student/Certificates";
+import StudentTest from "./pages/Student/StudentTest";
+import MyCourseTest from "./pages/Student/Homework/MyCourseTest";
+import MyCourseVideo from "./pages/Student/Video/MyCourseVideo";
+import MyCourseView from "./pages/Student/Video/MyCourseView";
+import MyCourseVideoPage from "./pages/MyCourseVideoPage";
+import VideoLessonsPage from "./pages/VideoLessonsPage";
+
 import SubTopicContentView from "./pages/Student/SubTopicContentView";
 import SubTopicTest from "./pages/Student/SubTopicTest";
 import TopicTest from "./pages/Student/TopicTest";
 import TopicContentView from "./pages/Student/TopicContentView";
-import StudentPannel from "./pages/StudentPannel";
-import VideoLessonsPage from "./pages/VideoLessonsPage";
-import TimeSlots from "./pages/Course/CourseTimeSlot";
 
-// Mock Exam imports
+import StudentPannel from "./pages/StudentPannel";
+
+// Mock Exam
 import MockExamCategory from "./pages/MockExam/MockExamCategory";
 import MockExam from "./pages/MockExam/MockExam";
+import PaperExtract from "./pages/MockExam/PaperExtract";
 
-// Paper imports
+// Paper
 import Paper from "./pages/Paper/Paper";
-// import PaperCategory from "./pages/Paper/PaperCategory";
 
-// Master Form imports
+// Master Form
 import MasterForm from "./pages/MasterForm/MasterForm";
 
-// Admin Parent Management
+// Admin
 import ParentList from "./pages/Admin/ParentList";
 import ParentBilling from "./pages/Admin/ParentBilling";
 import AdminPaperPurchases from "./pages/Admin/PaperPurchases";
@@ -50,25 +59,19 @@ import Announcements from "./pages/Admin/Announcements";
 import Awards from "./pages/Admin/Awards";
 import Certificates from "./pages/Admin/Certificates";
 
-// Admin Student Management
+// Admin Student
 import StudentList from "./pages/Admin/Student/StudentList";
 import StudentForm from "./pages/Admin/Student/StudentForm";
 import StudentDetails from "./pages/Admin/Student/StudentDetails";
 
-// Parent Billing
+// Parent
 import Billing from "./pages/Parent/Billing/Billing";
 import ParentPaperPurchases from "./pages/Parent/PaperPurchases";
 import BillingInformation from "./pages/Parent/BillingInformation";
-
-//============ START PARENT ROUTING ============
-// student routes
 import AddStudent from "./pages/Parent/Student/AddStudent";
 import EditStudent from "./pages/Parent/Student/EditStudent";
 import ChangePassword from "./pages/Parent/Student/ChangePassword";
 import MyStudentList from "./pages/Parent/Student/MyStudentList";
-
-import TestScores from "./pages/Parent/Progress/TestScores";
-//setting route
 import ParentDashboard from "./pages/Parent/Dashboard";
 import ParentAnnouncements from "./pages/Parent/Announcements";
 import ParentCertificates from "./pages/Parent/Certificates";
@@ -76,28 +79,34 @@ import EndOfReport from "./pages/Parent/Progress/EndOfReport";
 import FinishedTest from "./pages/Parent/Progress/FinishedTest";
 import Setting from "./pages/Parent/Setting";
 import CourseTargetArea from "./pages/Parent/Progress/CourseTargetArea";
-//============ END PARENT ROUTING ============
+import TestScores from "./pages/Parent/Progress/TestScores";
 
-//============ STUDENT ============
-//dashboard route
-import StudentDashboard from "./pages/Student/Dashboard";
-//homework route
-import MyCourseTest from "./pages/Student/Homework/MyCourseTest";
+import MyCurrentCourseAssignment from "./pages/Student/MyCurrentCourseAssignment";
 
-//videos route
-import MyCourseVideo from "./pages/Student/Video/MyCourseVideo";
-import MyCourseView from "./pages/Student/Video/MyCourseView";
-
-// 404 Not Found Page
+// 404
 import NotFound from "./pages/NotFound";
 
+
 // ============ AUTH GUARDS ============
+
+// Redirect via window.location to avoid "The operation is insecure" from history.push
+const SafeRedirect = ({ to }) => {
+  const location = useLocation();
+  useEffect(() => {
+    const targetPath = to.startsWith("/") ? to : `/${to}`;
+    const currentPath = location.pathname.replace(/\/$/, "") || "/";
+    const normalizedTarget = targetPath.replace(/\/$/, "") || "/";
+    if (currentPath !== normalizedTarget) {
+      window.location.replace(to);
+    }
+  }, [to, location.pathname]);
+  return null;
+};
 
 // General Protected Route
 const RequireAuth = ({ children }) => {
   const token = localStorage.getItem("token");
-  console.log(token,children)
-  return token ? children : <Navigate to="/login" />;
+  return token ? children : <SafeRedirect to="/login" />;
 };
 
 // Admin Protected Route
@@ -107,17 +116,17 @@ const RequireAdmin = ({ children }) => {
 
   return token && role === "admin"
     ? children
-    : <Navigate to="/login" />;
+    : <SafeRedirect to="/login" />;
 };
 
 // Role-Based Route (student, tutor, parent)
 const RequireRole = ({ children, allowedRoles }) => {
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
-  if (!token) return <Navigate to="/login" />;
+  if (!token) return <SafeRedirect to="/login" />;
   return allowedRoles.includes(role)
     ? children
-    : <Navigate to="/login" />;
+    : <SafeRedirect to="/login" />;
 };
 
 // Guest Route - blocks access if already logged in
@@ -128,15 +137,19 @@ const GuestRoute = ({ children }) => {
   if (token) {
     switch (role) {
       case "student":
-        return <Navigate to="/student" />;
+        return <SafeRedirect to="/student" />;
       case "parent":
-        return <Navigate to="/parent/" />;
+        return <SafeRedirect to="/parent/" />;
       case "tutor":
-        return <Navigate to="/tutor" />;
+        return <SafeRedirect to="/tutor" />;
       case "admin":
-        return <Navigate to="/admin/course-list" />;
+        return <SafeRedirect to="/admin/course-list" />;
       default:
-        return <Navigate to="/" />;
+        // Unknown/stale role: clear and show login to avoid redirect loop with "/"
+        localStorage.removeItem("token");
+        localStorage.removeItem("role");
+        localStorage.removeItem("userData");
+        return children;
     }
   }
 
@@ -147,18 +160,21 @@ const GuestRoute = ({ children }) => {
 // Redirect users to their main dashboard
 const RedirectByRole = () => {
   const role = localStorage.getItem("role");
+  const token = localStorage.getItem("token");
+  // No token: go to login (no redirect loop; /login will show Login)
+  if (!token) return <SafeRedirect to="/login" />;
   switch (role) {
     case "student":
-      return <Navigate to="/student" />;
+      return <SafeRedirect to="/student" />;
     case "parent":
-      return <Navigate to="/parent" />;
+      return <SafeRedirect to="/parent" />;
     case "tutor":
-      return <Navigate to="/tutor" />;
+      return <SafeRedirect to="/tutor" />;
+    case "admin":
     case "Admin":
-      // return <Navigate to="/admin/dashboard" />;
-      return <Navigate to="/admin/course-list" />;
+      return <SafeRedirect to="/admin/course-list" />;
     default:
-      return <Navigate to="/login" />;
+      return <SafeRedirect to="/login" />;
   }
 };
 
@@ -203,6 +219,7 @@ const AppRoutes = () => {
         <Route path="mock-exam-categories" element={<MockExamCategory />} />
         <Route path="mock-exams" element={<MockExam />} />
         <Route path="mock-exams/billing" element={<ParentList />} />
+        <Route path="mock-exams/paper-extract" element={<PaperExtract />} />
         {/* <Route path="paper-categories" element={<PaperCategory />} /> */}
         <Route path="papers" element={<Paper />} />
         <Route path="papers/billing" element={<AdminPaperPurchases />} />
@@ -280,7 +297,7 @@ const AppRoutes = () => {
         <Route path="change-password" element={<ChangePassword />} />
 
         {/* Billing Routes */}
-        <Route path="billing" element={<Navigate to="billing/course" replace />} />
+        <Route path="billing" element={<SafeRedirect to="/parent/billing/course" />} />
         <Route path="billing/course" element={<Billing />} />
         <Route path="billing/mock" element={<Billing />} />
         <Route path="billing/paper" element={<Billing />} />

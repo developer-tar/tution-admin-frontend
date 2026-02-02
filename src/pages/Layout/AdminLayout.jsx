@@ -15,7 +15,7 @@ import {
   Collapse,
 } from "@mui/material";
 import {
-  ExpandLess, 
+  ExpandLess,
   ExpandMore,
   People as PeopleIcon,
   PersonAdd as PersonAddIcon,
@@ -38,8 +38,9 @@ import AddIcon from '@mui/icons-material/Add';
 import ListIcon from '@mui/icons-material/List';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import StorageIcon from '@mui/icons-material/Storage';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { Logout, AccountCircle } from "@mui/icons-material";
-import CapitalizeFirstLetter from "../../CapitalizeFirstLetter"; 
+import CapitalizeFirstLetter from "../../CapitalizeFirstLetter";
 
 const drawerWidth = 240;
 
@@ -55,7 +56,7 @@ const AdminLayout = () => {
     // Remove admin-role from localStorage
     localStorage.removeItem('role');
     localStorage.removeItem('token'); // Also remove token if exists
-    navigate("/login");
+    window.location.href = "/login";
   };
 
   const handleToggle = (label) => {
@@ -70,51 +71,51 @@ const AdminLayout = () => {
   // Helper function to check if menu item should be highlighted
   const isMenuActive = (item) => {
     const currentPath = location.pathname;
-    
+
     // Handle items with children
     if (item.children) {
       // Check if any child path matches
       const hasActiveChild = item.children.some(child => currentPath === child.path);
       if (hasActiveChild) return true;
-      
+
       // Special handling for Students - active for all student-related URLs
       if (item.label === "Students" && currentPath.includes("/student")) {
         return true;
       }
-      
+
       // Special handling for Course - active for course/billing
       if (item.label === "Course" && currentPath === "/admin/course/billing") {
         return true;
       }
-      
-      // Special handling for Mock Exams - active for mock-exams/billing
-      if (item.label === "Mock Exams" && currentPath === "/admin/mock-exams/billing") {
+
+      // Special handling for Mock Exams - active for mock-exams/billing and paper-extract
+      if (item.label === "Mock Exams" && (currentPath === "/admin/mock-exams/billing" || currentPath === "/admin/mock-exams/paper-extract")) {
         return true;
       }
-      
+
       // Special handling for Papers - active for papers/billing
       if (item.label === "Papers" && currentPath === "/admin/papers/billing") {
         return true;
       }
     }
-    
+
     // Handle leaf items
     if (item.path) {
       if (currentPath === item.path) return true;
-      
+
       // Special handling for Billing - active for main billing list and specific parent billing
       if (item.label === "Billing" && (currentPath === "/admin/billing" || currentPath.includes("/billing"))) {
         return true;
       }
-      
+
       // Special handling for Parents - active for parent list AND individual parent billing pages
       if (item.label === "Parents" && (
-        currentPath.startsWith("/admin/parents") || 
+        currentPath.startsWith("/admin/parents") ||
         currentPath.match(/^\/admin\/parent\/\d+\/billing$/)
       )) {
         return true;
       }
-      
+
       // Special handling for Announcements
       if (item.label === "Announcements" && currentPath.startsWith("/admin/announcements")) {
         return true;
@@ -128,7 +129,7 @@ const AdminLayout = () => {
         return true;
       }
     }
-    
+
     return false;
   };
 
@@ -148,6 +149,7 @@ const AdminLayout = () => {
       children: [
         { label: "Mock Exam List", path: "/admin/mock-exams", icon: <ListIcon /> },
         { label: "Billing", path: "/admin/mock-exams/billing", icon: <ReceiptLongIcon /> },
+        { label: "Paper Extract", path: "/admin/mock-exams/paper-extract", icon: <FileDownloadIcon /> },
       ],
     },
     {
@@ -222,7 +224,7 @@ const AdminLayout = () => {
   useEffect(() => {
     const currentPath = location.pathname;
     const newOpenMenus = {};
-    
+
     menuItems.forEach((item) => {
       if (item.children) {
         const hasActiveChild = item.children.some(child => child.path === currentPath);
@@ -231,7 +233,7 @@ const AdminLayout = () => {
         }
       }
     });
-    
+
     setOpenMenus(newOpenMenus);
   }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -255,8 +257,8 @@ const AdminLayout = () => {
             transition: "top 0.3s",
           }}
         >
-          <Toolbar sx={{ 
-            justifyContent: "space-between", 
+          <Toolbar sx={{
+            justifyContent: "space-between",
             px: 3,
             height: 70,
             background: "rgba(255,255,255,0.05)",
@@ -264,8 +266,8 @@ const AdminLayout = () => {
           }}>
             {/* Left side - Logo and Title */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box 
-                sx={{ 
+              <Box
+                sx={{
                   background: "rgba(255,255,255,0.15)",
                   borderRadius: "12px",
                   p: 1.5,
@@ -278,11 +280,11 @@ const AdminLayout = () => {
                 <Typography sx={{ fontSize: '28px' }}>🔧</Typography>
               </Box>
               <Box>
-                <Typography 
-                  variant="h5" 
-                  noWrap 
-                  sx={{ 
-                    color: "#fff", 
+                <Typography
+                  variant="h5"
+                  noWrap
+                  sx={{
+                    color: "#fff",
                     fontWeight: 700,
                     fontSize: '22px',
                     textShadow: "0 2px 4px rgba(0,0,0,0.3)"
@@ -297,8 +299,8 @@ const AdminLayout = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               {/* Admin Profile Section */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Box 
-                  sx={{ 
+                <Box
+                  sx={{
                     background: "rgba(255,255,255,0.15)",
                     borderRadius: "50%",
                     p: 1,
@@ -310,20 +312,20 @@ const AdminLayout = () => {
                   <AccountCircle sx={{ color: "#fff", fontSize: 28 }} />
                 </Box>
                 <Box sx={{ textAlign: 'right', display: { xs: 'none', sm: 'block' } }}>
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      color: "#fff", 
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "#fff",
                       fontWeight: 600,
                       fontSize: '14px'
                     }}
                   >
                     Admin Portal
                   </Typography>
-                  <Typography 
-                    variant="caption" 
-                    sx={{ 
-                      color: "rgba(255,255,255,0.7)", 
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "rgba(255,255,255,0.7)",
                       fontSize: '11px'
                     }}
                   >
@@ -404,42 +406,42 @@ const AdminLayout = () => {
               <Box key={item.label} sx={{ mb: 1 }}>
                 {item.children ? (
                   <>
-                    <ListItemButton 
+                    <ListItemButton
                       onClick={() => handleToggle(item.label)}
                       sx={{
                         mx: 1,
                         borderRadius: 2,
                         mb: 0.5,
                         background: (openMenus[item.label] || isMenuActive(item))
-                          ? "linear-gradient(90deg, #667eea 0%, #764ba2 100%)" 
+                          ? "linear-gradient(90deg, #667eea 0%, #764ba2 100%)"
                           : "transparent",
                         color: (openMenus[item.label] || isMenuActive(item)) ? "#fff" : "#495057",
                         "&:hover": {
                           background: (openMenus[item.label] || isMenuActive(item))
-                            ? "linear-gradient(90deg, #667eea 0%, #764ba2 100%)" 
+                            ? "linear-gradient(90deg, #667eea 0%, #764ba2 100%)"
                             : "rgba(102, 126, 234, 0.1)",
                           transform: "translateX(4px)",
                         },
                         transition: "all 0.3s ease",
                       }}
                     >
-                      <ListItemIcon sx={{ 
+                      <ListItemIcon sx={{
                         color: (openMenus[item.label] || isMenuActive(item)) ? "#fff" : "#667eea",
-                        minWidth: 40 
+                        minWidth: 40
                       }}>
                         {item.icon}
                       </ListItemIcon>
-                      <ListItemText 
-                        primary={item.label} 
-                        sx={{ 
-                          "& .MuiTypography-root": { 
+                      <ListItemText
+                        primary={item.label}
+                        sx={{
+                          "& .MuiTypography-root": {
                             fontWeight: (openMenus[item.label] || isMenuActive(item)) ? 600 : 500,
                             fontSize: "14px"
-                          } 
-                        }} 
+                          }
+                        }}
                       />
-                      {(openMenus[item.label] || isMenuActive(item)) ? 
-                        <ExpandLess sx={{ color: "#fff" }} /> : 
+                      {(openMenus[item.label] || isMenuActive(item)) ?
+                        <ExpandLess sx={{ color: "#fff" }} /> :
                         <ExpandMore sx={{ color: "#667eea" }} />
                       }
                     </ListItemButton>
@@ -448,18 +450,18 @@ const AdminLayout = () => {
                         {item.children.map((child) => (
                           <ListItemButton
                             key={child.label}
-                            sx={{ 
+                            sx={{
                               pl: 6,
                               mx: 1,
                               borderRadius: 2,
                               mb: 0.5,
-                              background: location.pathname === child.path 
-                                ? "linear-gradient(90deg, #3B2A9F 0%, #D62926 100%)" 
+                              background: location.pathname === child.path
+                                ? "linear-gradient(90deg, #3B2A9F 0%, #D62926 100%)"
                                 : "transparent",
                               color: location.pathname === child.path ? "#fff" : "#6c757d",
                               "&:hover": {
-                                background: location.pathname === child.path 
-                                  ? "linear-gradient(90deg, #3B2A9F 0%, #D62926 100%)" 
+                                background: location.pathname === child.path
+                                  ? "linear-gradient(90deg, #3B2A9F 0%, #D62926 100%)"
                                   : "rgba(59, 42, 159, 0.1)",
                                 transform: "translateX(8px)",
                               },
@@ -467,20 +469,20 @@ const AdminLayout = () => {
                             }}
                             onClick={() => navigate(child.path)}
                           >
-                            <ListItemIcon sx={{ 
+                            <ListItemIcon sx={{
                               color: location.pathname === child.path ? "#fff" : "#3B2A9F",
-                              minWidth: 35 
+                              minWidth: 35
                             }}>
                               {child.icon}
                             </ListItemIcon>
-                            <ListItemText 
-                              primary={child.label} 
-                              sx={{ 
-                                "& .MuiTypography-root": { 
+                            <ListItemText
+                              primary={child.label}
+                              sx={{
+                                "& .MuiTypography-root": {
                                   fontWeight: location.pathname === child.path ? 600 : 400,
                                   fontSize: "13px"
-                                } 
-                              }} 
+                                }
+                              }}
                             />
                           </ListItemButton>
                         ))}
@@ -493,13 +495,13 @@ const AdminLayout = () => {
                       mx: 1,
                       borderRadius: 2,
                       mb: 0.5,
-                      background: isMenuActive(item) 
-                        ? "linear-gradient(90deg, #667eea 0%, #764ba2 100%)" 
+                      background: isMenuActive(item)
+                        ? "linear-gradient(90deg, #667eea 0%, #764ba2 100%)"
                         : "transparent",
                       color: isMenuActive(item) ? "#fff" : "#495057",
                       "&:hover": {
-                        background: isMenuActive(item) 
-                          ? "linear-gradient(90deg, #667eea 0%, #764ba2 100%)" 
+                        background: isMenuActive(item)
+                          ? "linear-gradient(90deg, #667eea 0%, #764ba2 100%)"
                           : "rgba(102, 126, 234, 0.1)",
                         transform: "translateX(4px)",
                       },
@@ -507,20 +509,20 @@ const AdminLayout = () => {
                     }}
                     onClick={() => navigate(item.path)}
                   >
-                    <ListItemIcon sx={{ 
+                    <ListItemIcon sx={{
                       color: isMenuActive(item) ? "#fff" : "#667eea",
-                      minWidth: 40 
+                      minWidth: 40
                     }}>
                       {item.icon}
                     </ListItemIcon>
-                    <ListItemText 
-                      primary={item.label} 
-                      sx={{ 
-                        "& .MuiTypography-root": { 
+                    <ListItemText
+                      primary={item.label}
+                      sx={{
+                        "& .MuiTypography-root": {
                           fontWeight: isMenuActive(item) ? 600 : 500,
                           fontSize: "14px"
-                        } 
-                      }} 
+                        }
+                      }}
                     />
                   </ListItemButton>
                 )}
@@ -536,6 +538,7 @@ const AdminLayout = () => {
             flexGrow: 1,
             background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
             p: 3,
+            pb: 8, // Extra bottom padding to prevent content cropping
             mt: 8,
             minHeight: "100vh",
             overflowY: "auto",
@@ -560,7 +563,9 @@ const AdminLayout = () => {
             scrollbarColor: "#667eea rgba(0,0,0,0.05)",
           }}
         >
-          <Outlet />
+          <Box sx={{ pb: 4 }}>
+            <Outlet />
+          </Box>
         </Box>
       </Box>
     </Box>

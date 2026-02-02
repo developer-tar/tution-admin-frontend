@@ -78,10 +78,27 @@ const PaperPurchases = () => {
   const [selectedBillingInfoId, setSelectedBillingInfoId] = useState(null);
   const [loadingBillingInfo, setLoadingBillingInfo] = useState(false);
   const [detailsTabValue, setDetailsTabValue] = useState(0);
+  const [parentStudents, setParentStudents] = useState([]);
+  const [assigningPurchaseId, setAssigningPurchaseId] = useState(null);
 
   useEffect(() => {
     fetchPurchases();
   }, [statusFilter, searchTerm]);
+
+  // Student list for assign dropdown: from student_details (parent_id = logged parent), names from child_id -> users
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const response = await api.get('parent/students/names');
+        if (response.data.success && Array.isArray(response.data.data)) {
+          setParentStudents(response.data.data);
+        }
+      } catch (err) {
+        console.error('Error fetching parent students for paper assign:', err);
+      }
+    };
+    fetchStudents();
+  }, []);
 
   const fetchPurchases = async () => {
     setLoading(true);
@@ -89,17 +106,25 @@ const PaperPurchases = () => {
       const params = {};
       if (statusFilter) params.status = statusFilter;
       if (searchTerm) params.search = searchTerm;
-      
+
       const response = await api.get('parent/paper-purchases', { params });
-      
+
       if (response.data.success) {
-        setPurchases(response.data.data || []);
+        const raw = response.data.data ?? response.data;
+        const list = Array.isArray(raw) ? raw : (raw?.list ?? raw?.purchases ?? []);
+        setPurchases(list);
       } else {
+        setPurchases([]);
         toast.error(response.data.message || 'Failed to fetch paper purchases');
       }
     } catch (error) {
       console.error('Error fetching paper purchases:', error);
-      toast.error(error.response?.data?.message || 'Failed to load paper purchases');
+      setPurchases([]);
+      if (error.response?.status === 401) {
+        toast.error('Please log in as a parent to view your paper purchases.');
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to load paper purchases');
+      }
     } finally {
       setLoading(false);
     }
@@ -208,6 +233,42 @@ const PaperPurchases = () => {
   const handleViewDetails = (purchase) => {
     setSelectedPurchase(purchase);
     setDialogOpen(true);
+  };
+
+  const handleAssignStudent = async (purchaseId, studentId) => {
+    setAssigningPurchaseId(purchaseId);
+    try {
+      const response = await api.put(`parent/paper-purchases/${purchaseId}/assign-student`, {
+        student_id: studentId ? parseInt(studentId, 10) : null,
+      });
+      if (response.data.success) {
+        toast.success(response.data.message || 'Assignment updated.');
+        setPurchases((prev) =>
+          prev.map((p) =>
+            p.purchase_id === purchaseId
+              ? {
+                  ...p,
+                  student_id: response.data.data.student_id ?? null,
+                  student_name: response.data.data.student_name ?? null,
+                  student_email: response.data.data.student_email ?? null,
+                }
+              : p
+          )
+        );
+        if (selectedPurchase?.purchase_id === purchaseId) {
+          setSelectedPurchase((prev) =>
+            prev ? { ...prev, student_id: response.data.data.student_id ?? null, student_name: response.data.data.student_name ?? null, student_email: response.data.data.student_email ?? null } : prev
+          );
+        }
+      } else {
+        toast.error(response.data.message || 'Failed to update assignment.');
+      }
+    } catch (error) {
+      console.error('Error assigning student:', error);
+      toast.error(error.response?.data?.message || 'Failed to update assignment.');
+    } finally {
+      setAssigningPurchaseId(null);
+    }
   };
 
   const handleDownloadPdf = (pdf) => {
@@ -578,7 +639,31 @@ const PaperPurchases = () => {
                       />
                     </TableCell>
                     <TableCell>
-                      {purchase.student_name || 'N/A'}
+                      <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                        <FormControl size="small" sx={{ minWidth: 160 }} disabled={assigningPurchaseId === purchase.purchase_id}>
+                          <Select
+                            value={purchase.student_id ?? ''}
+                            onChange={(e) => handleAssignStudent(purchase.purchase_id, e.target.value)}
+                            displayEmpty
+                            sx={{
+                              fontSize: '0.875rem',
+                              '& .MuiOutlinedInput-notchedOutline': { borderColor: 'divider' },
+                            }}
+                          >
+                            <MenuItem value="">
+                              <em>Unassigned</em>
+                            </MenuItem>
+                            {parentStudents.map((s) => (
+                              <MenuItem key={s.id} value={s.id}>
+                                {s.full_name}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        {assigningPurchaseId === purchase.purchase_id && (
+                          <CircularProgress size={18} sx={{ position: 'absolute', right: 28, top: '50%', transform: 'translateY(-50%)' }} />
+                        )}
+                      </Box>
                     </TableCell>
                     <TableCell>
                       {purchase.purchased_at 
