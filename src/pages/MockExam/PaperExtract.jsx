@@ -5,7 +5,7 @@ import {
   Button,
   TextField,
   Grid,
-  Paper,
+  Paper as MuiPaper,
   Table,
   TableBody,
   TableCell,
@@ -37,6 +37,13 @@ import {
   AccordionDetails,
   List,
   ListItem,
+  ListItemIcon,
+  ListItemText,
+  Skeleton,
+  Zoom,
+  Fade,
+  alpha,
+  Avatar,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -50,6 +57,10 @@ import {
   Error as ErrorIcon,
   ExpandMore as ExpandMoreIcon,
   CheckCircle as CheckCircleIcon,
+  PictureAsPdf as PdfIcon,
+  AttachFile as AttachFileIcon,
+  FilterList as FilterListIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import api from '../../api';
@@ -87,6 +98,7 @@ export default function PaperExtract() {
     source_file: null,
   });
   const [uploading, setUploading] = useState(false);
+  const [mainTabValue, setMainTabValue] = useState(0);
   const [tabValue, setTabValue] = useState(0);
   const [statistics, setStatistics] = useState(null);
   const [editingQuestionId, setEditingQuestionId] = useState(null);
@@ -156,7 +168,7 @@ export default function PaperExtract() {
     }
   };
 
-  const handleOpenDialog = () => {
+  const handleOpenUploadForm = () => {
     setFormData({
       name: '',
       description: '',
@@ -169,11 +181,26 @@ export default function PaperExtract() {
       currency: '€',
       source_file: null,
     });
-    setOpenDialog(true);
+    setMainTabValue(1);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
+    setFormData({
+      name: '',
+      description: '',
+      paper_id: '',
+      subject: '',
+      exam_board: '',
+      year: '',
+      level: '',
+      price: '',
+      currency: '€',
+      source_file: null,
+    });
+  };
+
+  const resetUploadForm = () => {
     setFormData({
       name: '',
       description: '',
@@ -233,7 +260,8 @@ export default function PaperExtract() {
 
       if (response.data && response.data.success) {
         toast.success('Paper extract created successfully. Extraction in progress.');
-        handleCloseDialog();
+        resetUploadForm();
+        setMainTabValue(0);
         fetchExtracts();
         fetchStatistics();
       }
@@ -333,20 +361,75 @@ export default function PaperExtract() {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Paper Extract
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleOpenDialog}
-        >
-          Upload Paper
-        </Button>
-      </Box>
+    <Box sx={{ 
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      p: 4,
+      pb: 8
+    }}>
+      <Fade in timeout={800}>
+        <Box sx={{ mb: 5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+            <Avatar sx={{ 
+              width: 70, 
+              height: 70, 
+              background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+              boxShadow: '0 8px 32px rgba(245, 87, 108, 0.4)'
+            }}>
+              <FileDownloadIcon sx={{ fontSize: 40 }} />
+            </Avatar>
+            <Box>
+              <Typography variant="h3" sx={{ fontWeight: 800, color: 'white', textShadow: '2px 2px 8px rgba(0,0,0,0.3)', letterSpacing: '-0.5px' }}>
+                Paper Extract
+              </Typography>
+              <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.9)', fontSize: '16px', fontWeight: 500 }}>
+                Upload PDF to extract questions automatically
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+      </Fade>
 
+      <Zoom in timeout={600}>
+        <Card sx={{ 
+          mb: 4,
+          borderRadius: 4,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255,255,255,0.5)',
+          overflow: 'hidden'
+        }}>
+          <Tabs 
+            value={mainTabValue} 
+            onChange={(e, newValue) => setMainTabValue(newValue)}
+            sx={{
+              '& .MuiTab-root': {
+                fontSize: '16px',
+                fontWeight: 600,
+                textTransform: 'none',
+                minHeight: 70,
+                px: 4,
+                transition: 'all 0.3s ease',
+                '&:hover': { background: alpha('#667eea', 0.08) }
+              },
+              '& .Mui-selected': { color: '#667eea !important', background: alpha('#667eea', 0.1) },
+              '& .MuiTabs-indicator': {
+                height: 4,
+                borderRadius: '4px 4px 0 0',
+                background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)'
+              }
+            }}
+          >
+            <Tab icon={<FileDownloadIcon />} iconPosition="start" label="All Extracts" />
+            <Tab icon={<AddIcon />} iconPosition="start" label="Upload Paper" />
+          </Tabs>
+        </Card>
+      </Zoom>
+
+      {mainTabValue === 0 && (
+        <Fade in timeout={400}>
+          <Box>
       {/* Statistics Cards */}
       {statistics && (
         <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -402,7 +485,11 @@ export default function PaperExtract() {
       )}
 
       {/* Filters and Search */}
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <MuiPaper sx={{ p: 4, mb: 3, borderRadius: 4, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', background: 'rgba(255,255,255,0.98)' }}>
+        <Typography variant="h6" sx={{ mb: 3, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1, color: '#667eea' }}>
+          <FilterListIcon />
+          Filter Extracts
+        </Typography>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} md={4}>
             <TextField
@@ -489,39 +576,38 @@ export default function PaperExtract() {
             </Button>
           </Grid>
         </Grid>
-      </Paper>
+      </MuiPaper>
 
       {/* Extracts Table */}
-      <TableContainer component={Paper}>
+      <TableContainer component={MuiPaper} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
         <Table>
           <TableHead>
-            <TableRow>
-              <TableCell><strong>Title</strong></TableCell>
-              <TableCell><strong>File Details</strong></TableCell>
-              <TableCell><strong>Subject</strong></TableCell>
-              <TableCell><strong>Year</strong></TableCell>
-              <TableCell><strong>Level</strong></TableCell>
-              <TableCell><strong>Exam Board</strong></TableCell>
-              <TableCell><strong>Price</strong></TableCell>
-              <TableCell><strong>Questions</strong></TableCell>
-              <TableCell><strong>Pages</strong></TableCell>
-              <TableCell><strong>Status</strong></TableCell>
-              <TableCell><strong>Uploaded</strong></TableCell>
-              <TableCell><strong>Uploaded By</strong></TableCell>
-              <TableCell><strong>Actions</strong></TableCell>
+            <TableRow sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+              <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>Title</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>File</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>Subject</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>Year</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>Level</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>Price</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>Questions</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>Status</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>Uploaded</TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={13} align="center">
-                  <CircularProgress />
-                </TableCell>
-              </TableRow>
+              [...Array(5)].map((_, i) => (
+                <TableRow key={i}><TableCell colSpan={10}><Skeleton height={60} /></TableCell></TableRow>
+              ))
             ) : extracts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} align="center">
-                  <Typography>No extracts found</Typography>
+                <TableCell colSpan={10}>
+                  <Box sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>
+                    <FileDownloadIcon sx={{ fontSize: 80, opacity: 0.3, mb: 2 }} />
+                    <Typography variant="h6" fontWeight={600}>No extracts found</Typography>
+                    <Typography variant="body2" sx={{ mt: 1 }}>Upload a PDF to extract questions</Typography>
+                  </Box>
                 </TableCell>
               </TableRow>
             ) : (
@@ -580,7 +666,6 @@ export default function PaperExtract() {
                         <Typography variant="body2" color="text.secondary">-</Typography>
                       )}
                     </TableCell>
-                    <TableCell>{extract.exam_board || '-'}</TableCell>
                     <TableCell>
                       {extract.price ? (
                         <Typography variant="body2" fontWeight="medium" color="primary">
@@ -594,13 +679,6 @@ export default function PaperExtract() {
                       <Typography variant="body2" fontWeight="medium">
                         {extract.extract_questions_count || extract.questions_count || 0}
                       </Typography>
-                    </TableCell>
-                    <TableCell>
-                      {extract.total_pages ? (
-                        <Typography variant="body2">{extract.total_pages}</Typography>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">-</Typography>
-                      )}
                     </TableCell>
                     <TableCell>
                       <Chip
@@ -617,21 +695,8 @@ export default function PaperExtract() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2">
-                        {new Date(extract.created_at).toLocaleDateString()}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {new Date(extract.created_at).toLocaleTimeString()}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      {extract.creator ? (
-                        <Typography variant="body2">
-                          {extract.creator.first_name} {extract.creator.last_name}
-                        </Typography>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">-</Typography>
-                      )}
+                      <Typography variant="body2">{new Date(extract.created_at).toLocaleDateString()}</Typography>
+                      <Typography variant="caption" color="text.secondary">{new Date(extract.created_at).toLocaleTimeString()}</Typography>
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', gap: 0.5 }}>
@@ -704,122 +769,97 @@ export default function PaperExtract() {
           />
         </Box>
       )}
+          </Box>
+        </Fade>
+      )}
 
-      {/* Upload Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>Upload Paper for Extraction</DialogTitle>
-        <form onSubmit={handleSubmit}>
-          <DialogContent>
-            <Grid container spacing={2} sx={{ mt: 1 }}>
+      {mainTabValue === 1 && (
+        <Fade in timeout={400}>
+          <MuiPaper component="form" onSubmit={handleSubmit} sx={{ p: 4, borderRadius: 4, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', background: 'rgba(255,255,255,0.98)' }}>
+            <Typography variant="h6" sx={{ mb: 3, fontWeight: 700, color: '#667eea' }}>Upload Paper for Extraction</Typography>
+            <Grid container spacing={3}>
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Title *"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
+                <TextField fullWidth label="Title *" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Description"
-                  multiline
-                  rows={3}
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
+                <TextField fullWidth label="Description" multiline rows={3} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Subject"
-                  value={formData.subject}
-                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                />
+                <TextField fullWidth label="Subject" value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Exam Board"
-                  value={formData.exam_board}
-                  onChange={(e) => setFormData({ ...formData, exam_board: e.target.value })}
-                />
+                <TextField fullWidth label="Exam Board" value={formData.exam_board} onChange={(e) => setFormData({ ...formData, exam_board: e.target.value })} />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Year"
-                  value={formData.year}
-                  onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                />
+                <TextField fullWidth label="Year" value={formData.year} onChange={(e) => setFormData({ ...formData, year: e.target.value })} />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Level"
-                  value={formData.level}
-                  onChange={(e) => setFormData({ ...formData, level: e.target.value })}
-                  placeholder="e.g., GCSE, A-Level, 11 Plus"
-                />
+                <TextField fullWidth label="Level" value={formData.level} onChange={(e) => setFormData({ ...formData, level: e.target.value })} placeholder="e.g., GCSE, A-Level" />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Price"
-                  type="number"
-                  inputProps={{ step: "0.01", min: "0" }}
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  placeholder="0.00"
-                />
+                <TextField fullWidth label="Price" type="number" inputProps={{ step: '0.01', min: '0' }} value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} placeholder="0.00" />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <FormControl fullWidth>
                   <InputLabel>Currency</InputLabel>
-                  <Select
-                    value={formData.currency}
-                    label="Currency"
-                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                  >
+                  <Select value={formData.currency} label="Currency" onChange={(e) => setFormData({ ...formData, currency: e.target.value })}>
                     <MenuItem value="€">€ (Euro)</MenuItem>
                     <MenuItem value="£">£ (Pound)</MenuItem>
                     <MenuItem value="$">$ (Dollar)</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
+
+              {/* PDF Upload Card - like previous Create Paper */}
               <Grid item xs={12}>
-                <Button
-                  variant="outlined"
-                  component="label"
-                  startIcon={<CloudUploadIcon />}
-                  fullWidth
-                  sx={{ py: 2 }}
-                >
-                  {formData.source_file ? formData.source_file.name : 'Upload PDF or Word Document'}
-                  <input
-                    type="file"
-                    hidden
-                    accept=".pdf,.doc,.docx"
-                    onChange={handleFileChange}
-                  />
-                </Button>
-                {formData.source_file && (
-                  <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
-                    Selected: {formData.source_file.name} ({(formData.source_file.size / 1024 / 1024).toFixed(2)} MB)
-                  </Typography>
-                )}
+                <Card sx={{ 
+                  p: 4, 
+                  background: 'linear-gradient(135deg, rgba(244, 67, 54, 0.05) 0%, rgba(233, 30, 99, 0.05) 100%)',
+                  border: '3px dashed',
+                  borderColor: alpha('#f44336', 0.3),
+                  borderRadius: 4,
+                  boxShadow: '0 8px 32px rgba(244, 67, 54, 0.1)'
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                    <Avatar sx={{ width: 60, height: 60, background: 'linear-gradient(135deg, #f44336 0%, #e91e63 100%)', boxShadow: '0 8px 24px rgba(244, 67, 54, 0.4)' }}>
+                      <PdfIcon sx={{ fontSize: 30 }} />
+                    </Avatar>
+                    <Box>
+                      <Typography variant="h6" sx={{ fontWeight: 700, color: '#f44336' }}>PDF / Word File Upload</Typography>
+                      <Typography variant="body2" color="text.secondary" fontWeight={500}>Upload a single file (max 10MB). PDF or Word document.</Typography>
+                    </Box>
+                  </Box>
+                  <Button variant="contained" component="label" startIcon={<AttachFileIcon />} sx={{ mb: 2, borderRadius: 2, background: 'linear-gradient(135deg, #f44336 0%, #e91e63 100%)', fontWeight: 700, textTransform: 'none', px: 4, py: 1.5 }}>
+                    {formData.source_file ? formData.source_file.name : 'Choose PDF or Word Document'}
+                    <input type="file" hidden accept=".pdf,.doc,.docx" onChange={handleFileChange} />
+                  </Button>
+                  {formData.source_file && (
+                    <List sx={{ background: 'white', borderRadius: 2, border: '2px solid', borderColor: alpha('#4caf50', 0.3) }}>
+                      <ListItem secondaryAction={<IconButton edge="end" onClick={() => setFormData({ ...formData, source_file: null })} size="small" sx={{ color: '#f44336' }}><DeleteIcon /></IconButton>}>
+                        <ListItemIcon><Avatar sx={{ background: alpha('#4caf50', 0.1), color: '#4caf50' }}><PdfIcon /></Avatar></ListItemIcon>
+                        <ListItemText primary={formData.source_file.name} secondary={`${(formData.source_file.size / 1024 / 1024).toFixed(2)} MB`} />
+                      </ListItem>
+                    </List>
+                  )}
+                  <Alert severity="info" icon={<InfoIcon />} sx={{ mt: 3, borderRadius: 2, border: '2px solid', borderColor: alpha('#2196f3', 0.3) }}>
+                    <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Requirements:</Typography>
+                    <Typography variant="caption" component="div">✓ Max 10MB · PDF, .doc or .docx</Typography>
+                  </Alert>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', gap: 2, pt: 2, borderTop: '2px solid', borderColor: 'divider' }}>
+                  <Button type="button" variant="outlined" onClick={() => setMainTabValue(0)} sx={{ borderRadius: 2, fontWeight: 600 }}>Cancel</Button>
+                  <Button type="submit" variant="contained" disabled={uploading} sx={{ borderRadius: 2, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', fontWeight: 700, textTransform: 'none', px: 4 }}>
+                    {uploading ? <CircularProgress size={24} color="inherit" /> : 'Upload & Extract'}
+                  </Button>
+                </Box>
               </Grid>
             </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog}>Cancel</Button>
-            <Button type="submit" variant="contained" disabled={uploading}>
-              {uploading ? <CircularProgress size={20} /> : 'Upload & Extract'}
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
+          </MuiPaper>
+        </Fade>
+      )}
 
       {/* View Dialog */}
       <Dialog open={openViewDialog} onClose={() => setOpenViewDialog(false)} maxWidth="lg" fullWidth>
@@ -1559,7 +1599,7 @@ export default function PaperExtract() {
                                               </Typography>
                                             )}
                                             {question.answer_explanation && (
-                                              <Paper
+                                              <MuiPaper
                                                 variant="outlined"
                                                 sx={{
                                                   p: 2,
@@ -1574,7 +1614,7 @@ export default function PaperExtract() {
                                                 <Typography variant="body2">
                                                   {question.answer_explanation}
                                                 </Typography>
-                                              </Paper>
+                                              </MuiPaper>
                                             )}
                                           </>
                                         )}

@@ -88,13 +88,13 @@ const AdminLayout = () => {
         return true;
       }
 
-      // Special handling for Mock Exams - active for mock-exams/billing and paper-extract
-      if (item.label === "Mock Exams" && (currentPath === "/admin/mock-exams/billing" || currentPath === "/admin/mock-exams/paper-extract")) {
+      // Special handling for Mock Exams - active for mock-exams/billing
+      if (item.label === "Mock Exams" && currentPath === "/admin/mock-exams/billing") {
         return true;
       }
 
-      // Special handling for Papers - active for papers/billing
-      if (item.label === "Papers" && currentPath === "/admin/papers/billing") {
+      // Special handling for Papers - active for papers, papers/billing, and paper-extract
+      if (item.label === "Papers" && (currentPath === "/admin/papers" || currentPath === "/admin/papers/billing" || currentPath === "/admin/mock-exams/paper-extract")) {
         return true;
       }
     }
@@ -149,7 +149,6 @@ const AdminLayout = () => {
       children: [
         { label: "Mock Exam List", path: "/admin/mock-exams", icon: <ListIcon /> },
         { label: "Billing", path: "/admin/mock-exams/billing", icon: <ReceiptLongIcon /> },
-        { label: "Paper Extract", path: "/admin/mock-exams/paper-extract", icon: <FileDownloadIcon /> },
       ],
     },
     {
@@ -157,6 +156,7 @@ const AdminLayout = () => {
       icon: <DescriptionIcon />,
       children: [
         { label: "Paper List", path: "/admin/papers", icon: <ListIcon /> },
+        { label: "Extract Paper", path: "/admin/mock-exams/paper-extract", icon: <FileDownloadIcon /> },
         { label: "Billing", path: "/admin/papers/billing", icon: <ReceiptLongIcon /> },
       ],
     },

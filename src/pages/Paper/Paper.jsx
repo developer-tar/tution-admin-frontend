@@ -142,15 +142,14 @@ const Paper = () => {
   const [togglingPaperId, setTogglingPaperId] = useState(null);
   const [existingImageUrl, setExistingImageUrl] = useState(null);
   
-  // PDF files state
-  const [pdfFiles, setPdfFiles] = useState([]);
-  const [existingPdfs, setExistingPdfs] = useState([]);
-  const [deletedPdfIds, setDeletedPdfIds] = useState([]); // Track deleted PDF IDs
-  const [removeImage, setRemoveImage] = useState(false); // Track if image should be removed
-  
+  const [removeImage, setRemoveImage] = useState(false);
+  // Manual questions (Create Paper - add questions one by one)
+  const [questions, setQuestions] = useState([
+    { question_text: '', options: ['', ''], correct_answer: '', marks: 1, duration_in_sec: 60 }
+  ]);
+
   // Preview states
   const [imagePreview, setImagePreview] = useState({ open: false, url: null });
-  const [pdfPreview, setPdfPreview] = useState({ open: false, url: null, name: null });
 
   // Form handling
   const { control, handleSubmit, reset, formState: { errors } } = useForm({
@@ -166,39 +165,37 @@ const Paper = () => {
     }
   });
 
-  // PDF file upload handler
-  const handlePdfFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    
-    const totalCount = files.length + existingPdfs.length;
-    if (totalCount > 10) {
-      toast.error(`Maximum 10 PDF files allowed per paper (you already have ${existingPdfs.length} PDF(s))`);
-      e.target.value = '';
-      return;
-    }
-    
-    const errors = [];
-    files.forEach((file, index) => {
-      if (file.type !== 'application/pdf') {
-        errors.push(`File ${index + 1} (${file.name}) must be a PDF`);
-      }
-      if (file.size > 10485760) {
-        errors.push(`File ${index + 1} (${file.name}) exceeds 10MB`);
-      }
-    });
-    
-    if (errors.length > 0) {
-      toast.error(errors.join('\n'));
-      e.target.value = '';
-      return;
-    }
-    
-    setPdfFiles(files);
-    toast.success(`${files.length} PDF file(s) selected`);
+  const addQuestion = () => {
+    setQuestions(prev => [...prev, { question_text: '', options: ['', ''], correct_answer: '', marks: 1, duration_in_sec: 60 }]);
   };
-  
-  const handleRemovePdf = (index) => {
-    setPdfFiles(prev => prev.filter((_, i) => i !== index));
+  const removeQuestion = (qIndex) => {
+    if (questions.length <= 1) {
+      toast.error('At least one question is required');
+      return;
+    }
+    setQuestions(prev => prev.filter((_, i) => i !== qIndex));
+  };
+  const updateQuestion = (qIndex, field, value) => {
+    setQuestions(prev => prev.map((q, i) => i === qIndex ? { ...q, [field]: value } : q));
+  };
+  const addOption = (qIndex) => {
+    setQuestions(prev => prev.map((q, i) => i === qIndex ? { ...q, options: [...q.options, ''] } : q));
+  };
+  const removeOption = (qIndex, optIndex) => {
+    setQuestions(prev => prev.map((q, i) => {
+      if (i !== qIndex) return q;
+      if (q.options.length <= 2) return q;
+      const newOpts = q.options.filter((_, j) => j !== optIndex);
+      return { ...q, options: newOpts, correct_answer: q.correct_answer === q.options[optIndex] ? '' : q.correct_answer };
+    }));
+  };
+  const updateOption = (qIndex, optIndex, value) => {
+    setQuestions(prev => prev.map((q, i) => {
+      if (i !== qIndex) return q;
+      const newOpts = [...q.options];
+      newOpts[optIndex] = value;
+      return { ...q, options: newOpts };
+    }));
   };
 
   // Preview image
@@ -211,29 +208,11 @@ const Paper = () => {
     }
   };
 
-  // Preview PDF
-  const handlePdfPreview = (file, name) => {
-    if (file instanceof File) {
-      const url = URL.createObjectURL(file);
-      setPdfPreview({ open: true, url, name: file.name });
-    } else if (typeof file === 'string') {
-      setPdfPreview({ open: true, url: file, name });
-    }
-  };
-
-  // Close previews and cleanup URLs
   const handleCloseImagePreview = () => {
     if (imagePreview.url && imagePreview.url.startsWith('blob:')) {
       URL.revokeObjectURL(imagePreview.url);
     }
     setImagePreview({ open: false, url: null });
-  };
-
-  const handleClosePdfPreview = () => {
-    if (pdfPreview.url && pdfPreview.url.startsWith('blob:')) {
-      URL.revokeObjectURL(pdfPreview.url);
-    }
-    setPdfPreview({ open: false, url: null, name: null });
   };
 
   // Fetch functions
@@ -301,12 +280,23 @@ const Paper = () => {
   // Submit handler
   const onSubmit = async (data) => {
     if (isSubmitting) return;
-    
-    console.log('=== SUBMIT PAPER ===');
-    console.log('Mode:', editingPaper ? 'EDIT' : 'CREATE');
-    
+
+    const validQuestions = questions.filter(q => (q.question_text || '').trim().length >= 1);
+    const hasValidOptions = validQuestions.every(q => {
+      const opts = (q.options || []).filter(o => (o || '').toString().trim());
+      return opts.length >= 2 && (q.correct_answer || '').trim() && opts.includes(q.correct_answer);
+    });
+    if (validQuestions.length === 0) {
+      toast.error('Add at least one question with text');
+      return;
+    }
+    if (!hasValidOptions) {
+      toast.error('Each question must have at least 2 options and a selected correct answer');
+      return;
+    }
+
     setIsSubmitting(true);
-    
+
     try {
       const formData = new FormData();
       
@@ -321,30 +311,19 @@ const Paper = () => {
       if (data.paper_image && data.paper_image instanceof File) {
         formData.append('paper_image', data.paper_image);
       } else if (removeImage && editingPaper) {
-        // Send empty string or null to indicate image removal
         formData.append('paper_image', '');
       }
-      
-      // Add new PDF files
-      if (pdfFiles && pdfFiles.length > 0) {
-        pdfFiles.forEach((file) => {
-          formData.append('paper_pdfs[]', file);
-        });
-      }
-      
-      // Add deleted PDF IDs (for existing PDFs that were removed)
-      if (editingPaper && deletedPdfIds.length > 0) {
-        deletedPdfIds.forEach((pdfId) => {
-          formData.append('deleted_pdf_ids[]', pdfId);
-        });
-        console.log('🗑️ Deleted PDF IDs:', deletedPdfIds);
-      }
-      
-      // Log removal flags
-      if (removeImage) {
-        console.log('🗑️ Image removal flag set');
-      }
-      
+
+      // Questions (manual create paper) - use only valid questions
+      const toSend = questions.filter(q => (q.question_text || '').trim().length >= 1);
+      toSend.forEach((q, i) => {
+        formData.append(`questions[${i}]`, (q.question_text || '').trim());
+        (q.options || []).filter(o => (o || '').toString().trim()).forEach((opt, j) => formData.append(`options[${i}][${j}]`, opt.toString().trim()));
+        formData.append(`answers[${i}]`, (q.correct_answer || '').trim());
+        formData.append(`duration_in_sec[${i}]`, q.duration_in_sec ?? 60);
+        formData.append(`marks[${i}]`, q.marks ?? 1);
+      });
+
       if (editingPaper) {
         formData.append('_method', 'PUT');
         const response = await api.post(`admin/paper/${editingPaper.id}`, formData);
@@ -355,10 +334,8 @@ const Paper = () => {
       }
       
       reset();
-      setPdfFiles([]);
-      setExistingPdfs([]);
+      setQuestions([{ question_text: '', options: ['', ''], correct_answer: '', marks: 1, duration_in_sec: 60 }]);
       setExistingImageUrl(null);
-      setDeletedPdfIds([]);
       setRemoveImage(false);
       setEditingPaper(null);
       setTabValue(0);
@@ -405,12 +382,20 @@ const Paper = () => {
         currency: paperData.currency || '€',
         paper_image: null
       });
-      
+
+      const loadedQuestions = (paperData.questions || []).length > 0
+        ? paperData.questions.map(q => ({
+            question_text: q.question_text || '',
+            options: (q.options || []).map(o => o.option_text || ''),
+            correct_answer: q.correct_answer || '',
+            marks: q.marks ?? 1,
+            duration_in_sec: q.duration_in_sec ?? 60
+          }))
+        : [{ question_text: '', options: ['', ''], correct_answer: '', marks: 1, duration_in_sec: 60 }];
+      setQuestions(loadedQuestions);
+
       setEditingPaper(paperData);
       setExistingImageUrl(paperData.image);
-      setExistingPdfs(paperData.pdfs || []);
-      setPdfFiles([]);
-      setDeletedPdfIds([]);
       setRemoveImage(false);
       setTabValue(1);
       
@@ -459,8 +444,7 @@ const Paper = () => {
 
   const handleCancelEdit = () => {
     reset();
-    setPdfFiles([]);
-    setExistingPdfs([]);
+    setQuestions([{ question_text: '', options: ['', ''], correct_answer: '', marks: 1, duration_in_sec: 60 }]);
     setExistingImageUrl(null);
     setEditingPaper(null);
     setTabValue(0);
@@ -505,7 +489,7 @@ const Paper = () => {
                 fontSize: '16px',
                 fontWeight: 500
               }}>
-                Create and manage PDF-based learning materials
+                Create papers by adding questions one by one
               </Typography>
             </Box>
           </Box>
@@ -683,7 +667,7 @@ const Paper = () => {
                     <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>Category</TableCell>
                     <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>Format</TableCell>
                     <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>Price</TableCell>
-                    <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>PDFs</TableCell>
+                    <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>Questions</TableCell>
                     <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>Status</TableCell>
                     <TableCell sx={{ color: 'white', fontWeight: 700, fontSize: '15px' }}>Actions</TableCell>
                   </TableRow>
@@ -800,27 +784,11 @@ const Paper = () => {
                             </Box>
                           </TableCell>
                           <TableCell>
-                            <Badge 
-                              badgeContent={paper.pdfs_count || 0} 
-                              color="primary"
-                              sx={{
-                                '& .MuiBadge-badge': {
-                                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                  fontWeight: 700
-                                }
-                              }}
-                            >
-                              <Chip 
-                                icon={<PdfIcon />} 
-                                label="PDFs" 
-                                size="small"
-                                sx={{ 
-                                  fontWeight: 600,
-                                  background: alpha('#f44336', 0.1),
-                                  color: '#f44336'
-                                }}
-                              />
-                            </Badge>
+                            <Chip 
+                              label={(paper.questions_count ?? paper.pdfs_count ?? 0) + ' Q'}
+                              size="small"
+                              sx={{ fontWeight: 600, background: alpha('#667eea', 0.1), color: '#667eea' }}
+                            />
                           </TableCell>
                           <TableCell>
                             <Chip 
@@ -1360,263 +1328,120 @@ const Paper = () => {
                   </Card>
                 </Grid>
 
-                {/* PDF Files Upload - Fancy Card */}
+                {/* Questions - Add one by one */}
                 <Grid item xs={12}>
                   <Card sx={{ 
                     p: 4, 
-                    background: 'linear-gradient(135deg, rgba(244, 67, 54, 0.05) 0%, rgba(233, 30, 99, 0.05) 100%)',
-                    border: '3px dashed',
-                    borderColor: alpha('#f44336', 0.3),
+                    background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)',
+                    border: '2px solid',
+                    borderColor: alpha('#667eea', 0.3),
                     borderRadius: 4,
-                    boxShadow: '0 8px 32px rgba(244, 67, 54, 0.1)'
+                    boxShadow: '0 8px 32px rgba(102, 126, 234, 0.1)'
                   }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                      <Avatar sx={{ 
-                        width: 60, 
-                        height: 60, 
-                        background: 'linear-gradient(135deg, #f44336 0%, #e91e63 100%)',
-                        boxShadow: '0 8px 24px rgba(244, 67, 54, 0.4)'
-                      }}>
-                        <PdfIcon sx={{ fontSize: 30 }} />
-                      </Avatar>
-                      <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 700, color: '#f44336' }}>
-                          PDF Files Upload
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" fontWeight={500}>
-                          Upload up to 10 PDF files (max 10MB each)
-                        </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Avatar sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', width: 56, height: 56 }}>
+                          <AddIcon sx={{ fontSize: 28 }} />
+                        </Avatar>
+                        <Box>
+                          <Typography variant="h6" sx={{ fontWeight: 700, color: '#667eea' }}>Questions</Typography>
+                          <Typography variant="body2" color="text.secondary">Add at least one question with options and correct answer</Typography>
+                        </Box>
                       </Box>
+                      <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={addQuestion}
+                        sx={{
+                          borderRadius: 2,
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          fontWeight: 700,
+                          textTransform: 'none'
+                        }}
+                      >
+                        Add Question
+                      </Button>
                     </Box>
-                    
-                    {existingPdfs.length > 0 && (
-                      <Box sx={{ mb: 3 }}>
-                        <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 700, color: '#f44336' }}>
-                          📎 Existing PDFs ({existingPdfs.length})
-                        </Typography>
-                        <List sx={{ 
-                          background: 'white', 
-                          borderRadius: 2,
-                          border: '1px solid',
-                          borderColor: 'divider'
-                        }}>
-                          {existingPdfs.map((pdf, index) => (
-                            <ListItem 
-                              key={pdf.id}
-                              sx={{
-                                borderBottom: index < existingPdfs.length - 1 ? '1px solid' : 'none',
-                                borderColor: 'divider',
-                                '&:hover': {
-                                  background: alpha('#f44336', 0.05)
-                                }
-                              }}
+
+                    {questions.map((q, qIndex) => (
+                      <Card key={qIndex} variant="outlined" sx={{ p: 2, mb: 2, borderColor: alpha('#667eea', 0.3), borderRadius: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                          <Typography variant="subtitle1" fontWeight={700} color="#667eea">Question {qIndex + 1}</Typography>
+                          <IconButton size="small" onClick={() => removeQuestion(qIndex)} sx={{ color: '#f44336' }} title="Remove question">
+                            <DeleteIcon />
+                          </IconButton>
+                        </Box>
+                        <TextField
+                          fullWidth
+                          multiline
+                          minRows={2}
+                          label="Question text"
+                          value={q.question_text}
+                          onChange={(e) => updateQuestion(qIndex, 'question_text', e.target.value)}
+                          placeholder="Enter question text..."
+                          sx={{ mb: 2 }}
+                        />
+                        <Grid container spacing={2}>
+                          <Grid item xs={12} sm={6}>
+                            <TextField
+                              type="number"
+                              label="Marks"
+                              value={q.marks}
+                              onChange={(e) => updateQuestion(qIndex, 'marks', parseInt(e.target.value, 10) || 1)}
+                              inputProps={{ min: 1 }}
+                              size="small"
+                              fullWidth
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <TextField
+                              type="number"
+                              label="Duration (seconds)"
+                              value={q.duration_in_sec}
+                              onChange={(e) => updateQuestion(qIndex, 'duration_in_sec', parseInt(e.target.value, 10) || 60)}
+                              inputProps={{ min: 1 }}
+                              size="small"
+                              fullWidth
+                            />
+                          </Grid>
+                        </Grid>
+                        <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 600 }}>Options</Typography>
+                        {(q.options || []).map((opt, optIndex) => (
+                          <Box key={optIndex} sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1 }}>
+                            <TextField
+                              size="small"
+                              fullWidth
+                              placeholder={`Option ${optIndex + 1}`}
+                              value={opt}
+                              onChange={(e) => updateOption(qIndex, optIndex, e.target.value)}
+                            />
+                            <IconButton
+                              size="small"
+                              onClick={() => removeOption(qIndex, optIndex)}
+                              disabled={(q.options || []).length <= 2}
+                              sx={{ color: '#f44336' }}
                             >
-                              <ListItemIcon>
-                                <Avatar sx={{ 
-                                  background: alpha('#f44336', 0.1),
-                                  color: '#f44336'
-                                }}>
-                                  <PdfIcon />
-                                </Avatar>
-                              </ListItemIcon>
-                              <ListItemText 
-                                primary={
-                                  <Typography fontWeight={600}>
-                                    {pdf.original_name || pdf.file_name}
-                                  </Typography>
-                                }
-                                secondary={
-                                  <Typography variant="caption" color="text.secondary">
-                                    {pdf.size_human || 'Unknown size'}
-                                  </Typography>
-                                }
-                              />
-                              <Box sx={{ display: 'flex', gap: 1 }}>
-                                <Tooltip title="Preview PDF" arrow>
-                                  <IconButton
-                                    onClick={() => handlePdfPreview(pdf.download_url || pdf.url, pdf.original_name || pdf.file_name)}
-                                    sx={{
-                                      background: alpha('#ff9800', 0.1),
-                                      '&:hover': {
-                                        background: alpha('#ff9800', 0.2)
-                                      }
-                                    }}
-                                  >
-                                    <PreviewIcon sx={{ color: '#ff9800' }} />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Download" arrow>
-                                  <IconButton
-                                    href={pdf.download_url || pdf.url}
-                                    target="_blank"
-                                    sx={{
-                                      background: alpha('#2196f3', 0.1),
-                                      '&:hover': {
-                                        background: alpha('#2196f3', 0.2)
-                                      }
-                                    }}
-                                  >
-                                    <DownloadIcon sx={{ color: '#2196f3' }} />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Delete PDF" arrow>
-                                  <IconButton
-                                    onClick={() => {
-                                      const pdfToDelete = existingPdfs[index];
-                                      // Track deleted PDF ID
-                                      if (pdfToDelete && pdfToDelete.id) {
-                                        setDeletedPdfIds(prev => [...prev, pdfToDelete.id]);
-                                      }
-                                      setExistingPdfs(prev => prev.filter((_, i) => i !== index));
-                                      toast.info('PDF will be removed on update');
-                                    }}
-                                    sx={{
-                                      background: alpha('#f44336', 0.1),
-                                      '&:hover': {
-                                        background: alpha('#f44336', 0.2)
-                                      }
-                                    }}
-                                  >
-                                    <DeleteIcon sx={{ color: '#f44336' }} />
-                                  </IconButton>
-                                </Tooltip>
-                              </Box>
-                            </ListItem>
-                          ))}
-                        </List>
-                      </Box>
-                    )}
-                    
-                    <Button
-                      variant="contained"
-                      component="label"
-                      startIcon={<AttachFileIcon />}
-                      sx={{ 
-                        mb: 3,
-                        borderRadius: 2,
-                        background: 'linear-gradient(135deg, #f44336 0%, #e91e63 100%)',
-                        fontSize: '16px',
-                        fontWeight: 700,
-                        textTransform: 'none',
-                        px: 4,
-                        py: 1.5,
-                        boxShadow: '0 8px 24px rgba(244, 67, 54, 0.4)',
-                        '&:hover': {
-                          transform: 'translateY(-2px)',
-                          boxShadow: '0 12px 32px rgba(244, 67, 54, 0.5)'
-                        }
-                      }}
-                    >
-                      {editingPaper ? 'Add More PDFs' : 'Upload PDFs'}
-                      <input
-                        type="file"
-                        hidden
-                        multiple
-                        accept=".pdf,application/pdf"
-                        onChange={handlePdfFileChange}
-                      />
-                    </Button>
-                    
-                    {pdfFiles.length > 0 && (
-                      <Box>
-                        <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 700, color: '#4caf50', display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <CheckIcon />
-                          Selected PDFs ({pdfFiles.length})
-                        </Typography>
-                        <List sx={{ 
-                          background: 'white', 
-                          borderRadius: 2,
-                          border: '2px solid',
-                          borderColor: alpha('#4caf50', 0.3)
-                        }}>
-                          {pdfFiles.map((file, index) => (
-                            <ListItem
-                              key={index}
-                              sx={{
-                                borderBottom: index < pdfFiles.length - 1 ? '1px solid' : 'none',
-                                borderColor: 'divider'
-                              }}
-                              secondaryAction={
-                                <Box sx={{ display: 'flex', gap: 1 }}>
-                                  <Tooltip title="Preview PDF" arrow>
-                                    <IconButton 
-                                      onClick={() => handlePdfPreview(file)}
-                                      sx={{
-                                        background: alpha('#ff9800', 0.1),
-                                        '&:hover': {
-                                          background: alpha('#ff9800', 0.2)
-                                        }
-                                      }}
-                                    >
-                                      <PreviewIcon sx={{ color: '#ff9800' }} />
-                                    </IconButton>
-                                  </Tooltip>
-                                  <Tooltip title="Remove" arrow>
-                                    <IconButton 
-                                      edge="end" 
-                                      onClick={() => handleRemovePdf(index)}
-                                      sx={{
-                                        background: alpha('#f44336', 0.1),
-                                        '&:hover': {
-                                          background: alpha('#f44336', 0.2)
-                                        }
-                                      }}
-                                    >
-                                      <DeleteIcon sx={{ color: '#f44336' }} />
-                                    </IconButton>
-                                  </Tooltip>
-                                </Box>
-                              }
-                            >
-                              <ListItemIcon>
-                                <Avatar sx={{ 
-                                  background: alpha('#4caf50', 0.1),
-                                  color: '#4caf50'
-                                }}>
-                                  <PdfIcon />
-                                </Avatar>
-                              </ListItemIcon>
-                              <ListItemText 
-                                primary={
-                                  <Typography fontWeight={600}>
-                                    {file.name}
-                                  </Typography>
-                                }
-                                secondary={
-                                  <Typography variant="caption" sx={{ color: '#4caf50', fontWeight: 600 }}>
-                                    {(file.size / 1024 / 1024).toFixed(2)} MB
-                                  </Typography>
-                                }
-                              />
-                            </ListItem>
-                          ))}
-                        </List>
-                      </Box>
-                    )}
-                    
-                    <Alert 
-                      severity="info" 
-                      icon={<InfoIcon />}
-                      sx={{ 
-                        mt: 3,
-                        borderRadius: 2,
-                        border: '2px solid',
-                        borderColor: alpha('#2196f3', 0.3),
-                        background: alpha('#2196f3', 0.05),
-                        '& .MuiAlert-icon': {
-                          color: '#2196f3'
-                        }
-                      }}
-                    >
-                      <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
-                        📋 Upload Requirements:
-                      </Typography>
-                      <Typography variant="caption" component="div">
-                        ✓ Maximum 10 PDF files per paper<br />
-                        ✓ Each PDF must be ≤ 10MB<br />
-                        ✓ PDF format only (.pdf)
-                      </Typography>
-                    </Alert>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        ))}
+                        <Button size="small" startIcon={<AddIcon />} onClick={() => addOption(qIndex)} sx={{ mt: 1 }}>
+                          Add option
+                        </Button>
+                        <FormControl fullWidth size="small" sx={{ mt: 2 }}>
+                          <InputLabel>Correct answer</InputLabel>
+                          <Select
+                            value={q.correct_answer || ''}
+                            onChange={(e) => updateQuestion(qIndex, 'correct_answer', e.target.value)}
+                            label="Correct answer"
+                          >
+                            {(q.options || []).filter(o => (o || '').toString().trim()).map((opt, idx) => (
+                              <MenuItem key={idx} value={opt.trim()}>{opt.trim() || `Option ${idx + 1}`}</MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Card>
+                    ))}
                   </Card>
                 </Grid>
 
@@ -1808,71 +1633,16 @@ const Paper = () => {
                 </Grid>
               </Grid>
 
-              {viewingPaper.pdfs && viewingPaper.pdfs.length > 0 && (
-                <Box>
-                  <Typography variant="h6" sx={{ 
-                    mb: 2, 
-                    fontWeight: 700,
-                    color: '#f44336',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1
-                  }}>
-                    <PdfIcon />
-                    PDF Files ({viewingPaper.pdfs.length})
+              {viewingPaper.questions && viewingPaper.questions.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#667eea', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    Questions ({viewingPaper.questions.length})
                   </Typography>
-                  <List sx={{ 
-                    background: alpha('#f44336', 0.03),
-                    borderRadius: 2,
-                    border: '2px solid',
-                    borderColor: alpha('#f44336', 0.2)
-                  }}>
-                    {viewingPaper.pdfs.map((pdf, index) => (
-                      <ListItem 
-                        key={pdf.id}
-                        sx={{
-                          borderBottom: index < viewingPaper.pdfs.length - 1 ? '1px solid' : 'none',
-                          borderColor: 'divider',
-                          '&:hover': {
-                            background: alpha('#f44336', 0.05)
-                          }
-                        }}
-                      >
-                        <ListItemIcon>
-                          <Avatar sx={{ 
-                            background: 'linear-gradient(135deg, #f44336 0%, #e91e63 100%)',
-                            boxShadow: '0 4px 12px rgba(244, 67, 54, 0.3)'
-                          }}>
-                            <PdfIcon />
-                          </Avatar>
-                        </ListItemIcon>
-                        <ListItemText 
-                          primary={
-                            <Typography fontWeight={700}>
-                              {pdf.original_name || pdf.file_name}
-                            </Typography>
-                          }
-                          secondary={
-                            <Typography variant="caption" sx={{ color: '#f44336', fontWeight: 600 }}>
-                              {pdf.size_human}
-                            </Typography>
-                          }
-                        />
-                        <Tooltip title="Download PDF" arrow>
-                          <IconButton
-                            href={pdf.download_url || pdf.url}
-                            target="_blank"
-                            sx={{
-                              background: alpha('#2196f3', 0.1),
-                              '&:hover': {
-                                background: alpha('#2196f3', 0.2),
-                                transform: 'scale(1.1)'
-                              }
-                            }}
-                          >
-                            <DownloadIcon sx={{ color: '#2196f3' }} />
-                          </IconButton>
-                        </Tooltip>
+                  <List sx={{ background: alpha('#667eea', 0.05), borderRadius: 2, border: '1px solid', borderColor: alpha('#667eea', 0.2) }}>
+                    {viewingPaper.questions.map((q, idx) => (
+                      <ListItem key={q.id || idx} sx={{ flexDirection: 'column', alignItems: 'flex-start', borderBottom: idx < viewingPaper.questions.length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
+                        <Typography fontWeight={600}>{q.question_text}</Typography>
+                        <Typography variant="caption" color="text.secondary">Marks: {q.marks} · Duration: {q.duration_in_sec}s · Correct: {q.correct_answer}</Typography>
                       </ListItem>
                     ))}
                   </List>
@@ -2061,74 +1831,6 @@ const Paper = () => {
                 maxHeight: '70vh',
                 objectFit: 'contain'
               }} 
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* PDF Preview Dialog */}
-      <Dialog
-        open={pdfPreview.open}
-        onClose={handleClosePdfPreview}
-        maxWidth="lg"
-        fullWidth
-        TransitionComponent={Zoom}
-        PaperProps={{
-          sx: {
-            borderRadius: 4,
-            boxShadow: '0 24px 80px rgba(0,0,0,0.3)',
-            height: '90vh'
-          }
-        }}
-      >
-        <DialogTitle sx={{
-          background: 'linear-gradient(135deg, #f44336 0%, #e91e63 100%)',
-          color: 'white',
-          py: 2,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar sx={{ 
-              width: 40, 
-              height: 40, 
-              background: 'rgba(255,255,255,0.2)'
-            }}>
-              <PdfIcon />
-            </Avatar>
-            <Box>
-              <Typography variant="h6" fontWeight={600}>PDF Preview</Typography>
-              {pdfPreview.name && (
-                <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                  {pdfPreview.name}
-                </Typography>
-              )}
-            </Box>
-          </Box>
-          <IconButton 
-            onClick={handleClosePdfPreview}
-            sx={{ 
-              color: 'white',
-              background: 'rgba(255,255,255,0.1)',
-              '&:hover': {
-                background: 'rgba(255,255,255,0.2)'
-              }
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ p: 0, height: 'calc(100% - 64px)' }}>
-          {pdfPreview.url && (
-            <iframe
-              src={pdfPreview.url}
-              style={{
-                width: '100%',
-                height: '100%',
-                border: 'none'
-              }}
-              title="PDF Preview"
             />
           )}
         </DialogContent>
