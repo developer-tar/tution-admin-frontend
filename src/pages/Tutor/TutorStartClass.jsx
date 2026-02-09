@@ -19,6 +19,12 @@ export default function TutorStartClass() {
 
   const tutorName = localStorage.getItem("tutor_name") || "Tutor";
 
+  const getJitsiMeetingUrl = (code, name) => {
+    const base = `https://meet.jit.si/${code}`;
+    if (!name || !String(name).trim()) return base;
+    return `${base}#userInfo.displayName=${encodeURIComponent(JSON.stringify(String(name).trim()))}`;
+  };
+
   useEffect(() => {
     if (!courseId) {
       setLoading(false);
@@ -47,7 +53,7 @@ export default function TutorStartClass() {
       });
       const code = res.data?.classroom?.room_code;
       if (code) {
-        window.open(`/tutor/meeting/${code}`, "_blank", "noopener,noreferrer");
+        window.open(getJitsiMeetingUrl(code, tutorName), "_blank", "noopener,noreferrer");
         setOpened(true);
       }
     } catch (e) {

@@ -37,10 +37,11 @@ const formatDateTime = (iso) => {
   });
 };
 
-const getJoinUrl = (roomCode) => {
-  const base = process.env.REACT_APP_BACKEND_APP_URL || "";
-  const appUrl = base.replace(/\/api\/?$/, "") || base;
-  return `${appUrl}/classroom/live/${roomCode}`;
+/** Jitsi Meet URL with display name pre-filled for "Enter your name". */
+const getJoinUrl = (roomCode, displayName) => {
+  const base = `https://meet.jit.si/${roomCode}`;
+  if (!displayName || !String(displayName).trim()) return base;
+  return `${base}#userInfo.displayName=${encodeURIComponent(JSON.stringify(String(displayName).trim()))}`;
 };
 
 const StudentClasses = () => {
@@ -48,6 +49,15 @@ const StudentClasses = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState("all"); // all | upcoming | ongoing | ended
+
+  const displayName = (() => {
+    try {
+      const data = localStorage.getItem("userData");
+      return data ? JSON.parse(data).full_name : "";
+    } catch {
+      return "";
+    }
+  })();
 
   const fetchClasses = async () => {
     try {
@@ -195,7 +205,7 @@ const StudentClasses = () => {
                       <Button
                         variant="contained"
                         startIcon={<JoinIcon />}
-                        href={getJoinUrl(cls.room_code)}
+                        href={getJoinUrl(cls.room_code, displayName)}
                         target="_blank"
                         rel="noopener noreferrer"
                         sx={{

@@ -43,6 +43,14 @@ const formatDateTime = (iso) => {
   return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 };
 
+/** Jitsi Meet URL with display name pre-filled (userInfo.displayName hash). */
+const getJitsiMeetingUrl = (roomCode, displayName) => {
+  const base = `https://meet.jit.si/${roomCode}`;
+  if (!displayName || !displayName.trim()) return base;
+  const encoded = encodeURIComponent(JSON.stringify(displayName.trim()));
+  return `${base}#userInfo.displayName=${encoded}`;
+};
+
 function TabPanel({ children, value, index }) {
   return value === index ? <Box sx={{ pt: 2 }}>{children}</Box> : null;
 }
@@ -122,7 +130,7 @@ export default function TutorClasses() {
       });
       const roomCode = res.data?.classroom?.room_code;
       if (roomCode) {
-        window.open(`/tutor/meeting/${roomCode}`, "_blank", "noopener,noreferrer");
+        window.open(getJitsiMeetingUrl(roomCode, tutorName), "_blank", "noopener,noreferrer");
         setSuccess("Meeting opened in a new tab. Students can join via the Classes section.");
       }
     } catch (e) {
@@ -164,7 +172,7 @@ export default function TutorClasses() {
   };
 
   const handleStartExisting = (roomCode) => {
-    window.open(`/tutor/meeting/${roomCode}`, "_blank", "noopener,noreferrer");
+    window.open(getJitsiMeetingUrl(roomCode, tutorName), "_blank", "noopener,noreferrer");
   };
 
   return (
