@@ -8,17 +8,20 @@ import {
   Skeleton,
   Alert,
   Button,
-  Grid,
   ToggleButton,
   ToggleButtonGroup,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
 } from "@mui/material";
 import {
   Event as EventIcon,
   PlayArrow as JoinIcon,
-  Schedule,
   Refresh as RefreshIcon,
-  School,
-  Person,
 } from "@mui/icons-material";
 import api from "../../api";
 
@@ -131,19 +134,7 @@ const StudentClasses = () => {
       )}
 
       {loading ? (
-        <Grid container spacing={2}>
-          {[1, 2, 3].map((i) => (
-            <Grid item xs={12} md={6} key={i}>
-              <Card>
-                <CardContent>
-                  <Skeleton height={24} width="60%" />
-                  <Skeleton height={20} width="40%" sx={{ mt: 1 }} />
-                  <Skeleton height={20} width="80%" sx={{ mt: 1 }} />
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+        <Skeleton variant="rectangular" height={280} sx={{ borderRadius: 2 }} />
       ) : filtered.length === 0 ? (
         <Card sx={{ p: 4, textAlign: "center" }}>
           <EventIcon sx={{ fontSize: 48, color: "text.secondary", mb: 1 }} />
@@ -152,77 +143,62 @@ const StudentClasses = () => {
           </Typography>
         </Card>
       ) : (
-        <Grid container spacing={2}>
-          {filtered.map((cls) => {
-            const config = statusConfig[cls.status] || statusConfig.pending;
-            return (
-              <Grid item xs={12} md={6} key={cls.id}>
-                <Card
-                  sx={{
-                    borderRadius: 2,
-                    boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-                    borderLeft: `4px solid ${config.color}`,
-                  }}
-                >
-                  <CardContent>
-                    <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
-                        {cls.name}
-                      </Typography>
+        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow sx={{ bgcolor: "grey.100" }}>
+                <TableCell><strong>Class</strong></TableCell>
+                <TableCell><strong>Course</strong></TableCell>
+                <TableCell><strong>Tutor</strong></TableCell>
+                <TableCell><strong>Start</strong></TableCell>
+                <TableCell><strong>End</strong></TableCell>
+                <TableCell><strong>Status</strong></TableCell>
+                <TableCell align="right"><strong>Action</strong></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filtered.map((cls) => {
+                const config = statusConfig[cls.status] || statusConfig.pending;
+                return (
+                  <TableRow key={cls.id}>
+                    <TableCell>{cls.name}</TableCell>
+                    <TableCell>{cls.course?.name ?? "—"}</TableCell>
+                    <TableCell>{cls.tutor?.full_name ?? "—"}</TableCell>
+                    <TableCell>{formatDateTime(cls.start_time)}</TableCell>
+                    <TableCell>{formatDateTime(cls.end_time)}</TableCell>
+                    <TableCell>
                       <Chip
-                        label={config.label}
                         size="small"
-                        sx={{
-                          bgcolor: config.bg,
-                          color: config.color,
-                          fontWeight: 600,
-                        }}
+                        label={config.label}
+                        sx={{ bgcolor: config.bg, color: config.color, fontWeight: 600 }}
                       />
-                    </Box>
-                    {cls.course?.name && (
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
-                        <School sx={{ fontSize: 16, color: "text.secondary" }} />
-                        <Typography variant="body2" color="text.secondary">
-                          {cls.course.name}
-                        </Typography>
-                      </Box>
-                    )}
-                    {cls.tutor?.full_name && (
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.25 }}>
-                        <Person sx={{ fontSize: 16, color: "text.secondary" }} />
-                        <Typography variant="body2" color="text.secondary">
-                          {cls.tutor.full_name}
-                        </Typography>
-                      </Box>
-                    )}
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 1.5 }}>
-                      <Schedule sx={{ fontSize: 18, color: "text.secondary" }} />
-                      <Typography variant="body2" color="text.secondary">
-                        {formatDateTime(cls.start_time)} — {formatDateTime(cls.end_time)}
-                      </Typography>
-                    </Box>
-                    {canJoin(cls.status) && cls.room_code && (
-                      <Button
-                        variant="contained"
-                        startIcon={<JoinIcon />}
-                        href={getJoinUrl(cls.room_code, displayName)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        sx={{
-                          mt: 2,
-                          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                          "&:hover": { opacity: 0.9 },
-                        }}
-                      >
-                        {cls.status === "ongoing" ? "Join class" : "Open room"}
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              </Grid>
-            );
-          })}
-        </Grid>
+                    </TableCell>
+                    <TableCell align="right">
+                      {canJoin(cls.status) && cls.room_code ? (
+                        <Button
+                          size="small"
+                          variant="contained"
+                          startIcon={<JoinIcon />}
+                          href={getJoinUrl(cls.room_code, displayName)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{
+                            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                            "&:hover": { opacity: 0.9 },
+                          }}
+                        >
+                          {cls.status === "ongoing" ? "Join class" : "Open room"}
+                        </Button>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
     </Box>
   );

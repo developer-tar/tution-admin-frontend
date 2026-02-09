@@ -21,6 +21,8 @@ const Billing = () => {
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [parentData, setParentData] = useState(null);
+  const [parentStudents, setParentStudents] = useState([]);
+  const [assigningCourseId, setAssigningCourseId] = useState(null);
 
   // Get current route segment (course, mock, or paper)
   const currentRoute = location.pathname.split('/').pop() || 'course';
@@ -74,6 +76,22 @@ const Billing = () => {
     }
   }, [currentRoute]);
 
+  // Fetch parent students for course assign dropdown (same as papers)
+  useEffect(() => {
+    if (currentRoute !== 'course') return;
+    const fetchStudents = async () => {
+      try {
+        const response = await api.get('parent/students/names');
+        if (response.data.success && Array.isArray(response.data.data)) {
+          setParentStudents(response.data.data);
+        }
+      } catch (err) {
+        console.error('Error fetching parent students for course assign:', err);
+      }
+    };
+    fetchStudents();
+  }, [currentRoute]);
+
   const fetchSubscriptions = async () => {
     setLoading(true);
     try {
@@ -115,8 +133,9 @@ const Billing = () => {
       console.log('- Message:', response.data.message);
       
       if (response.data.success) {
-        setSubscriptions(response.data.data || []);
-        console.log('📊 Subscriptions set in state:', response.data.data);
+        const data = response.data.data || [];
+        setSubscriptions(Array.isArray(data) ? data : []);
+        console.log('📊 Subscriptions set in state:', data);
         
         // Silent loading - no success toast message
         if (!response.data.data || response.data.data.length === 0) {
@@ -150,6 +169,28 @@ const Billing = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAssignCourseToStudent = async (courseId, studentId) => {
+    if (!studentId) return;
+    setAssigningCourseId(courseId);
+    try {
+      const response = await api.post('parent/assign-course-to-student', {
+        course_id: Number(courseId),
+        student_ids: [Number(studentId)],
+      });
+      if (response.data.success) {
+        toast.success(response.data.message || 'Course assigned to student.');
+        await fetchSubscriptions();
+      } else {
+        toast.error(response.data.message || 'Failed to assign course.');
+      }
+    } catch (error) {
+      console.error('Error assigning course to student:', error);
+      toast.error(error.response?.data?.message || 'Failed to assign course.');
+    } finally {
+      setAssigningCourseId(null);
     }
   };
 
@@ -212,7 +253,10 @@ const Billing = () => {
           {currentRoute === 'course' && (
             <SubscriptionList 
               subscriptions={subscriptions} 
-              loading={loading} 
+              loading={loading}
+              parentStudents={parentStudents}
+              onAssignCourseToStudent={handleAssignCourseToStudent}
+              assigningCourseId={assigningCourseId}
             />
           )}
           {currentRoute === 'mock' && (

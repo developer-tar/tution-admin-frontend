@@ -2,10 +2,8 @@ import React from 'react';
 import {
   Box,
   Typography,
-  Paper,
   Card,
   CardContent,
-  Grid,
   Table,
   TableBody,
   TableCell,
@@ -13,10 +11,13 @@ import {
   TableHead,
   TableRow,
   Chip,
-  IconButton,
   Tooltip,
   Divider,
-  Button
+  Button,
+  FormControl,
+  Select,
+  MenuItem,
+  CircularProgress
 } from '@mui/material';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import PaymentIcon from '@mui/icons-material/Payment';
@@ -26,7 +27,13 @@ import PersonIcon from '@mui/icons-material/Person';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 
-const SubscriptionList = ({ subscriptions, loading }) => {
+const SubscriptionList = ({
+  subscriptions,
+  loading,
+  parentStudents = [],
+  onAssignCourseToStudent,
+  assigningCourseId = null,
+}) => {
   if (loading) {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
@@ -153,17 +160,43 @@ const SubscriptionList = ({ subscriptions, loading }) => {
 
               <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' }, height: 30, alignSelf: 'center' }} />
 
-              {/* Student Info */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              {/* Student assign (same as papers) */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, position: 'relative' }}>
                 <PersonIcon fontSize="small" color="action" />
-                <Box>
-                  <Typography variant="body2" fontWeight={600} color="#4a5568">
-                    {sub.student_name === 'Unassigned' ? 'Not Assigned' : sub.student_name}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Student
-                  </Typography>
-                </Box>
+                {onAssignCourseToStudent && parentStudents && parentStudents.length > 0 ? (
+                  <FormControl size="small" sx={{ minWidth: 160 }} disabled={assigningCourseId === sub.course_id}>
+                    <Select
+                      value={sub.student_id ?? ''}
+                      onChange={(e) => onAssignCourseToStudent(sub.course_id, e.target.value)}
+                      displayEmpty
+                      sx={{
+                        fontSize: '0.875rem',
+                        '& .MuiOutlinedInput-notchedOutline': { borderColor: 'divider' },
+                      }}
+                    >
+                      <MenuItem value="">
+                        <em>Not Assigned</em>
+                      </MenuItem>
+                      {parentStudents.map((s) => (
+                        <MenuItem key={s.id} value={s.id}>
+                          {s.full_name || s.first_name + ' ' + (s.last_name || '')}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                ) : (
+                  <Box>
+                    <Typography variant="body2" fontWeight={600} color="#4a5568">
+                      {sub.student_name === 'Unassigned' ? 'Not Assigned' : sub.student_name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Student
+                    </Typography>
+                  </Box>
+                )}
+                {assigningCourseId === sub.course_id && (
+                  <CircularProgress size={18} sx={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }} />
+                )}
               </Box>
             </Box>
 

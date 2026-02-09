@@ -791,11 +791,11 @@ export default function Course() {
                 </Grid>
               )}
 
-              {/* Online installment Plans */}
+              {/* Online course plans */}
               {isModeSelected("online") && (
                 <Grid item xs={12}>
                   <Typography variant="h6" gutterBottom>
-                    Online installment Plans
+                    Online course plans
                   </Typography>
                   <Grid container spacing={2}>
                     {subscriptionPlans.map((plan) => (
@@ -829,11 +829,11 @@ export default function Course() {
                 </Grid>
               )}
 
-              {/* In-Person installment Plans */}
+              {/* In-person course plans */}
               {isModeSelected("person") && (
                 <Grid item xs={12}>
                   <Typography variant="h6" gutterBottom>
-                    In-Person installment Plans
+                    In-person course plans
                   </Typography>
                   <Grid container spacing={2}>
                     {subscriptionPlans.map((plan) => (

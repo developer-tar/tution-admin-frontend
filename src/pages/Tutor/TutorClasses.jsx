@@ -22,12 +22,16 @@ import {
   Alert,
   Tabs,
   Tab,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
 import {
   Videocam as StartIcon,
   Schedule as ScheduleIcon,
   List as ListIcon,
   PlayArrow as PlayIcon,
+  Stop as StopIcon,
+  Refresh as RefreshIcon,
 } from "@mui/icons-material";
 import api from "../../api";
 import JitsiMeet from "../../components/JitsiMeet";
@@ -74,8 +78,22 @@ export default function TutorClasses() {
   const [scheduleStart, setScheduleStart] = useState("");
   const [scheduleEnd, setScheduleEnd] = useState("");
   const [scheduling, setScheduling] = useState(false);
+  const [endingMeetingId, setEndingMeetingId] = useState(null);
+  const [startingMeetingId, setStartingMeetingId] = useState(null);
+  const [classFilter, setClassFilter] = useState("all"); // all | pending | ongoing | ended
 
   const tutorName = localStorage.getItem("tutor_name") || "Tutor";
+
+  const statusOrder = { pending: 0, ongoing: 1, ended: 2 };
+  const sortedClassrooms = [...classrooms].sort((a, b) => {
+    const oa = statusOrder[a.status] ?? 3;
+    const ob = statusOrder[b.status] ?? 3;
+    if (oa !== ob) return oa - ob;
+    return (a.start_time || "").localeCompare(b.start_time || "");
+  });
+  const filteredClassrooms = classFilter === "all"
+    ? sortedClassrooms
+    : sortedClassrooms.filter((c) => c.status === classFilter);
 
   const fetchCourses = async () => {
     setLoadingCourses(true);
@@ -171,8 +189,32 @@ export default function TutorClasses() {
     }
   };
 
-  const handleStartExisting = (roomCode) => {
-    window.open(getJitsiMeetingUrl(roomCode, tutorName), "_blank", "noopener,noreferrer");
+  const handleStartExisting = async (classroom) => {
+    setStartingMeetingId(classroom.id);
+    setError(null);
+    try {
+      await api.post(`tutor/classrooms/${classroom.id}/start`);
+      window.open(getJitsiMeetingUrl(classroom.room_code, tutorName), "_blank", "noopener,noreferrer");
+      fetchClassrooms();
+    } catch (e) {
+      setError(e.response?.data?.message || "Failed to start meeting");
+    } finally {
+      setStartingMeetingId(null);
+    }
+  };
+
+  const handleEndMeeting = async (classroomId) => {
+    setEndingMeetingId(classroomId);
+    setError(null);
+    try {
+      await api.post(`tutor/classrooms/${classroomId}/end`);
+      setSuccess("Meeting ended. End time recorded.");
+      fetchClassrooms();
+    } catch (e) {
+      setError(e.response?.data?.message || "Failed to end meeting");
+    } finally {
+      setEndingMeetingId(null);
+    }
   };
 
   return (
@@ -303,20 +345,49 @@ export default function TutorClasses() {
         ) : classrooms.length === 0 ? (
           <Card><CardContent><Typography color="text.secondary">No scheduled classes yet. Create one from "Start class" or "Schedule class".</Typography></CardContent></Card>
         ) : (
-          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow sx={{ bgcolor: "grey.100" }}>
-                  <TableCell><strong>Class</strong></TableCell>
-                  <TableCell><strong>Course</strong></TableCell>
-                  <TableCell><strong>Start</strong></TableCell>
-                  <TableCell><strong>End</strong></TableCell>
-                  <TableCell><strong>Status</strong></TableCell>
-                  <TableCell align="right"><strong>Action</strong></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {classrooms.map((c) => {
+          <>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2, flexWrap: "wrap" }}>
+              <ToggleButtonGroup
+                value={classFilter}
+                exclusive
+                onChange={(_, v) => v != null && setClassFilter(v)}
+                size="small"
+                sx={{
+                  "& .MuiToggleButton-root": {
+                    textTransform: "none",
+                    fontWeight: 600,
+                  },
+                }}
+              >
+                <ToggleButton value="all">All</ToggleButton>
+                <ToggleButton value="pending">Pending</ToggleButton>
+                <ToggleButton value="ongoing">Ongoing</ToggleButton>
+                <ToggleButton value="ended">Ended</ToggleButton>
+              </ToggleButtonGroup>
+              <Button
+                startIcon={<RefreshIcon />}
+                onClick={fetchClassrooms}
+                disabled={loadingClassrooms}
+                size="small"
+                variant="outlined"
+              >
+                Refresh
+              </Button>
+            </Box>
+            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: "grey.100" }}>
+                    <TableCell><strong>Class</strong></TableCell>
+                    <TableCell><strong>Course</strong></TableCell>
+                    <TableCell><strong>Start</strong></TableCell>
+                    <TableCell><strong>End</strong></TableCell>
+                    <TableCell><strong>Status</strong></TableCell>
+                    <TableCell align="right"><strong>Action</strong></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredClassrooms.map((c) => {
                   const config = statusConfig[c.status] || statusConfig.pending;
                   return (
                     <TableRow key={c.id}>
@@ -326,22 +397,49 @@ export default function TutorClasses() {
                       <TableCell>{formatDateTime(c.end_time)}</TableCell>
                       <TableCell><Chip size="small" label={config.label} sx={{ bgcolor: config.color + "20", color: config.color }} /></TableCell>
                       <TableCell align="right">
-                        <Button
-                          size="small"
-                          variant="contained"
-                          startIcon={<PlayIcon />}
-                          onClick={() => handleStartExisting(c.room_code)}
-                          sx={{ background: "linear-gradient(90deg, #3B2A9F 0%, #D62926 100%)", "&:hover": { opacity: 0.9 } }}
-                        >
-                          Start
-                        </Button>
+                        <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                          {(c.status === "pending" || c.status === "ongoing") && (
+                            <Button
+                              size="small"
+                              variant="contained"
+                              startIcon={<PlayIcon />}
+                              onClick={() => handleStartExisting(c)}
+                              disabled={startingMeetingId === c.id}
+                              sx={{ background: "linear-gradient(90deg, #3B2A9F 0%, #D62926 100%)", "&:hover": { opacity: 0.9 } }}
+                            >
+                              {startingMeetingId === c.id ? "Starting…" : "Start"}
+                            </Button>
+                          )}
+                          {c.status === "ongoing" && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="error"
+                              startIcon={<StopIcon />}
+                              onClick={() => handleEndMeeting(c.id)}
+                              disabled={endingMeetingId === c.id}
+                              sx={{ borderColor: "#d32f2f", color: "#d32f2f", "&:hover": { borderColor: "#b71c1c", bgcolor: "rgba(211,47,47,0.04)" } }}
+                            >
+                              {endingMeetingId === c.id ? "Ending…" : "End meeting"}
+                            </Button>
+                          )}
+                          {c.status === "ended" && (
+                            <Typography variant="body2" color="text.secondary">—</Typography>
+                          )}
+                        </Box>
                       </TableCell>
                     </TableRow>
                   );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            {filteredClassrooms.length === 0 && classFilter !== "all" && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                No {classFilter} classes.
+              </Typography>
+            )}
+          </>
         )}
       </TabPanel>
     </Box>
