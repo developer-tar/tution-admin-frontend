@@ -18,7 +18,7 @@ import {
 import { styled } from '@mui/material/styles';
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import * as yup from "yup";
 import api from "../api";
@@ -67,10 +67,15 @@ const Login = () => {
     const fetchRoles = async () => {
       try {
         const res = await api.get('common/data?param=Roles')
-        setRoles(res.data.data || [])
+        // Exclude Tutor – tutors must use /tutor-login (tutor panel only)
+        const allRoles = res.data.data || [];
+        const nonTutorRoles = allRoles.filter(
+          (r) => String(r.name || "").toLowerCase() !== "tutor"
+        );
+        setRoles(nonTutorRoles);
 
-        if (res.data.data.length > 0) {
-          reset({ role: res.data.data[0].id })
+        if (nonTutorRoles.length > 0) {
+          reset({ role: nonTutorRoles[0].id });
         }
 
       } catch (err) {
@@ -267,7 +272,7 @@ const Login = () => {
               />
             )}
 
-            <Box sx={{ display: "flex", justifyContent: "flex-start", }}>
+            <Box sx={{ display: "flex", justifyContent: "flex-start", flexWrap: "wrap", alignItems: "center", gap: 2 }}>
               <Button
                 disableElevation
                 sx={{
@@ -280,7 +285,7 @@ const Login = () => {
                   "&.Mui-disabled": {
                     backgroundColor: "#EF2A1E",
                     color: "#fff",
-                    opacity: 0.7, // optional to show it's disabled
+                    opacity: 0.7,
                   },
                 }}
                 onClick={handleSubmit(onSubmit)}
@@ -293,7 +298,10 @@ const Login = () => {
                   </Box>
                 )}
               </Button>
-
+              <Typography variant="body2" sx={{ color: "#666" }}>
+                Are you a tutor?{" "}
+                <Link to="/tutor-login" style={{ color: "#1565c0", fontWeight: 600 }}>Log in to the tutor panel</Link>
+              </Typography>
             </Box>
           </Box>
         </Grid>

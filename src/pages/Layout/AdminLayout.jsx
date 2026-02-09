@@ -197,6 +197,7 @@ const AdminLayout = () => {
         { label: "Student List", path: "/admin/students", icon: <ListIcon /> },
       ],
     },
+    { label: "Tutors", path: "/admin/tutors", icon: <SchoolIcon /> },
     // {
     //   label: "Papers",
     //   icon: <DescriptionIcon />,

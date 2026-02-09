@@ -34,6 +34,7 @@ import {
     MenuBook,
     TrendingUp,
     EmojiEvents,
+    Event as EventIcon,
 } from "@mui/icons-material";
 import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -104,6 +105,13 @@ const StudentLayout = () => {
                     color: "#e91e63"
                 },
             ],
+        },
+        {
+            label: "📅 Classes",
+            icon: EventIcon,
+            path: `/${name}/classes`,
+            color: "#00acc1",
+            gradient: "linear-gradient(135deg, #00acc1 0%, #00838f 100%)",
         },
         {
             label: "📢 Announcements",

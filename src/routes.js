@@ -1,9 +1,10 @@
 // ================= IMPORTS =================
 import { useEffect } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 
 // Pages
 import AdminLogin from "./pages/Adminlogin";
+import TutorLogin from "./pages/TutorLogin";
 import Course from "./pages/Course/Course";
 import CourseAssignment from "./pages/Course/CourseAssignment";
 import CourseAssignmentList from "./pages/Course/CourseAssignmentList";
@@ -16,6 +17,7 @@ import TopicSubtopicList from "./pages/Course/TopicList";
 import TimeSlots from "./pages/Course/CourseTimeSlot";
 
 import AdminLayout from "./pages/Layout/AdminLayout";
+import TutorLayout from "./pages/Layout/TutorLayout";
 import Layout from "./pages/Layout/Layout";
 import ParentLayout from "./pages/Layout/ParentLayout";
 import StudentLayout from "./pages/Layout/StudentLayout";
@@ -26,6 +28,7 @@ import Dashboard from "./pages/Student/Dashboard";
 import StudentDashboard from "./pages/Student/Dashboard";
 import StudentAnnouncements from "./pages/Student/Announcements";
 import StudentCertificates from "./pages/Student/Certificates";
+import StudentClasses from "./pages/Student/Classes";
 import StudentTest from "./pages/Student/StudentTest";
 import MyCourseTest from "./pages/Student/Homework/MyCourseTest";
 import MyCourseVideo from "./pages/Student/Video/MyCourseVideo";
@@ -54,6 +57,7 @@ import MasterForm from "./pages/MasterForm/MasterForm";
 // Admin
 import ParentList from "./pages/Admin/ParentList";
 import ParentBilling from "./pages/Admin/ParentBilling";
+import TutorList from "./pages/Admin/TutorList";
 import AdminPaperPurchases from "./pages/Admin/PaperPurchases";
 import Announcements from "./pages/Admin/Announcements";
 import Awards from "./pages/Admin/Awards";
@@ -82,6 +86,22 @@ import CourseTargetArea from "./pages/Parent/Progress/CourseTargetArea";
 import TestScores from "./pages/Parent/Progress/TestScores";
 
 import MyCurrentCourseAssignment from "./pages/Student/MyCurrentCourseAssignment";
+
+// Tutor
+import TutorDashboard from "./pages/Tutor/TutorDashboard";
+import TutorStudents from "./pages/Tutor/TutorStudents";
+import TutorCourses from "./pages/Tutor/TutorCourses";
+import TutorTimeslots from "./pages/Tutor/TutorTimeslots";
+import TutorAssignments from "./pages/Tutor/TutorAssignments";
+import TutorTests from "./pages/Tutor/TutorTests";
+import TutorMockExams from "./pages/Tutor/TutorMockExams";
+import TutorPapers from "./pages/Tutor/TutorPapers";
+import TutorAnnouncements from "./pages/Tutor/TutorAnnouncements";
+import TutorAwards from "./pages/Tutor/TutorAwards";
+import TutorCertificates from "./pages/Tutor/TutorCertificates";
+import TutorStartClass from "./pages/Tutor/TutorStartClass";
+import TutorClasses from "./pages/Tutor/TutorClasses";
+import TutorMeetingPage from "./pages/Tutor/TutorMeetingPage";
 
 // 404
 import NotFound from "./pages/NotFound";
@@ -117,6 +137,16 @@ const RequireAdmin = ({ children }) => {
   return token && role === "admin"
     ? children
     : <SafeRedirect to="/login" />;
+};
+
+// Tutor Protected Route – redirect to tutor login (not main login)
+const RequireTutor = ({ children }) => {
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
+
+  return token && role === "tutor"
+    ? children
+    : <SafeRedirect to="/tutor-login" />;
 };
 
 // Role-Based Route (student, tutor, parent)
@@ -198,6 +228,11 @@ const AppRoutes = () => {
           <AdminLogin />
         </GuestRoute>
       } />
+      <Route path="/tutor-login" element={
+        <GuestRoute>
+          <TutorLogin />
+        </GuestRoute>
+      } />
 
       {/* ADMIN ROUTES */}
       <Route path="/admin" element={
@@ -231,6 +266,9 @@ const AppRoutes = () => {
         <Route path="student/:id/edit" element={<StudentForm />} />
         <Route path="student/:id" element={<StudentDetails />} />
         
+        {/* Admin Tutor Management Routes */}
+        <Route path="tutors" element={<TutorList />} />
+
         {/* Admin Parent Management Routes */}
         <Route path="parents" element={<ParentList />} />
         <Route path="billing" element={<ParentList />} /> {/* Reusing ParentList as entry point for Billing */}
@@ -254,6 +292,7 @@ const AppRoutes = () => {
         </RequireRole>
       }>
         <Route index element={<StudentDashboard />} />  
+        <Route path="classes" element={<StudentClasses />} />
         { /*student announcements route */}
         <Route path="announcements" element={<StudentAnnouncements />} />
         { /*student certificates route */}
@@ -314,13 +353,26 @@ const AppRoutes = () => {
         <Route path="settings" element={<Setting />} />
       </Route>
 
-      {/* TUTOR ROUTES */}
-      <Route path="/tutor/" element={
-        <RequireRole allowedRoles={["tutor"]}>
-          <Layout />
-        </RequireRole>
-      }>
-        <Route index element={<Dashboard />} />
+      {/* TUTOR ROUTES (tutor panel; tutors use /tutor-login only) */}
+      <Route path="/tutor" element={<RequireTutor><Outlet /></RequireTutor>}>
+        {/* Meeting only - no sidebar/app bar; opens in new tab */}
+        <Route path="meeting/:roomCode" element={<TutorMeetingPage />} />
+        {/* All other tutor pages use TutorLayout */}
+        <Route element={<TutorLayout />}>
+          <Route index element={<TutorDashboard />} />
+          <Route path="students" element={<TutorStudents />} />
+          <Route path="courses" element={<TutorCourses />} />
+          <Route path="classes" element={<TutorClasses />} />
+          <Route path="course/:courseId/class" element={<TutorStartClass />} />
+          <Route path="mock-exams" element={<TutorMockExams />} />
+          <Route path="papers" element={<TutorPapers />} />
+          <Route path="timeslots" element={<TutorTimeslots />} />
+          <Route path="assignments" element={<TutorAssignments />} />
+          <Route path="tests" element={<TutorTests />} />
+          <Route path="announcements" element={<TutorAnnouncements />} />
+          <Route path="awards" element={<TutorAwards />} />
+          <Route path="certificates" element={<TutorCertificates />} />
+        </Route>
       </Route>
 
       {/* ROOT ROUTE - REDIRECT BY ROLE */}
